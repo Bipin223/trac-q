@@ -20,7 +20,7 @@ const Header = ({ user, handleLogout }: HeaderProps) => {
   };
 
   return (
-    <header className="flex items-center justify-end h-16 px-4 sm:px-8 border-b border-gray-200 dark:border-gray-700">
+    <header className="flex items-center justify-end h-16 px-4 sm:px-8 border-b border-border bg-card">
       <div className="flex items-center space-x-4">
         <Button variant="ghost" size="icon" onClick={toggleTheme}>
           <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />

@@ -25,11 +25,11 @@ const Layout = ({ user, children }: LayoutProps) => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+    <div className="flex h-screen bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header user={user} handleLogout={handleLogout} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-background p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>
