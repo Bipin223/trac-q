@@ -1,43 +1,71 @@
-import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import Layout from "@/components/Layout";
+import { AugustExpenseCard } from "@/components/dashboard/AugustExpenseCard";
+import { AssetSummaryCard } from "@/components/dashboard/AssetSummaryCard";
+import { SummaryCard } from "@/components/dashboard/SummaryCard";
+import { TrendsCard } from "@/components/dashboard/TrendsCard";
+import { Calendar, CalendarDays, CalendarRange, BarChartHorizontal } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      setLoading(false);
     };
     fetchUser();
   }, []);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
-  };
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-900 p-8">
+        <div className="w-full space-y-4">
+            <Skeleton className="h-12 w-1/4 bg-gray-200 dark:bg-gray-800" />
+            <div className="grid grid-cols-4 gap-6">
+                <Skeleton className="col-span-2 h-48 bg-gray-200 dark:bg-gray-800" />
+                <Skeleton className="col-span-2 h-48 bg-gray-200 dark:bg-gray-800" />
+                <Skeleton className="h-48 bg-gray-200 dark:bg-gray-800" />
+                <Skeleton className="h-48 bg-gray-200 dark:bg-gray-800" />
+            </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold">
-            Welcome, {user?.email?.split('@')[0] || 'User'}!
-          </h1>
-          <Button onClick={handleLogout} variant="destructive">Logout</Button>
-        </header>
-        <main>
-          <div className="text-center py-20 px-4 border-2 border-dashed border-gray-700 rounded-lg">
-            <h2 className="text-xl font-medium text-gray-300">Dashboard Under Construction</h2>
-            <p className="text-gray-400 mt-2">Exciting things are coming soon. We're building your futuristic expense tracker!</p>
-          </div>
-        </main>
+    <Layout user={user}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <AugustExpenseCard />
+        <AssetSummaryCard />
+        <SummaryCard 
+          title="Today" 
+          icon={<Calendar className="h-5 w-5" />} 
+          period="August 4, 2025" 
+        />
+        <SummaryCard 
+          title="This Week" 
+          icon={<CalendarDays className="h-5 w-5" />} 
+          period="August 3-August 9" 
+        />
+        <TrendsCard />
+        <SummaryCard 
+          title="This Month" 
+          icon={<CalendarRange className="h-5 w-5" />} 
+          period="August 2025" 
+        />
+        <SummaryCard 
+          title="This Year" 
+          icon={<BarChartHorizontal className="h-5 w-5" />} 
+          period="2025" 
+        />
       </div>
-    </div>
+    </Layout>
   );
 };
 
