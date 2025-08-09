@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { Skeleton } from "@/components/ui/skeleton";
+import ExchangeRatesPage from "./pages/ExchangeRates";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={session ? <Dashboard /> : <Navigate to="/login" />} />
+            <Route path="/exchange-rates" element={session ? <ExchangeRatesPage /> : <Navigate to="/login" />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

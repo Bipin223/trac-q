@@ -1,0 +1,206 @@
+import { useEffect, useState } from "react";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import Layout from "@/components/Layout";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Info, ArrowRightLeft } from "lucide-react";
+
+interface ExchangeRatesData {
+  amount: number;
+  base: string;
+  date: string;
+  rates: { [key: string]: number };
+}
+
+const TARGET_CURRENCIES = {
+  USD: { name: 'United States Dollar', flag: '🇺🇸' },
+  EUR: { name: 'Euro', flag: '🇪🇺' },
+  JPY: { name: 'Japanese Yen', flag: '🇯🇵' },
+  GBP: { name: 'British Pound', flag: '🇬🇧' },
+  CNY: { name: 'Chinese Yuan', flag: '🇨🇳' },
+  NPR: { name: 'Nepalese Rupee', flag: '🇳🇵' },
+};
+
+const ExchangeRatesPage = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [ratesData, setRatesData] = useState<ExchangeRatesData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [amount, setAmount] = useState<number>(1);
+  const [fromCurrency, setFromCurrency] = useState('USD');
+  const [toCurrency, setToCurrency] = useState('NPR');
+  const [convertedAmount, setConvertedAmount] = useState<string>('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+
+        const response = await fetch('https://api.frankfurter.app/latest?from=USD');
+        if (!response.ok) throw new Error('Failed to fetch exchange rates.');
+        
+        const data: ExchangeRatesData = await response.json();
+        data.rates['USD'] = 1; // Add base currency to rates for conversion
+        setRatesData(data);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (ratesData) {
+      const rateFrom = ratesData.rates[fromCurrency];
+      const rateTo = ratesData.rates[toCurrency];
+      if (rateFrom && rateTo && amount >= 0) {
+        const result = (amount / rateFrom) * rateTo;
+        setConvertedAmount(result.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
+      }
+    }
+  }, [amount, fromCurrency, toCurrency, ratesData]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background p-8">
+        <div className="w-full max-w-4xl space-y-4">
+          <Skeleton className="h-12 w-1/3 bg-muted" />
+          <Skeleton className="h-20 w-full bg-muted" />
+          <div className="grid grid-cols-3 gap-6">
+            <Skeleton className="col-span-2 h-96 bg-muted" />
+            <Skeleton className="col-span-1 h-96 bg-muted" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Layout user={user}>
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold tracking-tight">Exchange Rates</h1>
+        
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Live Data</AlertTitle>
+          <AlertDescription>
+            {`Rates are based on USD and were last updated on ${ratesData?.date}. Data is provided for informational purposes only.`}
+          </AlertDescription>
+        </Alert>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Latest Exchange Rates</CardTitle>
+              <CardDescription>Base currency: USD (United States Dollar)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {error ? (
+                <p className="text-destructive">{error}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Currency</TableHead>
+                      <TableHead className="text-right">Rate (per 1 USD)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {Object.entries(TARGET_CURRENCIES).map(([code, { name, flag }]) => (
+                      <TableRow key={code}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{flag}</span>
+                            <div>
+                              <p className="font-medium">{code}</p>
+                              <p className="text-sm text-muted-foreground">{name}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(4) || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle>Currency Converter</CardTitle>
+              <CardDescription>Manually convert between currencies.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="amount" className="text-sm font-medium">Amount</label>
+                <Input 
+                  id="amount" 
+                  type="number" 
+                  value={amount} 
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  min="0"
+                  placeholder="1.00"
+                />
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <div className="flex-1 space-y-2">
+                  <label className="text-sm font-medium">From</label>
+                  <Select value={fromCurrency} onValueChange={setFromCurrency}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ratesData && Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                        <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="pt-8">
+                  <Button variant="ghost" size="icon" onClick={() => {
+                    setFromCurrency(toCurrency);
+                    setToCurrency(fromCurrency);
+                  }}>
+                    <ArrowRightLeft className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="flex-1 space-y-2">
+                  <label className="text-sm font-medium">To</label>
+                  <Select value={toCurrency} onValueChange={setToCurrency}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {ratesData && Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                        <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="p-4 bg-muted rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">{amount.toLocaleString()} {fromCurrency} =</p>
+                <p className="text-2xl font-bold">{convertedAmount} {toCurrency}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </Layout>
+  );
+};
+
+export default ExchangeRatesPage;
