@@ -7,7 +7,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info, ArrowRightLeft } from "lucide-react";
 
@@ -27,11 +26,24 @@ const TARGET_CURRENCIES = {
   CNY: { name: 'Chinese Yuan', flag: '🇨🇳' },
 };
 
+// Static data as requested
+const staticRatesData: ExchangeRatesData = {
+  amount: 1,
+  base: 'NPR',
+  date: new Date().toISOString().split('T')[0], // Use current date for display
+  rates: {
+    USD: 0.0075,
+    EUR: 0.0070,
+    GBP: 0.0060,
+    JPY: 1.17,
+    CNY: 0.055,
+    NPR: 1,
+  },
+};
+
 const ExchangeRatesPage = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [ratesData, setRatesData] = useState<ExchangeRatesData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [ratesData] = useState<ExchangeRatesData>(staticRatesData);
 
   const [amount, setAmount] = useState<number>(100);
   const [fromCurrency, setFromCurrency] = useState('USD');
@@ -39,26 +51,11 @@ const ExchangeRatesPage = () => {
   const [convertedAmount, setConvertedAmount] = useState<string>('');
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-
-        const response = await fetch('https://api.frankfurter.app/latest?from=NPR');
-        if (!response.ok) throw new Error('Failed to fetch exchange rates.');
-        
-        const data: ExchangeRatesData = await response.json();
-        data.rates['NPR'] = 1; // Add base currency to rates for conversion
-        setRatesData(data);
-        setError(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred.');
-      } finally {
-        setLoading(false);
-      }
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
     };
-    fetchData();
+    fetchUser();
   }, []);
 
   useEffect(() => {
@@ -67,9 +64,7 @@ const ExchangeRatesPage = () => {
       const rateTo = ratesData.rates[toCurrency];
       
       if (rateFrom && rateTo && amount >= 0) {
-        // Convert amount from 'fromCurrency' to base currency ('NPR')
         const amountInBase = amount / rateFrom;
-        // Convert from base currency to 'toCurrency'
         const result = amountInBase * rateTo;
         
         setConvertedAmount(result.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
@@ -79,21 +74,6 @@ const ExchangeRatesPage = () => {
     }
   }, [amount, fromCurrency, toCurrency, ratesData]);
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background p-8">
-        <div className="w-full max-w-4xl space-y-4">
-          <Skeleton className="h-12 w-1/3 bg-muted" />
-          <Skeleton className="h-20 w-full bg-muted" />
-          <div className="grid grid-cols-3 gap-6">
-            <Skeleton className="col-span-2 h-96 bg-muted" />
-            <Skeleton className="col-span-1 h-96 bg-muted" />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <Layout user={user}>
       <div className="space-y-6">
@@ -101,47 +81,43 @@ const ExchangeRatesPage = () => {
         
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>Live Data</AlertTitle>
+          <AlertTitle>Informational Data</AlertTitle>
           <AlertDescription>
-            {`Rates are based on NPR and were last updated on ${ratesData?.date}. Data is provided for informational purposes only.`}
+            {`The following exchange rates are for demonstration purposes and may not be up-to-date.`}
           </AlertDescription>
         </Alert>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className="lg:col-span-2">
             <CardHeader>
-              <CardTitle>Latest Exchange Rates</CardTitle>
+              <CardTitle>Exchange Rates</CardTitle>
               <CardDescription>Base currency: NPR (Nepalese Rupee)</CardDescription>
             </CardHeader>
             <CardContent>
-              {error ? (
-                <p className="text-destructive">{error}</p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Currency</TableHead>
-                      <TableHead className="text-right">Rate (per 1 NPR)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {Object.entries(TARGET_CURRENCIES).filter(([code]) => code !== 'NPR').map(([code, { name, flag }]) => (
-                      <TableRow key={code}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{flag}</span>
-                            <div>
-                              <p className="font-medium">{code}</p>
-                              <p className="text-sm text-muted-foreground">{name}</p>
-                            </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Currency</TableHead>
+                    <TableHead className="text-right">Rate (per 1 NPR)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(TARGET_CURRENCIES).filter(([code]) => code !== 'NPR').map(([code, { name, flag }]) => (
+                    <TableRow key={code}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{flag}</span>
+                          <div>
+                            <p className="font-medium">{code}</p>
+                            <p className="text-sm text-muted-foreground">{name}</p>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(6) || 'N/A'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(6) || 'N/A'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
 
@@ -169,7 +145,7 @@ const ExchangeRatesPage = () => {
                   <Select value={fromCurrency} onValueChange={setFromCurrency}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {ratesData && Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                      {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
                         <SelectItem key={currency} value={currency}>{currency}</SelectItem>
                       ))}
                     </SelectContent>
@@ -190,7 +166,7 @@ const ExchangeRatesPage = () => {
                   <Select value={toCurrency} onValueChange={setToCurrency}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {ratesData && Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                      {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
                         <SelectItem key={currency} value={currency}>{currency}</SelectItem>
                       ))}
                     </SelectContent>
