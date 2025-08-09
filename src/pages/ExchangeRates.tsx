@@ -19,12 +19,12 @@ interface ExchangeRatesData {
 }
 
 const TARGET_CURRENCIES = {
+  NPR: { name: 'Nepalese Rupee', flag: '🇳🇵' },
   USD: { name: 'United States Dollar', flag: '🇺🇸' },
   EUR: { name: 'Euro', flag: '🇪🇺' },
   JPY: { name: 'Japanese Yen', flag: '🇯🇵' },
   GBP: { name: 'British Pound', flag: '🇬🇧' },
   CNY: { name: 'Chinese Yuan', flag: '🇨🇳' },
-  NPR: { name: 'Nepalese Rupee', flag: '🇳🇵' },
 };
 
 const ExchangeRatesPage = () => {
@@ -33,7 +33,7 @@ const ExchangeRatesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [amount, setAmount] = useState<number>(1);
+  const [amount, setAmount] = useState<number>(100);
   const [fromCurrency, setFromCurrency] = useState('USD');
   const [toCurrency, setToCurrency] = useState('NPR');
   const [convertedAmount, setConvertedAmount] = useState<string>('');
@@ -45,11 +45,11 @@ const ExchangeRatesPage = () => {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
 
-        const response = await fetch('https://api.frankfurter.app/latest?from=USD');
+        const response = await fetch('https://api.frankfurter.app/latest?from=NPR');
         if (!response.ok) throw new Error('Failed to fetch exchange rates.');
         
         const data: ExchangeRatesData = await response.json();
-        data.rates['USD'] = 1; // Add base currency to rates for conversion
+        data.rates['NPR'] = 1; // Add base currency to rates for conversion
         setRatesData(data);
         setError(null);
       } catch (err) {
@@ -62,12 +62,19 @@ const ExchangeRatesPage = () => {
   }, []);
 
   useEffect(() => {
-    if (ratesData) {
+    if (ratesData && ratesData.rates) {
       const rateFrom = ratesData.rates[fromCurrency];
       const rateTo = ratesData.rates[toCurrency];
+      
       if (rateFrom && rateTo && amount >= 0) {
-        const result = (amount / rateFrom) * rateTo;
+        // Convert amount from 'fromCurrency' to base currency ('NPR')
+        const amountInBase = amount / rateFrom;
+        // Convert from base currency to 'toCurrency'
+        const result = amountInBase * rateTo;
+        
         setConvertedAmount(result.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
+      } else {
+        setConvertedAmount('');
       }
     }
   }, [amount, fromCurrency, toCurrency, ratesData]);
@@ -96,7 +103,7 @@ const ExchangeRatesPage = () => {
           <Info className="h-4 w-4" />
           <AlertTitle>Live Data</AlertTitle>
           <AlertDescription>
-            {`Rates are based on USD and were last updated on ${ratesData?.date}. Data is provided for informational purposes only.`}
+            {`Rates are based on NPR and were last updated on ${ratesData?.date}. Data is provided for informational purposes only.`}
           </AlertDescription>
         </Alert>
 
@@ -104,7 +111,7 @@ const ExchangeRatesPage = () => {
           <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Latest Exchange Rates</CardTitle>
-              <CardDescription>Base currency: USD (United States Dollar)</CardDescription>
+              <CardDescription>Base currency: NPR (Nepalese Rupee)</CardDescription>
             </CardHeader>
             <CardContent>
               {error ? (
@@ -114,11 +121,11 @@ const ExchangeRatesPage = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Currency</TableHead>
-                      <TableHead className="text-right">Rate (per 1 USD)</TableHead>
+                      <TableHead className="text-right">Rate (per 1 NPR)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {Object.entries(TARGET_CURRENCIES).map(([code, { name, flag }]) => (
+                    {Object.entries(TARGET_CURRENCIES).filter(([code]) => code !== 'NPR').map(([code, { name, flag }]) => (
                       <TableRow key={code}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -129,7 +136,7 @@ const ExchangeRatesPage = () => {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(4) || 'N/A'}</TableCell>
+                        <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(6) || 'N/A'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -152,7 +159,7 @@ const ExchangeRatesPage = () => {
                   value={amount} 
                   onChange={(e) => setAmount(Number(e.target.value))}
                   min="0"
-                  placeholder="1.00"
+                  placeholder="100.00"
                 />
               </div>
               
@@ -193,7 +200,7 @@ const ExchangeRatesPage = () => {
 
               <div className="p-4 bg-muted rounded-lg text-center">
                 <p className="text-sm text-muted-foreground">{amount.toLocaleString()} {fromCurrency} =</p>
-                <p className="text-2xl font-bold">{convertedAmount} {toCurrency}</p>
+                <p className="text-2xl font-bold">{convertedAmount ? `${convertedAmount} ${toCurrency}` : '...'}</p>
               </div>
             </CardContent>
           </Card>
