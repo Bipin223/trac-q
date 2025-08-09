@@ -26,11 +26,10 @@ const TARGET_CURRENCIES = {
   CNY: { name: 'Chinese Yuan', flag: '🇨🇳' },
 };
 
-// Static data as requested
 const staticRatesData: ExchangeRatesData = {
   amount: 1,
   base: 'NPR',
-  date: new Date().toISOString().split('T')[0], // Use current date for display
+  date: new Date().toISOString().split('T')[0],
   rates: {
     USD: 0.0075,
     EUR: 0.0070,
@@ -81,24 +80,25 @@ const ExchangeRatesPage = () => {
         
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>Informational Data</AlertTitle>
+          <AlertTitle>Static Data</AlertTitle>
           <AlertDescription>
-            {`The following exchange rates are for demonstration purposes and may not be up-to-date.`}
+            The exchange rates shown are for demonstration purposes and are not live.
           </AlertDescription>
         </Alert>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
+        <div className="grid gap-8 lg:grid-cols-5">
+          {/* Left Side: Exchange Rate Table */}
+          <Card className="lg:col-span-3">
             <CardHeader>
-              <CardTitle>Exchange Rates</CardTitle>
-              <CardDescription>Base currency: NPR (Nepalese Rupee)</CardDescription>
+              <CardTitle>Major Currency Rates vs. NPR</CardTitle>
+              <CardDescription>Static rates for 1 Nepalese Rupee (NPR).</CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Currency</TableHead>
-                    <TableHead className="text-right">Rate (per 1 NPR)</TableHead>
+                    <TableHead className="text-right">Value of 1 NPR</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -121,12 +121,13 @@ const ExchangeRatesPage = () => {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-1">
+          {/* Right Side: Currency Converter */}
+          <Card className="lg:col-span-2">
             <CardHeader>
               <CardTitle>Currency Converter</CardTitle>
-              <CardDescription>Manually convert between currencies.</CardDescription>
+              <CardDescription>Convert amounts between currencies.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="flex flex-col space-y-4">
               <div className="space-y-2">
                 <label htmlFor="amount" className="text-sm font-medium">Amount</label>
                 <Input 
@@ -174,9 +175,9 @@ const ExchangeRatesPage = () => {
                 </div>
               </div>
 
-              <div className="p-4 bg-muted rounded-lg text-center">
-                <p className="text-sm text-muted-foreground">{amount.toLocaleString()} {fromCurrency} =</p>
-                <p className="text-2xl font-bold">{convertedAmount ? `${convertedAmount} ${toCurrency}` : '...'}</p>
+              <div className="p-4 bg-muted rounded-lg text-center mt-4">
+                <p className="text-sm text-muted-foreground">{amount.toLocaleString()} {fromCurrency} is equal to</p>
+                <p className="text-3xl font-bold text-primary mt-1">{convertedAmount ? `${convertedAmount} ${toCurrency}` : '...'}</p>
               </div>
             </CardContent>
           </Card>
