@@ -13,11 +13,10 @@ import {
   CalendarClock,
 } from "lucide-react";
 import { Button } from "./ui/button";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const Sidebar = () => {
-  const navigate = useNavigate();
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
@@ -31,16 +30,18 @@ const Sidebar = () => {
       <nav className="flex-1 px-4 py-6 space-y-6">
         <div>
           <Button
+            asChild
             variant={isActive('/') ? "secondary" : "ghost"}
             className={cn(
               "w-full justify-start",
               isActive('/') && "bg-primary text-primary-foreground hover:bg-primary/90",
               !isActive('/') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
             )}
-            onClick={() => navigate('/')}
           >
-            <LayoutDashboard className="mr-3 h-5 w-5" />
-            Overview
+            <Link to="/">
+              <LayoutDashboard className="mr-3 h-5 w-5" />
+              Overview
+            </Link>
           </Button>
         </div>
         <div className="space-y-2">
@@ -88,17 +89,19 @@ const Sidebar = () => {
           <h3 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
             Miscellaneous
           </h3>
-          <Button 
+          <Button
+            asChild
             variant={isActive('/exchange-rates') ? "secondary" : "ghost"}
             className={cn(
               "w-full justify-start",
               isActive('/exchange-rates') && "bg-primary text-primary-foreground hover:bg-primary/90",
               !isActive('/exchange-rates') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
             )}
-            onClick={() => navigate('/exchange-rates')}
           >
-            <Repeat className="mr-3 h-5 w-5" />
-            Exchange Rates Data
+            <Link to="/exchange-rates">
+              <Repeat className="mr-3 h-5 w-5" />
+              Exchange Rates Data
+            </Link>
           </Button>
         </div>
       </nav>
