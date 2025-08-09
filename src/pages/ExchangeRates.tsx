@@ -45,12 +45,32 @@ const ExchangeRatesPage = () => {
         const { data: { user } } = await supabase.auth.getUser();
         setUser(user);
 
-        const response = await fetch('https://api.frankfurter.app/latest?from=NPR');
+        const response = await fetch('https://api.frankfurter.app/latest?from=USD');
         if (!response.ok) throw new Error('Failed to fetch exchange rates.');
         
         const data: ExchangeRatesData = await response.json();
-        data.rates['NPR'] = 1; // Add base currency to rates for conversion
-        setRatesData(data);
+        
+        const nprRateInUsd = data.rates['NPR'];
+        if (!nprRateInUsd) {
+          throw new Error('NPR exchange rate not available from the provider.');
+        }
+
+        const nprBasedRates: { [key: string]: number } = {};
+        // Recalculate rates relative to NPR
+        for (const currency in data.rates) {
+          nprBasedRates[currency] = data.rates[currency] / nprRateInUsd;
+        }
+        nprBasedRates['USD'] = 1 / nprRateInUsd; // Add USD rate vs NPR
+        nprBasedRates['NPR'] = 1; // 1 NPR = 1 NPR
+
+        const nprRatesData: ExchangeRatesData = {
+          amount: 1,
+          base: 'NPR',
+          date: data.date,
+          rates: nprBasedRates,
+        };
+
+        setRatesData(nprRatesData);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred.');
@@ -67,11 +87,8 @@ const ExchangeRatesPage = () => {
       const rateTo = ratesData.rates[toCurrency];
       
       if (rateFrom && rateTo && amount >= 0) {
-        // Convert amount from 'fromCurrency' to base currency ('NPR')
-        const amountInBase = amount / rateFrom;
-        // Convert from base currency to 'toCurrency'
-        const result = amountInBase * rateTo;
-        
+        // Convert amount from 'fromCurrency' to base (NPR), then to 'toCurrency'
+        const result = amount * (rateTo / rateFrom);
         setConvertedAmount(result.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
       } else {
         setConvertedAmount('');
@@ -79,18 +96,18 @@ const ExchangeRatesPage = () => {
     }
   }, [amount, fromCurrency, toCurrency, ratesData]);
 
-  if (loading) {
+  if (loading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background p-8">
-        <div className="w-full max-w-4xl space-y-4">
+      <Layout user={user}>
+        <div className="w-full max-w-4xl space-y-4 mx-auto">
           <Skeleton className="h-12 w-1/3 bg-muted" />
           <Skeleton className="h-20 w-full bg-muted" />
-          <div className="grid grid-cols-3 gap-6">
-            <Skeleton className="col-span-2 h-96 bg-muted" />
-            <Skeleton className="col-span-1 h-96 bg-muted" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Skeleton className="md:col-span-2 h-96 bg-muted" />
+            <Skeleton className="md:col-span-1 h-96 bg-muted" />
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
