@@ -1,7 +1,4 @@
-import { useEffect, useState } from "react";
-import { User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
-import Layout from "@/components/Layout";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
@@ -41,21 +38,11 @@ const staticRatesData: ExchangeRatesData = {
 };
 
 const ExchangeRatesPage = () => {
-  const [user, setUser] = useState<User | null>(null);
   const [ratesData] = useState<ExchangeRatesData>(staticRatesData);
-
   const [amount, setAmount] = useState<number>(100);
   const [fromCurrency, setFromCurrency] = useState('USD');
   const [toCurrency, setToCurrency] = useState('NPR');
   const [convertedAmount, setConvertedAmount] = useState<string>('');
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-    };
-    fetchUser();
-  }, []);
 
   useEffect(() => {
     if (ratesData && ratesData.rates) {
@@ -74,116 +61,112 @@ const ExchangeRatesPage = () => {
   }, [amount, fromCurrency, toCurrency, ratesData]);
 
   return (
-    <Layout user={user}>
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold tracking-tight">Exchange Rates</h1>
-        
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>Static Data</AlertTitle>
-          <AlertDescription>
-            The exchange rates shown are for demonstration purposes and are not live.
-          </AlertDescription>
-        </Alert>
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold tracking-tight">Exchange Rates</h1>
+      
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Static Data</AlertTitle>
+        <AlertDescription>
+          The exchange rates shown are for demonstration purposes and are not live.
+        </AlertDescription>
+      </Alert>
 
-        <div className="grid gap-8 lg:grid-cols-5">
-          {/* Left Side: Exchange Rate Table */}
-          <Card className="lg:col-span-3">
-            <CardHeader>
-              <CardTitle>Major Currency Rates vs. NPR</CardTitle>
-              <CardDescription>Static rates for 1 Nepalese Rupee (NPR).</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Currency</TableHead>
-                    <TableHead className="text-right">Value of 1 NPR</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(TARGET_CURRENCIES).filter(([code]) => code !== 'NPR').map(([code, { name, flag }]) => (
-                    <TableRow key={code}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">{flag}</span>
-                          <div>
-                            <p className="font-medium">{code}</p>
-                            <p className="text-sm text-muted-foreground">{name}</p>
-                          </div>
+      <div className="grid gap-8 lg:grid-cols-5">
+        <Card className="lg:col-span-3">
+          <CardHeader>
+            <CardTitle>Major Currency Rates vs. NPR</CardTitle>
+            <CardDescription>Static rates for 1 Nepalese Rupee (NPR).</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Currency</TableHead>
+                  <TableHead className="text-right">Value of 1 NPR</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(TARGET_CURRENCIES).filter(([code]) => code !== 'NPR').map(([code, { name, flag }]) => (
+                  <TableRow key={code}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <span className="text-2xl">{flag}</span>
+                        <div>
+                          <p className="font-medium">{code}</p>
+                          <p className="text-sm text-muted-foreground">{name}</p>
                         </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(6) || 'N/A'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(6) || 'N/A'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
-          {/* Right Side: Currency Converter */}
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Currency Converter</CardTitle>
-              <CardDescription>Convert amounts between currencies.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="amount" className="text-sm font-medium">Amount</label>
-                <Input 
-                  id="amount" 
-                  type="number" 
-                  value={amount} 
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  min="0"
-                  placeholder="100.00"
-                />
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <div className="flex-1 space-y-2">
-                  <label className="text-sm font-medium">From</label>
-                  <Select value={fromCurrency} onValueChange={setFromCurrency}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
-                        <SelectItem key={currency} value={currency}>{currency}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="pt-8">
-                  <Button variant="ghost" size="icon" onClick={() => {
-                    setFromCurrency(toCurrency);
-                    setToCurrency(fromCurrency);
-                  }}>
-                    <ArrowRightLeft className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                <div className="flex-1 space-y-2">
-                  <label className="text-sm font-medium">To</label>
-                  <Select value={toCurrency} onValueChange={setToCurrency}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
-                        <SelectItem key={currency} value={currency}>{currency}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Currency Converter</CardTitle>
+            <CardDescription>Convert amounts between currencies.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="amount" className="text-sm font-medium">Amount</label>
+              <Input 
+                id="amount" 
+                type="number" 
+                value={amount} 
+                onChange={(e) => setAmount(Number(e.target.value))}
+                min="0"
+                placeholder="100.00"
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-medium">From</label>
+                <Select value={fromCurrency} onValueChange={setFromCurrency}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                      <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="p-4 bg-muted rounded-lg text-center mt-4">
-                <p className="text-sm text-muted-foreground">{amount.toLocaleString()} {fromCurrency} is equal to</p>
-                <p className="text-3xl font-bold text-primary mt-1">{convertedAmount ? `${convertedAmount} ${toCurrency}` : '...'}</p>
+              <div className="pt-8">
+                <Button variant="ghost" size="icon" onClick={() => {
+                  setFromCurrency(toCurrency);
+                  setToCurrency(fromCurrency);
+                }}>
+                  <ArrowRightLeft className="h-4 w-4" />
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+
+              <div className="flex-1 space-y-2">
+                <label className="text-sm font-medium">To</label>
+                <Select value={toCurrency} onValueChange={setToCurrency}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                      <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="p-4 bg-muted rounded-lg text-center mt-4">
+              <p className="text-sm text-muted-foreground">{amount.toLocaleString()} {fromCurrency} is equal to</p>
+              <p className="text-3xl font-bold text-primary mt-1">{convertedAmount ? `${convertedAmount} ${toCurrency}` : '...'}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
-    </Layout>
+    </div>
   );
 };
 

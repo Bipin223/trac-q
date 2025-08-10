@@ -12,6 +12,7 @@ import { Session } from "@supabase/supabase-js";
 import { Skeleton } from "@/components/ui/skeleton";
 import ExchangeRatesPage from "./pages/ExchangeRates";
 import PlaceholderPage from "./pages/Placeholder";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -37,11 +38,12 @@ const App = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-64 bg-gray-800" />
-          <Skeleton className="h-8 w-full bg-gray-800" />
-          <Skeleton className="h-8 w-full bg-gray-800" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-full max-w-md p-8 space-y-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-8 w-3/4" />
+          <Skeleton className="h-8 w-full" />
+          <Skeleton className="h-8 w-full" />
         </div>
       </div>
     );
@@ -54,16 +56,20 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={session ? <Dashboard /> : <Navigate to="/login" />} />
-            <Route path="/exchange-rates" element={session ? <ExchangeRatesPage /> : <Navigate to="/login" />} />
-            <Route path="/transactions" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
-            <Route path="/statistics" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
-            <Route path="/accounts" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
-            <Route path="/categories" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
-            <Route path="/tags" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
-            <Route path="/templates" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
-            <Route path="/scheduled-transactions" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
+            
+            <Route element={<ProtectedRoute session={session} />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
+              <Route path="/transactions" element={<PlaceholderPage />} />
+              <Route path="/statistics" element={<PlaceholderPage />} />
+              <Route path="/accounts" element={<PlaceholderPage />} />
+              <Route path="/categories" element={<PlaceholderPage />} />
+              <Route path="/tags" element={<PlaceholderPage />} />
+              <Route path="/templates" element={<PlaceholderPage />} />
+              <Route path="/scheduled-transactions" element={<PlaceholderPage />} />
+            </Route>
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

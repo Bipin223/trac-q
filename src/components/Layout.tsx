@@ -19,8 +19,8 @@ const Layout = ({ user, children }: LayoutProps) => {
   };
 
   if (!user) {
-    // This should be handled by the router, but as a fallback
-    navigate('/login');
+    // This is now a fallback, as ProtectedRoute should prevent this.
+    // But it's good practice to keep it.
     return null;
   }
 
