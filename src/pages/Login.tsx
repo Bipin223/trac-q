@@ -34,12 +34,10 @@ const Login = () => {
         {/* Left Panel: Auth Form */}
         <div className="p-8 sm:p-12 flex flex-col justify-center bg-card">
           <div className="w-full max-w-md mx-auto">
-            <div className="flex items-center mb-8">
-              <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mr-4" />
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">Trac-Q</h1>
-                <p className="text-sm text-muted-foreground">A smart application to 'Track You' :)</p>
-              </div>
+            <div className="text-center mb-8">
+              <img src="/logo.png" alt="Trac-Q Logo" className="h-16 w-16 mx-auto mb-4" />
+              <h1 className="text-3xl font-bold text-foreground">Trac-Q</h1>
+              <p className="text-sm text-muted-foreground mt-2">A smart Application to 'Track You'    ( ˃ᴗ˂ )</p>
             </div>
             
             <Auth
@@ -67,7 +65,7 @@ const Login = () => {
           <div className="max-w-xs">
             <h2 className="text-4xl font-bold mb-4">New Here?</h2>
             <p className="text-lg mb-8">
-              Sign up and discover a great amount of new opportunities!
+              Sign up and Manage your finance smartly than ever !
             </p>
             <Button 
               variant="secondary" 
