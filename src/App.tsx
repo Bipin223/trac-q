@@ -11,6 +11,7 @@ import { supabase } from "./integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
 import { Skeleton } from "@/components/ui/skeleton";
 import ExchangeRatesPage from "./pages/ExchangeRates";
+import PlaceholderPage from "./pages/Placeholder";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,13 @@ const App = () => {
           <Routes>
             <Route path="/" element={session ? <Dashboard /> : <Navigate to="/login" />} />
             <Route path="/exchange-rates" element={session ? <ExchangeRatesPage /> : <Navigate to="/login" />} />
+            <Route path="/transactions" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
+            <Route path="/statistics" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
+            <Route path="/accounts" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
+            <Route path="/categories" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
+            <Route path="/tags" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
+            <Route path="/templates" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
+            <Route path="/scheduled-transactions" element={session ? <PlaceholderPage /> : <Navigate to="/login" />} />
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
