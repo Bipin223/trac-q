@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ const Login = () => {
             <Auth
               supabaseClient={supabase}
               appearance={{
+                theme: ThemeSupa,
                 className: {
                   container: 'space-y-6',
                   button: 'bg-primary hover:bg-primary/90 text-primary-foreground rounded-md py-2.5 text-sm font-semibold w-full',
