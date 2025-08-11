@@ -14,6 +14,12 @@ const SidebarLink = ({ to, icon, label, isSidebarOpen, onClick }: SidebarLinkPro
   const location = useLocation();
   const isActive = location.pathname === to;
 
+  const linkClasses = cn(
+    "flex items-center p-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors",
+    isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
+    !isSidebarOpen && "justify-center"
+  );
+
   if (!isSidebarOpen) {
     return (
       <TooltipProvider delayDuration={0}>
@@ -22,10 +28,7 @@ const SidebarLink = ({ to, icon, label, isSidebarOpen, onClick }: SidebarLinkPro
             <Link
               to={to}
               onClick={onClick}
-              className={cn(
-                "flex items-center justify-center p-3 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors",
-                isActive && "bg-primary text-white hover:bg-primary/90"
-              )}
+              className={linkClasses}
             >
               {icon}
               <span className="sr-only">{label}</span>
@@ -43,10 +46,7 @@ const SidebarLink = ({ to, icon, label, isSidebarOpen, onClick }: SidebarLinkPro
     <Link
       to={to}
       onClick={onClick}
-      className={cn(
-        "flex items-center p-3 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors",
-        isActive && "bg-primary text-white hover:bg-primary/90"
-      )}
+      className={linkClasses}
     >
       {icon}
       <span className="ml-4 font-medium">{label}</span>

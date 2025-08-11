@@ -1,4 +1,4 @@
-import { Home, BarChart2, Folder, Tag, User, LogOut } from 'lucide-react';
+import { Home, BarChart2, Folder, Tag, User, LogOut, ArrowRightLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ const navItems = [
   { to: '/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
   { to: '/categories', icon: <Folder className="h-5 w-5" />, label: 'Categories' },
   { to: '/budgets', icon: <Tag className="h-5 w-5" />, label: 'Budgets' },
+  { to: '/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },
   { to: '/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
 ];
 
@@ -25,8 +26,8 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
   };
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      <div className="flex items-center h-20 border-b px-4 shrink-0">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-800">
+      <div className="flex items-center h-20 border-b dark:border-gray-700 px-4 shrink-0">
         <Link to="/" onClick={onLinkClick} className={cn("flex items-center w-full", !isSidebarOpen && "justify-center")}>
           <img src="/logo.png" alt="Logo" className="h-10 w-10 shrink-0" />
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
@@ -37,7 +38,7 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
         ))}
       </nav>
-      <div className="px-2 py-4 mt-auto border-t">
+      <div className="px-2 py-4 mt-auto border-t dark:border-gray-700">
         {isSidebarOpen ? (
           <Button
             variant="ghost"
