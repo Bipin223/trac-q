@@ -79,14 +79,16 @@ const Login = () => {
         <div className="mx-auto w-full max-w-md space-y-6">
           <div className="space-y-2 text-center">
             <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
-            <h1 className="text-3xl font-bold">
-              {isSignUp ? 'Create an Account' : 'Welcome Back!'}
-            </h1>
-            <p className="text-muted-foreground">
-              {isSignUp ? 'Enter your details to get started.' : 'Enter your credentials to access your account.'}
-            </p>
+            <h1 className="text-3xl font-bold">Trac-Q</h1>
+            <p className="text-muted-foreground">A modern app to 'Track You' :)</p>
           </div>
           
+          <div className="space-y-2 text-center">
+            <h2 className="text-2xl font-bold">
+              {isSignUp ? 'Create an Account' : 'Welcome Back!'}
+            </h2>
+          </div>
+
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -115,17 +117,7 @@ const Login = () => {
               />
             </div>
             <div className="space-y-2">
-              <div className="flex items-center">
-                <Label htmlFor="password">Password</Label>
-                {!isSignUp && (
-                  <Link
-                    to="/forgot-password"
-                    className="ml-auto inline-block text-sm underline"
-                  >
-                    Forgot your password?
-                  </Link>
-                )}
-              </div>
+              <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -134,6 +126,16 @@ const Login = () => {
                 placeholder="••••••••"
                 required
               />
+               {!isSignUp && (
+                <div className="flex justify-end mt-2">
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
+              )}
             </div>
             {!isSignUp && (
               <div className="flex items-center space-x-2">
@@ -167,9 +169,9 @@ const Login = () => {
       </div>
       <div className="hidden bg-muted lg:flex items-center justify-center">
         <img
-          src="https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2832&auto=format&fit=crop"
-          alt="Abstract financial graphic"
-          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+          src="https://images.unsplash.com/photo-1559526324-c1f275fbfa32?q=80&w=2940&auto=format&fit=crop"
+          alt="Minimalist finance setting with laptop and wallet"
+          className="h-full w-full object-cover dark:brightness-[0.3] dark:grayscale"
         />
       </div>
     </div>
