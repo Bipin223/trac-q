@@ -177,7 +177,7 @@ const Login = () => {
       </div>
       <div className="hidden bg-muted lg:flex items-center justify-center">
         <img
-          src="https://imgur.com/a/rcZPvid"
+          src="https://i.imgur.com/nAG1Nb2.jpeg"
           alt="A desk with a paper showing finance concepts like funding, saving, and benefit."
           className="h-full w-full object-cover dark:brightness-[0.3] dark:grayscale"
         />
