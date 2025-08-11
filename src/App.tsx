@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import ExchangeRatesPage from "./pages/ExchangeRates";
 import PlaceholderPage from "./pages/Placeholder";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ForgotPasswordPage from "./pages/ForgotPassword";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             
             <Route element={<ProtectedRoute session={session} />}>
               <Route path="/" element={<Dashboard />} />

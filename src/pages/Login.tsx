@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const DUMMY_DOMAIN = 'trac-q.app';
 
@@ -16,6 +17,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -31,6 +33,7 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     const email = `${username.trim()}@${DUMMY_DOMAIN}`;
 
@@ -47,99 +50,127 @@ const Login = () => {
         },
       });
       authError = error;
+      if (!authError) {
+        setSuccess("Sign-up successful! Please sign in with your new credentials.");
+        setIsSignUp(false);
+        setUsername('');
+        setPassword('');
+      }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       authError = error;
+      if (!authError) {
+        navigate('/');
+      }
     }
 
     if (authError) {
       setError(authError.message);
-    } else if (!isSignUp) {
-      navigate('/');
-    } else {
-      setError("Sign-up successful! Please check your email to verify your account if required, then sign in.");
-      setIsSignUp(false); // Switch to sign-in view after successful sign-up
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl mx-auto lg:grid lg:grid-cols-2 rounded-2xl shadow-2xl overflow-hidden">
-        
-        {/* Left Panel: Auth Form */}
-        <div className="p-8 sm:p-12 flex flex-col justify-center bg-card">
-          <div className="w-full max-w-md mx-auto">
-            <div className="text-center mb-8">
-              <img src="/logo.png" alt="Trac-Q Logo" className="h-16 w-16 mx-auto mb-4" />
-              <h1 className="text-3xl font-bold text-foreground">Trac-Q</h1>
-              <p className="text-sm text-muted-foreground mt-2">A smart Application to 'Track You'    ( ˃ᴗ˂ )</p>
-            </div>
-            
-            <form onSubmit={handleAuthAction} className="space-y-6">
-              <div>
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="your_username"
-                  required
-                  className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="mt-2"
-                />
-              </div>
-              {error && (
-                <Alert variant={error.includes("successful") ? "default" : "destructive"}>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>{error.includes("successful") ? "Success" : "Error"}</AlertTitle>
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <Button type="submit" disabled={loading} className="w-full">
-                {loading ? 'Processing...' : (isSignUp ? 'Sign Up' : 'Sign In')}
-              </Button>
-            </form>
-          </div>
-        </div>
-
-        {/* Right Panel: Welcome Message */}
-        <div className="hidden lg:flex flex-col items-center justify-center p-12 bg-gradient-to-br from-primary via-purple-600 to-purple-800 text-primary-foreground text-center">
-          <div className="max-w-xs">
-            <h2 className="text-4xl font-bold mb-4">{isSignUp ? 'Welcome Back!' : 'New Here?'}</h2>
-            <p className="text-lg mb-8">
-              {isSignUp
-                ? 'Already have an account? Sign in to continue where you left off.'
-                : "Sign up and Manage your finance smartly than ever !"}
+    <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
+      <div className="flex items-center justify-center p-6 sm:p-12 lg:p-8">
+        <div className="mx-auto w-full max-w-md space-y-6">
+          <div className="space-y-2 text-center">
+            <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
+            <h1 className="text-3xl font-bold">
+              {isSignUp ? 'Create an Account' : 'Welcome Back!'}
+            </h1>
+            <p className="text-muted-foreground">
+              {isSignUp ? 'Enter your details to get started.' : 'Enter your credentials to access your account.'}
             </p>
-            <Button 
-              variant="secondary" 
-              size="lg"
-              className="bg-primary-foreground hover:bg-primary-foreground/90 text-primary font-bold w-full"
+          </div>
+          
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Success</AlertTitle>
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleAuthAction} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="your_username"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Label htmlFor="password">Password</Label>
+                {!isSignUp && (
+                  <Link
+                    to="/forgot-password"
+                    className="ml-auto inline-block text-sm underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                )}
+              </div>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
+            </div>
+            {!isSignUp && (
+              <div className="flex items-center space-x-2">
+                <Checkbox id="remember-me" />
+                <label
+                  htmlFor="remember-me"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Remember me
+                </label>
+              </div>
+            )}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+            </Button>
+          </form>
+          <div className="mt-4 text-center text-sm">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
               onClick={() => {
                 setIsSignUp(!isSignUp);
                 setError(null);
+                setSuccess(null);
               }}
+              className="underline font-semibold"
             >
               {isSignUp ? 'Sign In' : 'Sign Up'}
-            </Button>
+            </button>
           </div>
         </div>
+      </div>
+      <div className="hidden bg-muted lg:flex items-center justify-center">
+        <img
+          src="https://images.unsplash.com/photo-1639322537228-f710d846310a?q=80&w=2832&auto=format&fit=crop"
+          alt="Abstract financial graphic"
+          className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
+        />
       </div>
     </div>
   );
