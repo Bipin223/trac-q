@@ -80,7 +80,7 @@ const Login = () => {
           <div className="space-y-2 text-center">
             <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
             <h1 className="text-3xl font-bold">Trac-Q</h1>
-            <p className="text-muted-foreground">A modern app to 'Track You' :)</p>
+            <p className="text-muted-foreground">A Modern Finance app to 'Track You' :)</p>
           </div>
           
           <div className="space-y-2 text-center">
@@ -114,7 +114,7 @@ const Login = () => {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="your_username"
+                  placeholder="Enter username"
                   required
                   className="pl-10"
                 />
@@ -129,7 +129,7 @@ const Login = () => {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Enter Password"
                   required
                   className="pl-10"
                 />
