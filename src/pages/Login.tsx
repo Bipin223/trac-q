@@ -177,7 +177,7 @@ const Login = () => {
       </div>
       <div className="hidden bg-muted lg:flex items-center justify-center">
         <img
-          src="https://img.freepik.com/free-photo/finance-funding-saving-benefit-concept_53876-25399.jpg"
+          src="https://img.freepik.com/free-photo/map-lying-wooden-table_53876-23515.jpg?t=st=1754928172~exp=1754931772~hmac=81a8f0755867d4f801424e0687ac32ddfe299b12401a2c6f6e7c607d8e31fbae&w=1480"
           alt="A desk with a paper showing finance concepts like funding, saving, and benefit."
           className="h-full w-full object-cover dark:brightness-[0.3] dark:grayscale"
         />
