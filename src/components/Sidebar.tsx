@@ -23,7 +23,7 @@ const Sidebar = () => {
   return (
     <aside className="hidden md:flex w-72 flex-shrink-0 bg-card border-r border-border flex-col">
       <div className="h-16 flex items-center px-6">
-        <img src="/logo.png" alt="Trac-Q Logo" className="h-9 w-9 mr-3" />
+        <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-9 w-9 mr-3" />
         <span className="text-xl font-semibold">TRAC-Q</span>
       </div>
       <nav className="flex-1 px-4 py-6 space-y-6">
