@@ -12,7 +12,7 @@ import { ThemeProvider } from './components/theme-provider.tsx'
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <SessionContextProvider supabaseClient={supabase}>
-      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme" attribute="class">
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
