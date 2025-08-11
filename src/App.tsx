@@ -1,83 +1,66 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Dashboard from "./pages/Dashboard";
-import Login from "./pages/Login";
-import NotFound from "./pages/NotFound";
-import { useEffect, useState } from "react";
-import { supabase } from "./integrations/supabase/client";
-import { Session } from "@supabase/supabase-js";
-import { Skeleton } from "@/components/ui/skeleton";
-import ExchangeRatesPage from "./pages/ExchangeRates";
-import PlaceholderPage from "./pages/Placeholder";
-import ProtectedRoute from "./components/ProtectedRoute";
-import ForgotPasswordPage from "./pages/ForgotPassword";
+import { useState } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useSession } from '@supabase/auth-helpers-react';
+import Sidebar, { SidebarContent } from './components/Sidebar';
+import Dashboard from './pages/Dashboard';
+import Categories from './pages/Categories';
+import Expenses from './pages/Expenses';
+import Budgets from './pages/Budgets';
+import Profile from './pages/Profile';
+import { Button } from './components/ui/button';
+import { Menu } from 'lucide-react';
+import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 
-const queryClient = new QueryClient();
+function App() {
+  const { session } = useSession();
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-const App = () => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-full max-w-md p-8 space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-8 w-full" />
-          <Skeleton className="h-8 w-full" />
-        </div>
-      </div>
-    );
+  if (!session) {
+    return <Navigate to="/login" />;
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            
-            <Route element={<ProtectedRoute session={session} />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
-              <Route path="/transactions" element={<PlaceholderPage />} />
-              <Route path="/statistics" element={<PlaceholderPage />} />
-              <Route path="/accounts" element={<PlaceholderPage />} />
-              <Route path="/categories" element={<PlaceholderPage />} />
-              <Route path="/tags" element={<PlaceholderPage />} />
-              <Route path="/templates" element={<PlaceholderPage />} />
-              <Route path="/scheduled-transactions" element={<PlaceholderPage />} />
-            </Route>
+    <div className="flex h-screen bg-gray-100">
+      <Sidebar isOpen={isSidebarOpen} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <header className="flex items-center h-20 px-4 sm:px-6 bg-white border-b shrink-0">
+          <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="md:hidden mr-2">
+                <Menu className="h-6 w-6" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-64">
+              <SidebarContent isSidebarOpen={true} onLinkClick={() => setMobileMenuOpen(false)} />
+            </SheetContent>
+          </Sheet>
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!isSidebarOpen)}
+            className="hidden md:inline-flex"
+          >
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Toggle Sidebar</span>
+          </Button>
+        </header>
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100">
+          <div className="container mx-auto px-6 py-8">
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/categories" element={<Categories />} />
+              <Route path="/expenses" element={<Expenses />} />
+              <Route path="/budgets" element={<Budgets />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
+    </div>
   );
-};
+}
 
 export default App;

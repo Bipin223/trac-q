@@ -1,179 +1,88 @@
-import {
-  LayoutDashboard,
-  List,
-  BarChart2,
-  Wallet,
-  Tags,
-  FileText,
-  Clock,
-  Repeat,
-  Plus,
-  LayoutGrid,
-  CalendarClock,
-} from "lucide-react";
-import { Button } from "./ui/button";
-import { Link, useLocation } from "react-router-dom";
+import { Home, BarChart2, Folder, Tag, User, LogOut } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
+import SidebarLink from './SidebarLink';
+import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
-const Sidebar = () => {
-  const location = useLocation();
+const navItems = [
+  { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
+  { to: '/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
+  { to: '/categories', icon: <Folder className="h-5 w-5" />, label: 'Categories' },
+  { to: '/budgets', icon: <Tag className="h-5 w-5" />, label: 'Budgets' },
+  { to: '/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
+];
 
-  const isActive = (path: string) => location.pathname === path;
+export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: boolean, onLinkClick?: () => void }) => {
+  const supabase = useSupabaseClient();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    if (onLinkClick) onLinkClick();
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
 
   return (
-    <aside className="hidden md:flex w-72 flex-shrink-0 bg-card border-r border-border flex-col">
-      <div className="h-16 flex items-center px-6">
-        <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-9 w-9 mr-3" />
-        <span className="text-xl font-semibold">TRAC-Q</span>
+    <div className="flex flex-col h-full bg-white">
+      <div className="flex items-center h-20 border-b px-4 shrink-0">
+        <Link to="/" onClick={onLinkClick} className={cn("flex items-center w-full", !isSidebarOpen && "justify-center")}>
+          <img src="/logo.png" alt="Logo" className="h-10 w-10 shrink-0" />
+          {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
+        </Link>
       </div>
-      <nav className="flex-1 px-4 py-6 space-y-6">
-        <div>
-          <Button
-            asChild
-            variant={isActive('/') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/">
-              <LayoutDashboard className="mr-3 h-5 w-5" />
-              Overview
-            </Link>
-          </Button>
-        </div>
-        <div className="space-y-2">
-          <h3 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Transaction Data
-          </h3>
-          <Button
-            asChild
-            variant={isActive('/transactions') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-between",
-              isActive('/transactions') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/transactions') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/transactions">
-              <div className="flex items-center">
-                <List className="mr-3 h-5 w-5" />
-                Transaction Details
-              </div>
-              <Plus className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant={isActive('/statistics') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/statistics') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/statistics') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/statistics">
-              <BarChart2 className="mr-3 h-5 w-5" />
-              Statistics & Analysis
-            </Link>
-          </Button>
-        </div>
-        <div className="space-y-2">
-          <h3 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Basis Data
-          </h3>
-          <Button
-            asChild
-            variant={isActive('/accounts') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/accounts') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/accounts') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/accounts">
-              <Wallet className="mr-3 h-5 w-5" />
-              Accounts
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant={isActive('/categories') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/categories') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/categories') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/categories">
-              <LayoutGrid className="mr-3 h-5 w-5" />
-              Transaction Categories
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant={isActive('/tags') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/tags') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/tags') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/tags">
-              <Tags className="mr-3 h-5 w-5" />
-              Transaction Tags
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant={isActive('/templates') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/templates') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/templates') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/templates">
-              <FileText className="mr-3 h-5 w-5" />
-              Transaction Templates
-            </Link>
-          </Button>
-          <Button
-            asChild
-            variant={isActive('/scheduled-transactions') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/scheduled-transactions') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/scheduled-transactions') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/scheduled-transactions">
-              <CalendarClock className="mr-3 h-5 w-5" />
-              Scheduled Transactions
-            </Link>
-          </Button>
-        </div>
-        <div className="space-y-2">
-          <h3 className="px-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-            Miscellaneous
-          </h3>
-          <Button
-            asChild
-            variant={isActive('/exchange-rates') ? "secondary" : "ghost"}
-            className={cn(
-              "w-full justify-start",
-              isActive('/exchange-rates') && "bg-primary text-primary-foreground hover:bg-primary/90",
-              !isActive('/exchange-rates') && "text-foreground/80 hover:bg-accent hover:text-accent-foreground"
-            )}
-          >
-            <Link to="/exchange-rates">
-              <Repeat className="mr-3 h-5 w-5" />
-              Exchange Rates Data
-            </Link>
-          </Button>
-        </div>
+      <nav className="flex-1 px-2 py-4 space-y-1">
+        {navItems.map((item) => (
+          <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
+        ))}
       </nav>
+      <div className="px-2 py-4 mt-auto border-t">
+        {isSidebarOpen ? (
+          <Button
+            variant="ghost"
+            onClick={handleLogout}
+            className="w-full justify-start p-3"
+          >
+            <LogOut className="h-5 w-5 mr-4" />
+            <span className="font-medium">Logout</span>
+          </Button>
+        ) : (
+          <TooltipProvider delayDuration={0}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLogout}
+                  className="w-full"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span className="sr-only">Logout</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Logout</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface SidebarProps {
+  isOpen: boolean;
+}
+
+const Sidebar = ({ isOpen }: SidebarProps) => {
+  return (
+    <aside className={cn(
+      "hidden md:flex flex-col shadow-lg transition-all duration-300 ease-in-out",
+      isOpen ? "w-64" : "w-20"
+    )}>
+      <SidebarContent isSidebarOpen={isOpen} />
     </aside>
   );
 };
