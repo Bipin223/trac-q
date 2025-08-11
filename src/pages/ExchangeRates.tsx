@@ -39,26 +39,30 @@ const staticRatesData: ExchangeRatesData = {
 
 const ExchangeRatesPage = () => {
   const [ratesData] = useState<ExchangeRatesData>(staticRatesData);
-  const [amount, setAmount] = useState<number>(100);
+  const [amount, setAmount] = useState<string>('100');
   const [fromCurrency, setFromCurrency] = useState('USD');
   const [toCurrency, setToCurrency] = useState('NPR');
   const [convertedAmount, setConvertedAmount] = useState<string>('');
 
+  const numericAmount = parseFloat(amount);
+
   useEffect(() => {
-    if (ratesData && ratesData.rates) {
+    if (ratesData && ratesData.rates && !isNaN(numericAmount) && numericAmount >= 0) {
       const rateFrom = ratesData.rates[fromCurrency];
       const rateTo = ratesData.rates[toCurrency];
       
-      if (rateFrom && rateTo && amount >= 0) {
-        const amountInBase = amount / rateFrom;
+      if (rateFrom && rateTo) {
+        const amountInBase = numericAmount / rateFrom;
         const result = amountInBase * rateTo;
         
         setConvertedAmount(result.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 }));
       } else {
         setConvertedAmount('');
       }
+    } else {
+      setConvertedAmount('');
     }
-  }, [amount, fromCurrency, toCurrency, ratesData]);
+  }, [amount, fromCurrency, toCurrency, ratesData, numericAmount]);
 
   return (
     <div className="space-y-6">
@@ -118,7 +122,7 @@ const ExchangeRatesPage = () => {
                 id="amount" 
                 type="number" 
                 value={amount} 
-                onChange={(e) => setAmount(Number(e.target.value))}
+                onChange={(e) => setAmount(e.target.value)}
                 min="0"
                 placeholder="100.00"
               />
@@ -160,7 +164,9 @@ const ExchangeRatesPage = () => {
             </div>
 
             <div className="p-4 bg-muted rounded-lg text-center mt-4">
-              <p className="text-sm text-muted-foreground">{amount.toLocaleString()} {fromCurrency} is equal to</p>
+              <p className="text-sm text-muted-foreground">
+                {amount && !isNaN(numericAmount) ? `${numericAmount.toLocaleString()} ${fromCurrency}` : 'Enter an amount'} is equal to
+              </p>
               <p className="text-3xl font-bold text-primary mt-1">{convertedAmount ? `${convertedAmount} ${toCurrency}` : '...'}</p>
             </div>
           </CardContent>

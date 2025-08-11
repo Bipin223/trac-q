@@ -78,7 +78,7 @@ const Login = () => {
       <div className="flex items-center justify-center p-6 sm:p-12 lg:p-8">
         <div className="mx-auto w-full max-w-md space-y-6">
           <div className="space-y-2 text-center">
-            <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
+            <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
             <h1 className="text-3xl font-bold">Trac-Q</h1>
             <p className="text-muted-foreground">A Modern Finance app to 'Track You' :)</p>
           </div>
@@ -177,7 +177,7 @@ const Login = () => {
       </div>
       <div className="hidden bg-muted lg:flex items-center justify-center">
         <img
-          src="https://img.freepik.com/free-photo/finance-funding-saving-benefit-concept_53876-25399.jpg"
+          src="https://i.imgur.com/nAG1Nb2.jpeg"
           alt="A desk with a paper showing finance concepts like funding, saving, and benefit."
           className="h-full w-full object-cover dark:brightness-[0.3] dark:grayscale"
         />
