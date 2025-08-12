@@ -75,102 +75,111 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-white dark:from-gray-900 dark:via-purple-900/80 dark:to-blue-900/80 p-4">
-      <div className="w-full max-w-md space-y-6 bg-white/80 dark:bg-card/80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl">
-        <div className="space-y-2 text-center">
-          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
-          <h1 className="text-3xl font-bold">Trac-Q</h1>
-          <p className="text-muted-foreground">A Modern Finance app to 'Track You' :)</p>
-        </div>
-        
-        <div className="space-y-2 text-center">
-          <h2 className="text-2xl font-bold">
-            {isSignUp ? 'Create an Account' : 'Welcome Back!'}
-          </h2>
-        </div>
-
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        {success && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Success</AlertTitle>
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        )}
-
-        <form onSubmit={handleAuthAction} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
-                required
-                className="pl-10 bg-transparent"
-              />
-            </div>
+      <div className="w-full max-w-4xl grid md:grid-cols-2 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-8 space-y-6 bg-white/80 dark:bg-card/80 backdrop-blur-sm">
+          <div className="space-y-2 text-center">
+            <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
+            <h1 className="text-3xl font-bold">Trac-Q</h1>
+            <p className="text-muted-foreground">A Modern Finance app to 'Track You' :)</p>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter Password"
-                required
-                className="pl-10 bg-transparent"
-              />
+          
+          <div className="space-y-2 text-center">
+            <h2 className="text-2xl font-bold">
+              {isSignUp ? 'Create an Account' : 'Welcome Back!'}
+            </h2>
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Success</AlertTitle>
+              <AlertDescription>{success}</AlertDescription>
+            </Alert>
+          )}
+
+          <form onSubmit={handleAuthAction} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  required
+                  className="pl-10 bg-transparent"
+                />
+              </div>
             </div>
-             {!isSignUp && (
-              <div className="flex justify-end mt-2">
-                <Link
-                  to="/forgot-password"
-                  className="text-sm underline"
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter Password"
+                  required
+                  className="pl-10 bg-transparent"
+                />
+              </div>
+               {!isSignUp && (
+                <div className="flex justify-end mt-2">
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                </div>
+              )}
+            </div>
+            {!isSignUp && (
+              <div className="flex items-center space-x-2">
+                <Checkbox id="remember-me" />
+                <label
+                  htmlFor="remember-me"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  Forgot your password?
-                </Link>
+                  Remember me
+                </label>
               </div>
             )}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+            </Button>
+          </form>
+          <div className="mt-4 text-center text-sm">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+            <button
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+                setSuccess(null);
+              }}
+              className="underline font-semibold"
+            >
+              {isSignUp ? 'Sign In' : 'Sign Up'}
+            </button>
           </div>
-          {!isSignUp && (
-            <div className="flex items-center space-x-2">
-              <Checkbox id="remember-me" />
-              <label
-                htmlFor="remember-me"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Remember me
-              </label>
-            </div>
-          )}
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
-          </Button>
-        </form>
-        <div className="mt-4 text-center text-sm">
-          {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-          <button
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setError(null);
-              setSuccess(null);
-            }}
-            className="underline font-semibold"
-          >
-            {isSignUp ? 'Sign In' : 'Sign Up'}
-          </button>
+        </div>
+        <div className="hidden md:flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-100 via-blue-100 to-white dark:from-purple-900/50 dark:to-blue-900/50">
+          <img src="https://i.imgur.com/aO4j2kF.png" alt="Financial planning illustration" className="w-full max-w-sm" />
+          <div className="text-center mt-8">
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Manage Your Finances with Ease</h2>
+            <p className="text-gray-600 dark:text-gray-300 mt-2">Your all-in-one solution for tracking expenses, creating budgets, and achieving your financial goals.</p>
+          </div>
         </div>
       </div>
     </div>
