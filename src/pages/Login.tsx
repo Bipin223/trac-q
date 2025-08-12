@@ -175,7 +175,7 @@ const Login = () => {
           </div>
         </div>
         <div className="hidden md:flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-100 via-blue-100 to-white dark:from-purple-900/50 dark:to-blue-900/50">
-          <img src="https://i.imgur.com/aO4j2kF.png" alt="Financial planning illustration" className="w-full max-w-sm" />
+          <img src="https://i.imgur.com/nAG1Nb2.jpeg" alt="Financial planning illustration" className="w-full max-w-sm" />
           <div className="text-center mt-8">
             <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Manage Your Finances with Ease</h2>
             <p className="text-gray-600 dark:text-gray-300 mt-2">Your all-in-one solution for tracking expenses, creating budgets, and achieving your financial goals.</p>
