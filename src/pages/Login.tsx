@@ -74,9 +74,9 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
-      <div className="flex items-center justify-center p-6 sm:p-12 lg:p-8">
-        <div className="mx-auto w-full max-w-md space-y-6">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-white dark:from-gray-900 dark:via-purple-900/80 dark:to-blue-900/80 p-4">
+      <div className="w-full max-w-4xl grid md:grid-cols-2 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-8 space-y-6 bg-white/80 dark:bg-card/80 backdrop-blur-sm">
           <div className="space-y-2 text-center">
             <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
             <h1 className="text-3xl font-bold">Trac-Q</h1>
@@ -116,7 +116,7 @@ const Login = () => {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter username"
                   required
-                  className="pl-10"
+                  className="pl-10 bg-transparent"
                 />
               </div>
             </div>
@@ -131,7 +131,7 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter Password"
                   required
-                  className="pl-10"
+                  className="pl-10 bg-transparent"
                 />
               </div>
                {!isSignUp && (
@@ -174,13 +174,13 @@ const Login = () => {
             </button>
           </div>
         </div>
-      </div>
-      <div className="hidden bg-muted lg:flex items-center justify-center">
-        <img
-          src="https://i.imgur.com/nAG1Nb2.jpeg"
-          alt="A desk with a paper showing finance concepts like funding, saving, and benefit."
-          className="h-full w-full object-cover dark:brightness-[0.3] dark:grayscale"
-        />
+        <div className="hidden md:flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-100 via-blue-100 to-white dark:from-purple-900/50 dark:to-blue-900/50">
+          <img src="https://i.imgur.com/nAG1Nb2.jpeg " alt="Financial planning illustration" className="w-full max-w-sm" />
+          <div className="text-center mt-8">
+            <h2 className="text-3xl font-bold text-gray-800 dark:text-white">Manage Your Finances with Ease</h2>
+            <p className="text-gray-600 dark:text-gray-300 mt-2">Your all-in-one solution for tracking expenses, creating budgets, and achieving your financial goals.</p>
+          </div>
+        </div>
       </div>
     </div>
   );
