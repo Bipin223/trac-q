@@ -22,6 +22,7 @@ const Dashboard = () => {
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState('');
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -40,8 +41,9 @@ const Dashboard = () => {
         .single();
       setProfile(profileData);
 
-      // Date ranges
+      // Date ranges and month name
       const today = new Date();
+      setCurrentMonth(today.toLocaleString('default', { month: 'long' }));
       const firstDayCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
       const lastDayCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
       const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
@@ -117,13 +119,13 @@ const Dashboard = () => {
           {getGreeting()}, {profile?.username || 'User'}!
         </h1>
         <p className="text-muted-foreground">
-          Here's your financial summary for the month.
+          Here's your financial summary for {currentMonth}.
         </p>
       </div>
 
-      <MonthlySummary totalIncome={totalIncome} totalExpenses={totalExpenses} />
+      <MonthlySummary totalIncome={totalIncome} totalExpenses={totalExpenses} month={currentMonth} />
 
-      <FinancialChart data={chartData} />
+      <FinancialChart data={chartData} month={currentMonth} />
 
       <div>
         <h2 className="text-2xl font-bold tracking-tight mb-4">Your Tools</h2>

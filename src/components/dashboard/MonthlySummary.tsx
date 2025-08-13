@@ -4,13 +4,14 @@ import { DollarSign, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 interface MonthlySummaryProps {
   totalIncome: number;
   totalExpenses: number;
+  month: string;
 }
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+  return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(amount);
 };
 
-export const MonthlySummary = ({ totalIncome, totalExpenses }: MonthlySummaryProps) => {
+export const MonthlySummary = ({ totalIncome, totalExpenses, month }: MonthlySummaryProps) => {
   const netSavings = totalIncome - totalExpenses;
 
   return (
@@ -22,7 +23,7 @@ export const MonthlySummary = ({ totalIncome, totalExpenses }: MonthlySummaryPro
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(totalIncome)}</div>
-          <p className="text-xs text-muted-foreground">for this month</p>
+          <p className="text-xs text-muted-foreground">for {month}</p>
         </CardContent>
       </Card>
       <Card>
@@ -32,7 +33,7 @@ export const MonthlySummary = ({ totalIncome, totalExpenses }: MonthlySummaryPro
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>
-          <p className="text-xs text-muted-foreground">for this month</p>
+          <p className="text-xs text-muted-foreground">for {month}</p>
         </CardContent>
       </Card>
       <Card>
@@ -44,7 +45,7 @@ export const MonthlySummary = ({ totalIncome, totalExpenses }: MonthlySummaryPro
           <div className={`text-2xl font-bold ${netSavings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {formatCurrency(netSavings)}
           </div>
-          <p className="text-xs text-muted-foreground">Your balance for the month</p>
+          <p className="text-xs text-muted-foreground">Your balance for {month}</p>
         </CardContent>
       </Card>
     </div>

@@ -18,14 +18,15 @@ interface ChartData {
 
 interface FinancialChartProps {
   data: ChartData[];
+  month: string;
 }
 
-export const FinancialChart = ({ data }: FinancialChartProps) => {
+export const FinancialChart = ({ data, month }: FinancialChartProps) => {
   return (
     <Card>
       <CardHeader>
         <CardTitle>Financial Overview</CardTitle>
-        <CardDescription>Your income and expenses for the current month.</CardDescription>
+        <CardDescription>Your income and expenses for {month}.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
@@ -35,9 +36,9 @@ export const FinancialChart = ({ data }: FinancialChartProps) => {
             <YAxis />
             <Tooltip
               formatter={(value: number) =>
-                new Intl.NumberFormat("en-US", {
+                new Intl.NumberFormat("en-NP", {
                   style: "currency",
-                  currency: "USD",
+                  currency: "NPR",
                 }).format(value)
               }
             />
