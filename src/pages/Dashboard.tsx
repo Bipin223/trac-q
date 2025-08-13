@@ -1,10 +1,7 @@
-import { AugustExpenseCard } from "@/components/dashboard/AugustExpenseCard";
-import { AssetSummaryCard } from "@/components/dashboard/AssetSummaryCard";
-import { SummaryCard } from "@/components/dashboard/SummaryCard";
-import { TrendsCard } from "@/components/dashboard/TrendsCard";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, CalendarDays, CalendarRange, BarChartHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
+import { DashboardCard } from "@/components/dashboard/DashboardCard";
+import { Tag, DollarSign, BarChart2, ArrowRightLeft, User, Landmark } from 'lucide-react';
 
 interface Profile {
   username: string;
@@ -35,6 +32,45 @@ const Dashboard = () => {
     return 'Good evening';
   };
 
+  const dashboardItems = [
+    {
+      to: '/accounts',
+      icon: <Landmark className="h-6 w-6" />,
+      title: 'Accounts',
+      description: 'Manage your cash, bank, and credit accounts.'
+    },
+    {
+      to: '/budgets',
+      icon: <Tag className="h-6 w-6" />,
+      title: 'Budgets',
+      description: 'Set spending limits and track your categories.'
+    },
+    {
+      to: '/incomes',
+      icon: <DollarSign className="h-6 w-6" />,
+      title: 'Incomes',
+      description: 'Log your earnings and manage income sources.'
+    },
+    {
+      to: '/expenses',
+      icon: <BarChart2 className="h-6 w-6" />,
+      title: 'Expenses',
+      description: 'Record your spending and analyze your habits.'
+    },
+    {
+      to: '/exchange-rates',
+      icon: <ArrowRightLeft className="h-6 w-6" />,
+      title: 'Exchange Rates',
+      description: 'Check currency conversions and rates.'
+    },
+    {
+      to: '/profile',
+      icon: <User className="h-6 w-6" />,
+      title: 'Profile',
+      description: 'Manage your account and personal settings.'
+    }
+  ];
+
   return (
     <div className="space-y-6">
       {profile && (
@@ -42,30 +78,13 @@ const Dashboard = () => {
           {getGreeting()}, {profile.username}!
         </h1>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <AugustExpenseCard />
-        <AssetSummaryCard />
-        <SummaryCard 
-          title="Today" 
-          icon={<Calendar className="h-5 w-5" />} 
-          period="August 4, 2025" 
-        />
-        <SummaryCard 
-          title="This Week" 
-          icon={<CalendarDays className="h-5 w-5" />} 
-          period="August 3-August 9" 
-        />
-        <TrendsCard />
-        <SummaryCard 
-          title="This Month" 
-          icon={<CalendarRange className="h-5 w-5" />} 
-          period="August 2025" 
-        />
-        <SummaryCard 
-          title="This Year" 
-          icon={<BarChartHorizontal className="h-5 w-5" />} 
-          period="2025" 
-        />
+      <p className="text-muted-foreground">
+        Welcome to your financial dashboard. Here's a quick overview of your tools.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {dashboardItems.map(item => (
+          <DashboardCard key={item.to} {...item} />
+        ))}
       </div>
     </div>
   );
