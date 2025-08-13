@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSession } from '@supabase/auth-helpers-react';
 import Sidebar, { SidebarContent } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
-import Categories from './pages/Categories';
+import Incomes from './pages/Incomes';
 import Expenses from './pages/Expenses';
 import Budgets from './pages/Budgets';
 import Profile from './pages/Profile';
@@ -58,9 +58,9 @@ function App() {
           <div className="container mx-auto px-6 py-8">
             <Routes>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/categories" element={<Categories />} />
-              <Route path="/expenses" element={<Expenses />} />
               <Route path="/budgets" element={<Budgets />} />
+              <Route path="/incomes" element={<Incomes />} />
+              <Route path="/expenses" element={<Expenses />} />
               <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>
