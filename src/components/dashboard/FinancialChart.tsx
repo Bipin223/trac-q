@@ -24,12 +24,23 @@ interface FinancialChartProps {
 }
 
 export const FinancialChart = ({ data, month }: FinancialChartProps) => {
-  // Compute cumulative values (running totals) for smooth income/expenses visualization
-  const processedData = data.map((item, index) => {
-    const cumulativeIncome = data
+  const today = new Date();
+  const currentDay = today.getDate();
+  const currentMonth = today.getMonth();
+  const currentYear = today.getFullYear();
+
+  // Filter data to only include dates up to today
+  const filteredData = data.filter(item => {
+    const itemDate = new Date(currentYear, currentMonth, parseInt(item.day));
+    return itemDate <= today;
+  });
+
+  // Compute cumulative values (running totals) for filtered data
+  const processedData = filteredData.map((item, index) => {
+    const cumulativeIncome = filteredData
       .slice(0, index + 1)
       .reduce((sum, d) => sum + d.income, 0);
-    const cumulativeExpenses = data
+    const cumulativeExpenses = filteredData
       .slice(0, index + 1)
       .reduce((sum, d) => sum + d.expenses, 0);
 
