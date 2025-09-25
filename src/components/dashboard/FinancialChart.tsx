@@ -48,6 +48,13 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
       currency: "NPR",
     }).format(value);
 
+  const formatAxisValue = (value: number) => {
+    if (value >= 1000) {
+      return `${(value / 1000).toFixed(0)}k`;
+    }
+    return value.toString();
+  };
+
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -96,7 +103,7 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
               label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
             />
             <YAxis 
-              tickFormatter={formatCurrency}
+              tickFormatter={formatAxisValue}
               label={{ value: 'Amount (NPR)', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip content={<CustomTooltip />} />
