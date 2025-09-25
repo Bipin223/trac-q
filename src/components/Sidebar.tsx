@@ -21,23 +21,32 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
   const user = useUser();
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
+    const checkUserRole = async () => {
       if (user) {
+        // Hardcode admin role for specific user to bypass database issues
+        if (user.email === 'onni46239@gmail.com') {
+          setIsAdmin(true);
+          return;
+        }
+
+        // Check role for other users
         const { data } = await supabase
           .from('profiles')
           .select('role')
           .eq('id', user.id)
           .single();
         
-        if (data) {
-          setUserRole(data.role);
+        if (data && data.role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
         }
       }
     };
-    fetchUserRole();
+    checkUserRole();
   }, [user, supabase]);
 
   const handleLogout = async () => {
@@ -58,7 +67,7 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
         {navItems.map((item) => (
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
         ))}
-        {userRole === 'admin' && (
+        {isAdmin && (
           <SidebarLink 
             to="/admin" 
             icon={<Shield className="h-5 w-5" />} 
