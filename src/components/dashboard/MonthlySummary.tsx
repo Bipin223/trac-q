@@ -215,24 +215,22 @@ export const MonthlySummary = ({
         </CardContent>
       </Card>
 
-      <Card className="lg:col-span-4">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Net Savings</CardTitle>
           <Wallet className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent className="flex justify-between items-center">
-          <div>
-            <div className={`text-2xl font-bold ${netSavings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(netSavings)}
-            </div>
-            <p className="text-xs text-muted-foreground">Your balance for {month}</p>
+        <CardContent className="space-y-2">
+          <div className={`text-2xl font-bold ${netSavings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatCurrency(netSavings)}
           </div>
+          <p className="text-xs text-muted-foreground">Your balance for {month}</p>
           {onEditClick && !hasNoBudget && (
             <Button 
               variant="outline" 
               size="sm" 
               onClick={onEditClick}
-              className="shrink-0"
+              className="mt-2 w-full"
             >
               Update Budget
             </Button>
