@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { format } from "date-fns";
 
 interface ChartData {
   day: string;
@@ -28,6 +29,7 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
   const currentDay = today.getDate();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
+  const monthAbbr = format(today, 'MMM'); // e.g., "Sep"
 
   // Filter data to only include dates up to today
   const filteredData = data.filter(item => {
@@ -64,6 +66,12 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
       return `${(value / 1000).toFixed(0)}k`;
     }
     return value.toString();
+  };
+
+  // X-Axis formatter: Show "Sep 1", "Sep 2", etc. (month abbr + day, no leading zero)
+  const formatXAxis = (value: string) => {
+    const dayNum = parseInt(value);
+    return `${monthAbbr} ${dayNum}`;
   };
 
   const CustomTooltip = ({ active, payload }: any) => {
@@ -110,7 +118,7 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
             
             <XAxis 
               dataKey="day" 
-              tickFormatter={(value) => value}  // Plain day numbers (e.g., "15", no "#")
+              tickFormatter={formatXAxis}  // "Sep 1", "Sep 2", etc.
               label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
             />
             <YAxis 
