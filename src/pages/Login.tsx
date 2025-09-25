@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Mail, Lock } from 'lucide-react';
+import { AlertCircle, Mail, Lock, User } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const Login = () => {
@@ -13,6 +13,7 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -37,13 +38,12 @@ const Login = () => {
     let authError = null;
 
     if (isSignUp) {
-      const usernameFromEmail = trimmedEmail.split('@')[0];
       const { error } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
         options: {
           data: {
-            username: usernameFromEmail,
+            username: username.trim(),
           },
         },
       });
@@ -53,6 +53,7 @@ const Login = () => {
         setIsSignUp(false);
         setEmail('');
         setPassword('');
+        setUsername('');
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
@@ -103,6 +104,23 @@ const Login = () => {
           )}
 
           <form onSubmit={handleAuthAction} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="username">Username</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="username"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Choose a username"
+                    required
+                    className="pl-10 bg-transparent"
+                  />
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
