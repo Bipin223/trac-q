@@ -82,6 +82,7 @@ const Dashboard = () => {
     if (profile) {
       const fetchInitialBudgets = async () => {
         try {
+          console.log('Fetching initial budgets for profile:', profile.id); // Debug log
           // Find special total categories
           const { data: incomeCat, error: incomeCatError } = await supabase
             .from('categories')
@@ -134,16 +135,20 @@ const Dashboard = () => {
           }
 
           setBudgetSummary({ budgetedIncome, budgetedExpenses });
+          console.log('Initial budgets loaded:', { budgetedIncome, budgetedExpenses }); // Debug log
         } catch (err: any) {
           console.error('Failed to load initial budgets:', err);
           setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
         }
       };
       fetchInitialBudgets();
+    } else {
+      setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
     }
   }, [profile, currentYear, currentMonthNum]);
 
   const handleBudgetUpdate = (newIncome: number, newExpenses: number) => {
+    console.log('Budget updated via inline form:', { newIncome, newExpenses }); // Debug log
     setBudgetSummary({ budgetedIncome: newIncome, budgetedExpenses: newExpenses });
   };
 

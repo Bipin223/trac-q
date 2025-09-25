@@ -55,6 +55,10 @@ export const MonthlySummary = ({
       showError('Set at least one budget amount.');
       return;
     }
+    if (!profile?.id) {
+      showError('User profile not found. Please refresh the page.');
+      return;
+    }
     setSaving(true);
 
     try {
@@ -68,7 +72,7 @@ export const MonthlySummary = ({
       let totalExpenseCategoryId: string | null = null;
 
       for (const cat of specialCategories) {
-        const { data: existing } = await supabase
+        const { data: existing, error: existingError } = await supabase
           .from('categories')
           .select('id')
           .eq('user_id', profile.id)
@@ -76,12 +80,21 @@ export const MonthlySummary = ({
           .eq('type', cat.type)
           .single();
 
+        if (existingError && existingError.code !== 'PGRST116') { // Ignore "no rows" error
+          console.error(`Error checking existing ${cat.name}:`, existingError);
+          continue;
+        }
+
         if (!existing) {
-          const { data: inserted } = await supabase
+          const { data: inserted, error: insertError } = await supabase
             .from('categories')
             .insert({ name: cat.name, user_id: profile.id, type: cat.type })
             .select('id')
             .single();
+          if (insertError) {
+            console.error(`Failed to create ${cat.name}:`, insertError);
+            continue;
+          }
           if (inserted) {
             if (cat.name === 'TOTAL_INCOME') totalIncomeCategoryId = inserted.id;
             if (cat.name === 'TOTAL_EXPENSE') totalExpenseCategoryId = inserted.id;
@@ -92,32 +105,38 @@ export const MonthlySummary = ({
         }
       }
 
-      if (!totalIncomeCategoryId && !totalExpenseCategoryId) {
-        showError('Failed to set up budget categories.');
+      if (!totalIncomeCategoryId && income > 0) {
+        showError('Failed to set up income category.');
+        return;
+      }
+      if (!totalExpenseCategoryId && expenses > 0) {
+        showError('Failed to set up expense category.');
         return;
       }
 
-      // Delete existing
+      // Delete existing budgets for this month
       if (totalIncomeCategoryId) {
-        await supabase
+        const { error: deleteIncomeError } = await supabase
           .from('budgets')
           .delete()
           .eq('user_id', profile.id)
           .eq('category_id', totalIncomeCategoryId)
           .eq('year', currentYear)
           .eq('month', currentMonthNum);
+        if (deleteIncomeError) console.error('Error deleting income budget:', deleteIncomeError);
       }
       if (totalExpenseCategoryId) {
-        await supabase
+        const { error: deleteExpenseError } = await supabase
           .from('budgets')
           .delete()
           .eq('user_id', profile.id)
           .eq('category_id', totalExpenseCategoryId)
           .eq('year', currentYear)
           .eq('month', currentMonthNum);
+        if (deleteExpenseError) console.error('Error deleting expense budget:', deleteExpenseError);
       }
 
-      // Insert new if > 0
+      // Insert new budgets if > 0
       const inserts: any[] = [];
       if (income > 0 && totalIncomeCategoryId) {
         inserts.push({
@@ -138,21 +157,133 @@ export const MonthlySummary = ({
         });
       }
 
-      const { error } = await supabase.from('budgets').insert(inserts);
-      if (error) {
-        showError('Failed to save budgets.');
-      } else {
-        showSuccess(`Budgets set for ${month}!`);
-        onBudgetUpdate(income, expenses);
-        setTempIncome('');
-        setTempExpenses('');
+      if (inserts.length > 0) {
+        const { error: insertError } = await supabase.from('budgets').insert(inserts);
+        if (insertError) {
+          console.error('Failed to insert budgets:', insertError);
+          showError('Failed to save budgets. Please try again.');
+          return;
+        }
       }
-    } catch (err) {
-      showError('Failed to save budgets. Please try again.');
+
+      showSuccess(`Budgets set for ${month}!`);
+      onBudgetUpdate(income, expenses);
+      setTempIncome('');
+      setTempExpenses('');
+    } catch (err: any) {
+      console.error('Unexpected error in handleInlineSave:', err);
+      showError('Failed to save budgets. Please try again or refresh the page.');
     } finally {
       setSaving(false);
     }
   };
+
+  const renderSummaryTiles = () => (
+    <div className="grid gap-4 md:grid-cols-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            {onEditClick && !hasNoBudgets && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onEditClick}
+                className="h-6 w-6 p-0"
+              >
+                <Edit3 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatCurrency(budgetedIncome)}</div>
+          <p className="text-xs text-muted-foreground">Target for {month}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
+          <TrendingUp className="h-4 w-4 text-green-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</div>
+          {budgetedIncome > 0 && (
+            <p className={`text-xs ${incomeVsBudget >= 100 ? 'text-green-600' : 'text-yellow-600'}`}>
+              {incomeVsBudget >= 100 ? 'On track' : 'Below target'} ({Math.round(incomeVsBudget)}%)
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">for {month}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Budgeted Expenses</CardTitle>
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            {onEditClick && !hasNoBudgets && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={onEditClick}
+                className="h-6 w-6 p-0"
+              >
+                <Edit3 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatCurrency(budgetedExpenses)}</div>
+          <p className="text-xs text-muted-foreground">Limit for {month}</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Actual Expenses</CardTitle>
+          <TrendingDown className="h-4 w-4 text-red-500" />
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</div>
+          {budgetedExpenses > 0 && (
+            <p className={`text-xs ${expensesVsBudget <= 100 ? 'text-green-600' : 'text-red-600'}`}>
+              {expensesVsBudget <= 100 ? 'Under budget' : 'Over budget'} ({Math.round(expensesVsBudget)}%)
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground">for {month}</p>
+        </CardContent>
+      </Card>
+
+      <Card className="md:col-span-4">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Net Savings</CardTitle>
+          <Wallet className="h-4 w-4 text-muted-foreground" />
+        </CardHeader>
+        <CardContent className="flex justify-between items-center">
+          <div>
+            <div className={`text-2xl font-bold ${netSavings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(netSavings)}
+            </div>
+            <p className="text-xs text-muted-foreground">Your balance for {month}</p>
+          </div>
+          {onEditClick && !hasNoBudgets && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onEditClick}
+              className="shrink-0"
+            >
+              Manage Budgets
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
 
   if (hasNoBudgets && profile) {
     return (
@@ -195,7 +326,7 @@ export const MonthlySummary = ({
               </div>
               <Button
                 onClick={handleInlineSave}
-                disabled={saving || (!tempIncome && !tempExpenses)}
+                disabled={saving || (tempIncome === '' && tempExpenses === '')}
                 className="mt-3 w-full md:w-auto"
                 size="sm"
               >
@@ -205,72 +336,7 @@ export const MonthlySummary = ({
             </div>
           </div>
         </div>
-
-        {/* Still render the summary tiles below, but they'll show 0 until saved */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(budgetedIncome)}</div>
-              <p className="text-xs text-muted-foreground">Target for {month}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</div>
-              <p className="text-xs text-muted-foreground">for {month}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Budgeted Expenses</CardTitle>
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(budgetedExpenses)}</div>
-              <p className="text-xs text-muted-foreground">Limit for {month}</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Actual Expenses</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</div>
-              <p className="text-xs text-muted-foreground">for {month}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="md:col-span-4">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Net Savings</CardTitle>
-              <Wallet className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="flex justify-between items-center">
-              <div>
-                <div className={`text-2xl font-bold ${netSavings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(netSavings)}
-                </div>
-                <p className="text-xs text-muted-foreground">Your balance for {month}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {renderSummaryTiles()}
       </div>
     );
   }
@@ -278,110 +344,7 @@ export const MonthlySummary = ({
   // Normal summary when budgets exist
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              {onEditClick && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={onEditClick}
-                  className="h-6 w-6 p-0"
-                >
-                  <Edit3 className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(budgetedIncome)}</div>
-            <p className="text-xs text-muted-foreground">Target for {month}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</div>
-            {budgetedIncome > 0 && (
-              <p className={`text-xs ${incomeVsBudget >= 100 ? 'text-green-600' : 'text-yellow-600'}`}>
-                {incomeVsBudget >= 100 ? 'On track' : 'Below target'} ({Math.round(incomeVsBudget)}%)
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">for {month}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Budgeted Expenses</CardTitle>
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              {onEditClick && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={onEditClick}
-                  className="h-6 w-6 p-0"
-                >
-                  <Edit3 className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(budgetedExpenses)}</div>
-            <p className="text-xs text-muted-foreground">Limit for {month}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Actual Expenses</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</div>
-            {budgetedExpenses > 0 && (
-              <p className={`text-xs ${expensesVsBudget <= 100 ? 'text-green-600' : 'text-red-600'}`}>
-                {expensesVsBudget <= 100 ? 'Under budget' : 'Over budget'} ({Math.round(expensesVsBudget)}%)
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">for {month}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="md:col-span-4">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Savings</CardTitle>
-            <Wallet className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="flex justify-between items-center">
-            <div>
-              <div className={`text-2xl font-bold ${netSavings >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(netSavings)}
-              </div>
-              <p className="text-xs text-muted-foreground">Your balance for {month}</p>
-            </div>
-            {onEditClick && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onEditClick}
-                className="shrink-0"
-              >
-                Manage Budgets
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {renderSummaryTiles()}
     </div>
   );
 };
