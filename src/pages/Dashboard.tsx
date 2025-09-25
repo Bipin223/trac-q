@@ -16,16 +16,11 @@ interface ChartData {
   expenses: number;
 }
 
-interface BudgetSummary {
-  budgetedIncome: number;
-  budgetedExpenses: number;
-}
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const { profile, loading: profileLoading } = useProfile();
   const [financials, setFinancials] = useState<{ totalIncome: number; totalExpenses: number; chartData: ChartData[] } | null>(null);
-  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary>({ budgetedIncome: 0, budgetedExpenses: 0 });
+  const [budgetedExpenses, setBudgetedExpenses] = useState(0);
   const [loadingFinancials, setLoadingFinancials] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,25 +72,12 @@ const Dashboard = () => {
     }
   }, [profile, profileLoading]);
 
-  // Initial budget fetch (runs once on mount if profile exists)
+  // Fetch expense budget (runs once on mount if profile exists)
   useEffect(() => {
     if (profile) {
-      const fetchInitialBudgets = async () => {
+      const fetchExpenseBudget = async () => {
         try {
-          console.log('Fetching initial budgets for profile:', profile.id); // Debug log
-          // Find special total categories
-          const { data: incomeCat, error: incomeCatError } = await supabase
-            .from('categories')
-            .select('id')
-            .eq('user_id', profile.id)
-            .eq('name', 'TOTAL_INCOME')
-            .eq('type', 'income')
-            .single();
-
-          if (incomeCatError && incomeCatError.code !== 'PGRST116') {
-            console.error('Error fetching TOTAL_INCOME category:', incomeCatError);
-          }
-
+          // Find TOTAL_EXPENSE category
           const { data: expenseCat, error: expenseCatError } = await supabase
             .from('categories')
             .select('id')
@@ -106,19 +88,6 @@ const Dashboard = () => {
 
           if (expenseCatError && expenseCatError.code !== 'PGRST116') {
             console.error('Error fetching TOTAL_EXPENSE category:', expenseCatError);
-          }
-
-          let budgetedIncome = 0;
-          if (incomeCat?.id) {
-            const { data: incomeBudget } = await supabase
-              .from('budgets')
-              .select('budgeted_amount')
-              .eq('user_id', profile.id)
-              .eq('category_id', incomeCat.id)
-              .eq('year', currentYear)
-              .eq('month', currentMonthNum)
-              .single();
-            budgetedIncome = incomeBudget?.budgeted_amount || 0;
           }
 
           let budgetedExpenses = 0;
@@ -134,22 +103,22 @@ const Dashboard = () => {
             budgetedExpenses = expenseBudget?.budgeted_amount || 0;
           }
 
-          setBudgetSummary({ budgetedIncome, budgetedExpenses });
-          console.log('Initial budgets loaded:', { budgetedIncome, budgetedExpenses }); // Debug log
+          setBudgetedExpenses(budgetedExpenses);
+          console.log('Expense budget loaded:', budgetedExpenses);
         } catch (err: any) {
-          console.error('Failed to load initial budgets:', err);
-          setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
+          console.error('Failed to load expense budget:', err);
+          setBudgetedExpenses(0);
         }
       };
-      fetchInitialBudgets();
+      fetchExpenseBudget();
     } else {
-      setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
+      setBudgetedExpenses(0);
     }
   }, [profile, currentYear, currentMonthNum]);
 
-  const handleBudgetUpdate = (newIncome: number, newExpenses: number) => {
-    console.log('Budget updated via inline form:', { newIncome, newExpenses }); // Debug log
-    setBudgetSummary({ budgetedIncome: newIncome, budgetedExpenses: newExpenses });
+  const handleBudgetUpdate = (newExpenses: number) => {
+    console.log('Budget updated via inline form:', { newExpenses });
+    setBudgetedExpenses(newExpenses);
   };
 
   const handleEditClick = () => {
@@ -206,8 +175,7 @@ const Dashboard = () => {
         <MonthlySummary 
           totalIncome={actualIncome} 
           totalExpenses={actualExpenses} 
-          budgetedIncome={budgetSummary.budgetedIncome}
-          budgetedExpenses={budgetSummary.budgetedExpenses}
+          budgetedExpenses={budgetedExpenses}
           month={currentMonth}
           currentYear={currentYear}
           currentMonthNum={currentMonthNum}

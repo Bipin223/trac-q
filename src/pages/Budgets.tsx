@@ -21,16 +21,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 
 interface CategoryBudget {
   id: string;
   name: string;
-  type: 'income' | 'expense';
   budgeted_amount: number;
   actual_amount: number;
 }
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(amount);
+};
+
+const formatPercentage = (value: number) => Math.round(value) + '%';
 
 const Budgets = () => {
   const user = useUser();
@@ -40,60 +46,76 @@ const Budgets = () => {
   const [saving, setSaving] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [newCategoryType, setNewCategoryType] = useState<'income' | 'expense'>('expense');
 
   const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth() + 1;
+  const monthNum = currentMonth.getMonth() + 1;
+  const monthStr = monthNum.toString().padStart(2, '0');
 
   const fetchData = async () => {
     if (!user || !profile) return;
     setLoading(true);
 
     try {
-      // Fetch categories with existing budgets and actuals
+      // Fetch expense categories
       const { data: catData, error: catError } = await supabase
         .from('categories')
-        .select(`
-          id, name, type,
-          budgets!inner (
-            budgeted_amount
-          !budgets_year_eq: ${year}
-          !budgets_month_eq: ${month}
-          ),
-          incomes!inner (amount !incomes_category_id_eq: id !incomes_income_date_gte: ${year}-${month.toString().padStart(2, '0')}-01 !incomes_income_date_lte: ${year}-${month.toString().padStart(2, '0')}-31),
-          expenses!inner (amount !expenses_category_id_eq: id !expenses_expense_date_gte: ${year}-${month.toString().padStart(2, '0')}-01 !expenses_expense_date_lte: ${year}-${month.toString().padStart(2, '0')}-31)
-        `)
+        .select('id, name')
         .eq('user_id', profile.id)
-        .order('type')
+        .eq('type', 'expense')
         .order('name');
 
       if (catError) throw catError;
 
-      const processedCategories: CategoryBudget[] = (catData || []).map(cat => {
-        const budgeted = cat.budgets?.[0]?.budgeted_amount || 0;
-        const actualIncome = cat.incomes?.reduce((sum, inc) => sum + (inc.amount || 0), 0) || 0;
-        const actualExpense = cat.expenses?.reduce((sum, exp) => sum + (exp.amount || 0), 0) || 0;
-        const actual = cat.type === 'income' ? actualIncome : actualExpense;
+      // Fetch budgets for this month
+      const { data: budgetData, error: budgetError } = await supabase
+        .from('budgets')
+        .select('category_id, budgeted_amount')
+        .eq('user_id', profile.id)
+        .eq('year', year)
+        .eq('month', monthNum);
 
-        return {
-          id: cat.id,
-          name: cat.name,
-          type: cat.type,
-          budgeted_amount: budgeted,
-          actual_amount: actual,
-        };
-      });
+      if (budgetError) throw budgetError;
 
-      // Add total categories if missing
-      const totalIncomeCat = processedCategories.find(c => c.name === 'TOTAL_INCOME' && c.type === 'income');
-      const totalExpenseCat = processedCategories.find(c => c.name === 'TOTAL_EXPENSE' && c.type === 'expense');
-      if (!totalIncomeCat) {
-        processedCategories.unshift({ id: 'total-income', name: 'TOTAL_INCOME', type: 'income', budgeted_amount: 0, actual_amount: processedCategories.filter(c => c.type === 'income').reduce((sum, c) => sum + c.actual_amount, 0) });
-      }
+      // Fetch expenses for this month
+      const { data: expenseData, error: expenseError } = await supabase
+        .from('expenses')
+        .select('category_id, amount')
+        .eq('user_id', profile.id)
+        .gte('expense_date', `${year}-${monthStr}-01`)
+        .lte('expense_date', `${year}-${monthStr}-31`);
+
+      if (expenseError) throw expenseError;
+
+      // Map budgets
+      const budgetsMap = budgetData?.reduce((acc, b) => {
+        acc[b.category_id] = b.budgeted_amount;
+        return acc;
+      }, {} as { [key: string]: number }) || {};
+
+      // Map actual expenses
+      const actualsMap = expenseData?.reduce((acc, e) => {
+        acc[e.category_id] = (acc[e.category_id] || 0) + (e.amount || 0);
+        return acc;
+      }, {} as { [key: string]: number }) || {};
+
+      const processedCategories: CategoryBudget[] = (catData || []).map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        budgeted_amount: budgetsMap[cat.id] || 0,
+        actual_amount: actualsMap[cat.id] || 0,
+      }));
+
+      // Add total category if missing
+      const totalExpenseCat = processedCategories.find(c => c.name === 'TOTAL_EXPENSE');
       if (!totalExpenseCat) {
-        processedCategories.push({ id: 'total-expense', name: 'TOTAL_EXPENSE', type: 'expense', budgeted_amount: 0, actual_amount: processedCategories.filter(c => c.type === 'expense').reduce((sum, c) => sum + c.actual_amount, 0) });
+        const totalActual = processedCategories.reduce((sum, c) => sum + c.actual_amount, 0);
+        processedCategories.push({ 
+          id: 'total-expense-placeholder', // Will be replaced with real ID before save
+          name: 'TOTAL_EXPENSE', 
+          budgeted_amount: budgetsMap['total-expense'] || 0, 
+          actual_amount: totalActual 
+        });
       }
 
       setCategories(processedCategories);
@@ -109,6 +131,36 @@ const Budgets = () => {
     fetchData();
   }, [user, profile, currentMonth]);
 
+  const ensureTotalExpenseCategory = async () => {
+    if (!profile) return null;
+    const { data: existing, error: existingError } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', profile.id)
+      .eq('name', 'TOTAL_EXPENSE')
+      .eq('type', 'expense')
+      .single();
+
+    if (existingError && existingError.code !== 'PGRST116') {
+      console.error('Error checking TOTAL_EXPENSE:', existingError);
+      return null;
+    }
+
+    if (!existing) {
+      const { data: inserted, error: insertError } = await supabase
+        .from('categories')
+        .insert({ name: 'TOTAL_EXPENSE', user_id: profile.id, type: 'expense' })
+        .select('id')
+        .single();
+      if (insertError) {
+        console.error('Failed to create TOTAL_EXPENSE:', insertError);
+        return null;
+      }
+      return inserted.id;
+    }
+    return existing.id;
+  };
+
   const handleBudgetChange = (catId: string, value: string) => {
     const numValue = parseFloat(value) || 0;
     setCategories(prev => prev.map(cat => cat.id === catId ? { ...cat, budgeted_amount: numValue } : cat));
@@ -119,6 +171,20 @@ const Budgets = () => {
     setSaving(true);
 
     try {
+      // Ensure TOTAL_EXPENSE exists and get its real ID
+      const totalExpenseId = await ensureTotalExpenseCategory();
+      if (!totalExpenseId) {
+        showError('Failed to set up total expense category.');
+        return;
+      }
+
+      // Update total row with real ID if it was placeholder
+      setCategories(prev => prev.map(cat => 
+        cat.name === 'TOTAL_EXPENSE' && cat.id === 'total-expense-placeholder' 
+          ? { ...cat, id: totalExpenseId } 
+          : cat
+      ));
+
       const updates: any[] = [];
       categories.forEach(cat => {
         if (cat.budgeted_amount > 0) {
@@ -126,7 +192,7 @@ const Budgets = () => {
             user_id: profile.id,
             category_id: cat.id,
             year,
-            month,
+            month: monthNum,
             budgeted_amount: cat.budgeted_amount,
           });
         }
@@ -138,7 +204,7 @@ const Budgets = () => {
         .delete()
         .eq('user_id', profile.id)
         .eq('year', year)
-        .eq('month', month);
+        .eq('month', monthNum);
 
       if (deleteError) console.error('Error deleting old budgets:', deleteError);
 
@@ -163,14 +229,14 @@ const Budgets = () => {
     if (!newCategoryName.trim() || !profile) return;
     const { data, error } = await supabase
       .from('categories')
-      .insert({ name: newCategoryName.trim(), user_id: profile.id, type: newCategoryType })
-      .select('id, name, type')
+      .insert({ name: newCategoryName.trim(), user_id: profile.id, type: 'expense' })
+      .select('id, name')
       .single();
 
     if (error) {
       showError(`Failed to create category: ${error.message}`);
     } else if (data) {
-      showSuccess(`Category "${newCategoryName}" created! Set a budget below.`);
+      showSuccess(`Expense category "${newCategoryName}" created! Set a budget below.`);
       setNewCategoryName('');
       fetchData(); // Refresh list
     }
@@ -193,14 +259,9 @@ const Budgets = () => {
     return Math.min(progress, 100); // Cap at 100%
   };
 
-  const getProgressColor = (cat: CategoryBudget) => {
-    const progress = progressForCat(cat);
+  const getProgressColor = (progress: number) => {
     if (progress === 0) return 'bg-gray-200';
-    if (cat.type === 'income') {
-      return progress >= 100 ? 'bg-green-500' : progress >= 80 ? 'bg-yellow-500' : 'bg-red-500';
-    } else {
-      return progress <= 100 ? 'bg-green-500' : progress <= 120 ? 'bg-yellow-500' : 'bg-red-500';
-    }
+    return progress <= 100 ? 'bg-green-500' : progress <= 120 ? 'bg-yellow-500' : 'bg-red-500';
   };
 
   if (loading) {
@@ -214,9 +275,6 @@ const Budgets = () => {
       </div>
     );
   }
-
-  const incomeCats = categories.filter(c => c.type === 'income');
-  const expenseCats = categories.filter(c => c.type === 'expense');
 
   return (
     <div className="space-y-6">
@@ -241,96 +299,22 @@ const Budgets = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-4 w-4" />
-            Add New Category
+            Add New Expense Category
           </CardTitle>
-          <CardDescription>Create a custom income source or expense category.</CardDescription>
+          <CardDescription>Create a custom spending category.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="flex gap-4">
             <Input
-              placeholder="Category name (e.g., Salary, Groceries)"
+              placeholder="Category name (e.g., Groceries, Rent)"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
+              className="flex-1"
             />
-            <select
-              value={newCategoryType}
-              onChange={(e) => setNewCategoryType(e.target.value as 'income' | 'expense')}
-              className="border rounded-md p-2"
-            >
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-            </select>
-            <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim()} className="w-full md:w-auto">
+            <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>
               Create
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Income Categories */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5 text-green-600" />
-            Income Categories
-          </CardTitle>
-          <CardDescription>Set targets for your income sources.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {incomeCats.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No income categories. Create one above.</p>
-          ) : (
-            incomeCats.map((cat) => (
-              <div key={cat.id} className="flex items-center justify-between p-3 border rounded-lg space-x-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">{cat.name}</h4>
-                      <p className="text-sm text-muted-foreground">Actual: {formatCurrency(cat.actual_amount)}</p>
-                    </div>
-                    <Input
-                      type="number"
-                      value={cat.budgeted_amount || ''}
-                      onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
-                      placeholder="Set budget"
-                      min="0"
-                      step="0.01"
-                      className="w-32 text-right"
-                    />
-                  </div>
-                  {cat.budgeted_amount > 0 && (
-                    <div className="space-y-1 mt-2">
-                      <Progress value={progressForCat(cat)} className={getProgressColor(cat)} />
-                      <p className="text-xs text-muted-foreground">
-                        {formatPercentage(progressForCat(cat))} of target
-                      </p>
-                    </div>
-                  )}
-                </div>
-                {cat.name !== 'TOTAL_INCOME' && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete {cat.name}?</AlertDialogTitle>
-                        <AlertDialogDescription>This will remove the category and its data.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDeleteCategory(cat.id)}>
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </div>
-            ))
-          )}
         </CardContent>
       </Card>
 
@@ -339,15 +323,15 @@ const Budgets = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DollarSign className="h-5 w-5 text-red-600" />
-            Expense Categories
+            Budget for {format(currentMonth, 'MMMM yyyy')}
           </CardTitle>
-          <CardDescription>Set limits for your spending areas.</CardDescription>
+          <CardDescription>Set limits for your spending categories.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {expenseCats.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">No expense categories. Create one above.</p>
+          {categories.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">No expense categories. Create one above to get started.</p>
           ) : (
-            expenseCats.map((cat) => (
+            categories.map((cat) => (
               <div key={cat.id} className="flex items-center justify-between p-3 border rounded-lg space-x-4">
                 <div className="flex-1">
                   <div className="flex items-center justify-between">
@@ -367,7 +351,7 @@ const Budgets = () => {
                   </div>
                   {cat.budgeted_amount > 0 && (
                     <div className="space-y-1 mt-2">
-                      <Progress value={progressForCat(cat)} className={getProgressColor(cat)} />
+                      <Progress value={progressForCat(cat)} className={getProgressColor(progressForCat(cat))} />
                       <p className="text-xs text-muted-foreground">
                         {formatPercentage(progressForCat(cat))} of limit
                       </p>
@@ -406,7 +390,7 @@ const Budgets = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>Save All Budgets?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will update budgets for {format(currentMonth, 'MMMM yyyy')} across all categories.
+              This will update your spending limits for {format(currentMonth, 'MMMM yyyy')} across all categories.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

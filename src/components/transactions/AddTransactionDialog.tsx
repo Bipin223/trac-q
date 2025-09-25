@@ -40,7 +40,7 @@ const formSchema = z.object({
   amount: z.coerce.number().positive({ message: "Amount must be a positive number in NPR." }),
   description: z.string().optional(),
   date: z.date(),
-  categoryId: z.string({ required_error: "Please select or create an income source/category." }),
+  categoryId: z.string({ required_error: "Please select or create a category." }),
 });
 
 type TransactionType = "income" | "expense";
@@ -50,7 +50,7 @@ interface AddTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  defaultCategoryId?: string; // New prop for preselecting category from quick actions
+  defaultCategoryId?: string;
 }
 
 interface Category { id: string; name: string; }
@@ -65,26 +65,32 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
     defaultValues: {
       date: new Date(),
       description: "",
-      categoryId: defaultCategoryId || "", // Prefill if provided
+      categoryId: defaultCategoryId || "",
     },
   });
 
   useEffect(() => {
     if (open && user) {
       const fetchPrerequisites = async () => {
-        const { data: categoriesData } = await supabase
-          .from("categories")
-          .select("id, name")
-          .eq("user_id", user.id)
-          .eq("type", type);
-        setCategories(categoriesData || []);
+        try {
+          const { data: categoriesData, error: catError } = await supabase
+            .from("categories")
+            .select("id, name")
+            .eq("user_id", user.id)
+            .eq("type", type);
+          if (catError) throw catError;
+          setCategories(categoriesData || []);
 
-        // If defaultCategoryId is provided and dialog opens, set it in form
-        if (defaultCategoryId && categoriesData) {
-          const matchingCategory = categoriesData.find(cat => cat.id === defaultCategoryId);
-          if (matchingCategory) {
-            form.setValue("categoryId", defaultCategoryId);
+          // Prefill if default provided
+          if (defaultCategoryId && categoriesData) {
+            const matchingCategory = categoriesData.find(cat => cat.id === defaultCategoryId);
+            if (matchingCategory) {
+              form.setValue("categoryId", defaultCategoryId);
+            }
           }
+        } catch (error) {
+          console.error('Error fetching categories:', error);
+          showError('Failed to load categories. Please try again.');
         }
       };
       fetchPrerequisites();
@@ -93,49 +99,61 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
 
   const handleCreateCategory = async (categoryName: string) => {
     if (!user) return null;
-    const { data, error } = await supabase
-      .from("categories")
-      .insert({ name: categoryName, user_id: user.id, type })
-      .select("id, name")
-      .single();
-    if (error) {
-      showError(`Failed to create ${type} source/category.`);
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .insert({ name: categoryName, user_id: user.id, type })
+        .select("id, name")
+        .single();
+      if (error) {
+        showError(`Failed to create ${type} category.`);
+        return null;
+      }
+      showSuccess(`Custom ${type} category "${categoryName}" created.`);
+      setCategories((prev) => [...prev, data]);
+      return data;
+    } catch (error) {
+      console.error('Error creating category:', error);
+      showError('Failed to create category.');
       return null;
     }
-    showSuccess(`Custom ${type} source "${categoryName}" created and added to your budgets.`);
-    setCategories((prev) => [...prev, data]);
-    return data;
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) return;
     setLoading(true);
 
-    const payload = {
-      user_id: user.id,
-      amount: values.amount,
-      description: values.description,
-      category_id: values.categoryId,
-      [type === 'income' ? 'income_date' : 'expense_date']: format(values.date, 'yyyy-MM-dd'),
-    };
+    try {
+      const payload = {
+        user_id: user.id,
+        amount: values.amount,
+        description: values.description,
+        category_id: values.categoryId,
+        [type === 'income' ? 'income_date' : 'expense_date']: format(values.date, 'yyyy-MM-dd'),
+      };
 
-    const { error } = await supabase.from(type === 'income' ? 'incomes' : 'expenses').insert(payload);
+      const { error } = await supabase.from(type === 'income' ? 'incomes' : 'expenses').insert(payload);
 
-    if (error) {
-      showError(`Failed to add ${type}.`);
-    } else {
-      showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount} added successfully.`);
-      onSuccess();
-      form.reset({ date: new Date(), description: "", categoryId: defaultCategoryId || "" });
+      if (error) {
+        showError(`Failed to add ${type}.`);
+      } else {
+        showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount} added successfully.`);
+        onSuccess();
+        form.reset({ date: new Date(), description: "", categoryId: defaultCategoryId || "" });
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      showError('Failed to add transaction.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add New {type === 'income' ? 'Income Source' : 'Expense'}</DialogTitle>
+          <DialogTitle>Add New {type === 'income' ? 'Income' : 'Expense'}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -159,7 +177,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Monthly salary from job" {...field} />
+                    <Input placeholder="e.g., Monthly salary" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -205,7 +223,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
               name="categoryId"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>{type === 'income' ? 'Income Source/Category' : 'Category'}</FormLabel>
+                  <FormLabel>{type === 'income' ? 'Income Source' : 'Category'}</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -219,19 +237,19 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                         >
                           {field.value
                             ? categories.find((cat) => cat.id === field.value)?.name
-                            : type === 'income' ? "Select or create income source" : "Select category"}
+                            : type === 'income' ? "Select income source" : "Select category"}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <Command>
-                        <CommandInput placeholder={`Search or create ${type} source/category...`} />
+                        <CommandInput placeholder={`Search or create ${type} category...`} />
                         <CommandList>
                           <CommandEmpty>
                             <Button
                               variant="ghost"
-                              className="w-full"
+                              className="w-full justify-left"
                               onClick={async () => {
                                 const inputValue = form.getValues('categoryId');
                                 if (inputValue) {

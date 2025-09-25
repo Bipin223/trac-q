@@ -11,19 +11,19 @@ import { showSuccess } from '@/utils/toast';
 const PREDEFINED_INCOME_SOURCES = [
   { name: 'Salary', type: 'income' as const },
   { name: 'Freelance', type: 'income' as const },
-  { name: 'Remittance', type: 'income' as const }, // Common in Nepal from abroad
-  { name: 'Agriculture', type: 'income' as const }, // Farming/rural income
+  { name: 'Remittance', type: 'income' as const },
+  { name: 'Agriculture', type: 'income' as const },
   { name: 'Investments', type: 'income' as const },
   { name: 'Rental Income', type: 'income' as const },
   { name: 'Business Profit', type: 'income' as const },
-  { name: 'Tourism', type: 'income' as const }, // Nepal's tourism sector
+  { name: 'Tourism', type: 'income' as const },
   { name: 'Pension', type: 'income' as const },
-  { name: 'Government Allowance', type: 'income' as const }, // Social security, etc.
+  { name: 'Government Allowance', type: 'income' as const },
 ];
 
 interface QuickIncome {
   name: string;
-  categoryId?: string; // Will be set after ensuring categories
+  categoryId?: string;
 }
 
 export default function Incomes() {
@@ -77,15 +77,15 @@ export default function Incomes() {
           acc[cat.name] = cat.id;
           return acc;
         }, {});
-        showSuccess(`Added ${toInsert.length} general income sources (e.g., Salary, Remittance). You can now use them or add custom ones.`);
+        showSuccess(`Added ${toInsert.length} general income sources. You can now use them or add custom ones.`);
       }
     }
 
-    // Map all predefined to their IDs (existing or new)
+    // Map all predefined to their IDs
     const allQuickIncomes = PREDEFINED_INCOME_SOURCES.map(source => ({
       name: source.name,
       categoryId: existingCategories?.find(c => c.name.toLowerCase() === source.name.toLowerCase())?.id || newCategoryIds[source.name],
-    })).filter(qi => qi.categoryId); // Only include if ID is available
+    })).filter(qi => qi.categoryId);
 
     setQuickIncomes(allQuickIncomes);
     setCategoriesLoaded(true);
