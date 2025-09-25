@@ -34,12 +34,11 @@ const Login = () => {
     setError(null);
     setSuccess(null);
 
-    const trimmedEmail = email.trim();
     let authError = null;
 
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({
-        email: trimmedEmail,
+        email: email.trim(),
         password,
         options: {
           data: {
@@ -56,11 +55,25 @@ const Login = () => {
         setUsername('');
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: trimmedEmail,
+      // Sign in with username
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', username.trim())
+        .single();
+
+      if (profileError || !profile || !profile.email) {
+        setError('Invalid username or password.');
+        setLoading(false);
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: profile.email,
         password,
       });
-      authError = error;
+      
+      authError = signInError;
       if (!authError) {
         navigate('/');
       }
@@ -104,38 +117,56 @@ const Login = () => {
           )}
 
           <form onSubmit={handleAuthAction} className="space-y-4">
-            {isSignUp && (
+            {isSignUp ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="username-signup">Username</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      id="username-signup"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Choose a username"
+                      required
+                      className="pl-10 bg-transparent"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      required
+                      className="pl-10 bg-transparent"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="username-login">Username</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
-                    id="username"
+                    id="username-login"
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Choose a username"
+                    placeholder="Enter your username"
                     required
                     className="pl-10 bg-transparent"
                   />
                 </div>
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email"
-                  required
-                  className="pl-10 bg-transparent"
-                />
-              </div>
-            </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
