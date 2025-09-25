@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { DollarSign, BarChart2, ArrowRightLeft, User } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
@@ -21,11 +22,11 @@ interface BudgetSummary {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { profile, loading: profileLoading } = useProfile();
   const [financials, setFinancials] = useState<{ totalIncome: number; totalExpenses: number; chartData: ChartData[] } | null>(null);
-  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
+  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary>({ budgetedIncome: 0, budgetedExpenses: 0 });
   const [loadingFinancials, setLoadingFinancials] = useState(true);
-  const [loadingBudgets, setLoadingBudgets] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
@@ -76,10 +77,10 @@ const Dashboard = () => {
     }
   }, [profile, profileLoading]);
 
+  // Initial budget fetch (runs once on mount if profile exists)
   useEffect(() => {
     if (profile) {
-      const fetchBudgets = async () => {
-        setLoadingBudgets(true);
+      const fetchInitialBudgets = async () => {
         try {
           // Find special total categories
           const { data: incomeCat, error: incomeCatError } = await supabase
@@ -90,7 +91,7 @@ const Dashboard = () => {
             .eq('type', 'income')
             .single();
 
-          if (incomeCatError && incomeCatError.code !== 'PGRST116') { // Ignore no rows error
+          if (incomeCatError && incomeCatError.code !== 'PGRST116') {
             console.error('Error fetching TOTAL_INCOME category:', incomeCatError);
           }
 
@@ -108,7 +109,7 @@ const Dashboard = () => {
 
           let budgetedIncome = 0;
           if (incomeCat?.id) {
-            const { data: incomeBudget, error: incomeBudgetError } = await supabase
+            const { data: incomeBudget } = await supabase
               .from('budgets')
               .select('budgeted_amount')
               .eq('user_id', profile.id)
@@ -116,17 +117,12 @@ const Dashboard = () => {
               .eq('year', currentYear)
               .eq('month', currentMonthNum)
               .single();
-            
-            if (incomeBudgetError) {
-              console.error('Error fetching income budget:', incomeBudgetError);
-            } else {
-              budgetedIncome = incomeBudget?.budgeted_amount || 0;
-            }
+            budgetedIncome = incomeBudget?.budgeted_amount || 0;
           }
 
           let budgetedExpenses = 0;
           if (expenseCat?.id) {
-            const { data: expenseBudget, error: expenseBudgetError } = await supabase
+            const { data: expenseBudget } = await supabase
               .from('budgets')
               .select('budgeted_amount')
               .eq('user_id', profile.id)
@@ -134,28 +130,26 @@ const Dashboard = () => {
               .eq('year', currentYear)
               .eq('month', currentMonthNum)
               .single();
-            
-            if (expenseBudgetError) {
-              console.error('Error fetching expense budget:', expenseBudgetError);
-            } else {
-              budgetedExpenses = expenseBudget?.budgeted_amount || 0;
-            }
+            budgetedExpenses = expenseBudget?.budgeted_amount || 0;
           }
 
           setBudgetSummary({ budgetedIncome, budgetedExpenses });
         } catch (err: any) {
-          console.error('Failed to load budgets:', err);
+          console.error('Failed to load initial budgets:', err);
           setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
-        } finally {
-          setLoadingBudgets(false);
         }
       };
-      fetchBudgets();
-    } else {
-      setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
-      setLoadingBudgets(false);
+      fetchInitialBudgets();
     }
   }, [profile, currentYear, currentMonthNum]);
+
+  const handleBudgetUpdate = (newIncome: number, newExpenses: number) => {
+    setBudgetSummary({ budgetedIncome: newIncome, budgetedExpenses: newExpenses });
+  };
+
+  const handleEditClick = () => {
+    navigate('/budgets');
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -164,7 +158,7 @@ const Dashboard = () => {
     return 'Good evening';
   };
 
-  if (profileLoading || loadingFinancials || loadingBudgets) {
+  if (profileLoading || loadingFinancials) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-1/2" />
@@ -204,13 +198,18 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Here's your financial summary for {currentMonth}.</p>
       </div>
       
-      {financials && budgetSummary && (
+      {financials && (
         <MonthlySummary 
           totalIncome={actualIncome} 
           totalExpenses={actualExpenses} 
           budgetedIncome={budgetSummary.budgetedIncome}
           budgetedExpenses={budgetSummary.budgetedExpenses}
-          month={currentMonth} 
+          month={currentMonth}
+          currentYear={currentYear}
+          currentMonthNum={currentMonthNum}
+          profile={profile}
+          onBudgetUpdate={handleBudgetUpdate}
+          onEditClick={handleEditClick}
         />
       )}
       {financials && <FinancialChart data={financials.chartData} month={currentMonth} />}
