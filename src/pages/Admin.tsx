@@ -15,6 +15,7 @@ interface Account {
   name: string;
   type: string;
   balance: number;
+  user_id: string; // Added user_id for debugging
   profiles: {
     username: string;
   } | null;
@@ -34,11 +35,18 @@ const AdminPage = () => {
         return;
       }
 
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single();
+
+      if (profileError) {
+        console.error('AdminPage: Error fetching profile role:', profileError);
+        showError("Failed to verify admin status.");
+        navigate('/');
+        return;
+      }
 
       if (profileData?.role !== 'admin') {
         showError("Access Denied. You are not an admin.");
@@ -47,19 +55,23 @@ const AdminPage = () => {
       }
       setIsAdmin(true);
 
-      const { data: accountsData, error } = await supabase
+      // Temporarily simplify the select to debug RLS on accounts table itself
+      const { data: accountsData, error: accountsError } = await supabase
         .from('accounts')
-        .select('id, name, type, balance, profiles(username)');
+        .select('id, name, type, balance, user_id'); // Removed profiles(username) for debugging
       
-      if (error) {
+      if (accountsError) {
+        console.error('AdminPage: Error fetching accounts:', accountsError);
         showError('Failed to fetch accounts.');
       } else if (accountsData) {
-        // The Supabase join returns `profiles` as an array. We convert it to an object or null.
-        const correctlyTypedAccounts = accountsData.map((account: any) => ({
+        console.log('AdminPage: Fetched raw accounts data:', accountsData);
+        // We need to fetch profile usernames separately if the join is removed
+        // For now, let's just display the user_id or a placeholder
+        const accountsWithPlaceholderProfiles = accountsData.map((account: any) => ({
           ...account,
-          profiles: account.profiles?.[0] || null,
+          profiles: { username: `User ID: ${account.user_id}` } // Placeholder
         }));
-        setAccounts(correctlyTypedAccounts);
+        setAccounts(accountsWithPlaceholderProfiles);
       }
       setLoading(false);
     };
