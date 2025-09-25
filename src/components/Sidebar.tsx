@@ -1,10 +1,11 @@
-import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark } from 'lucide-react';
+import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
+import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { useEffect, useState } from 'react';
 
 const navItems = [
   { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
@@ -19,6 +20,25 @@ const navItems = [
 export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: boolean, onLinkClick?: () => void }) => {
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
+  const user = useUser();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+        
+        if (data) {
+          setUserRole(data.role);
+        }
+      }
+    };
+    fetchUserRole();
+  }, [user, supabase]);
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
@@ -38,6 +58,15 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
         {navItems.map((item) => (
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
         ))}
+        {userRole === 'admin' && (
+          <SidebarLink 
+            to="/admin" 
+            icon={<Shield className="h-5 w-5" />} 
+            label="Admin" 
+            isSidebarOpen={isSidebarOpen} 
+            onClick={onLinkClick} 
+          />
+        )}
       </nav>
       <div className="px-2 py-4 mt-auto border-t dark:border-gray-700">
         {isSidebarOpen ? (

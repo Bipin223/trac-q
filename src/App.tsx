@@ -13,6 +13,7 @@ import { Button } from './components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { ThemeToggle } from './components/theme-toggle';
+import AdminPage from './pages/Admin';
 
 function App() {
   const session = useSession();
@@ -65,6 +66,7 @@ function App() {
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </div>
         </main>
