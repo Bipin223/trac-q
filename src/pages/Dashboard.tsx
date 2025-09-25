@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { DollarSign, BarChart2, ArrowRightLeft } from 'lucide-react';
@@ -9,12 +9,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile } from "../contexts/ProfileContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { showError } from "@/utils/toast";
 
 interface ChartData {
   day: string;
+  dayNum: number;  // Added for X-axis domain control in FinancialChart
   income: number;
   expenses: number;
+  cumulativeIncome: number;
+  cumulativeExpenses: number;
 }
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(amount);
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -34,6 +42,7 @@ const Dashboard = () => {
         setLoadingFinancials(true);
         setError(null);
         try {
+          console.log('Dashboard: Fetching data for user', profile.id);
           const today = new Date();
           const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
           const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
@@ -48,7 +57,15 @@ const Dashboard = () => {
           const totalIncome = incomes?.reduce((sum, item) => sum + item.amount, 0) || 0;
           const totalExpenses = expenses?.reduce((sum, item) => sum + item.amount, 0) || 0;
 
-          const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ day: (i + 1).toString().padStart(2, '0'), income: 0, expenses: 0 }));
+          const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
+            day: (i + 1).toString().padStart(2, '0'), 
+            dayNum: i + 1,  // Added for type consistency with FinancialChart
+            income: 0, 
+            expenses: 0,
+            cumulativeIncome: 0,
+            cumulativeExpenses: 0
+          }));
+          
           incomes?.forEach(i => { 
             const date = new Date(i.income_date).getDate();
             if(dailyData[date - 1]) dailyData[date - 1].income += i.amount; 
@@ -59,71 +76,72 @@ const Dashboard = () => {
           });
 
           setFinancials({ totalIncome, totalExpenses, chartData: dailyData });
+          console.log('Dashboard: Fetched financials - Income:', totalIncome, 'Expenses:', totalExpenses);
         } catch (err: any) {
-          setError("Failed to load financial data. Please try again later.");
-          console.error(err);
+          console.error('Dashboard: Fetch error:', err);
+          setError("Could not load financial data. Please try again.");
+          showError('Failed to load data.');
         } finally {
           setLoadingFinancials(false);
         }
       };
       fetchDashboardData();
+      fetchExpenseBudget(); // Initial budget fetch
     } else if (!profileLoading) {
       setLoadingFinancials(false);
+      setBudgetedExpenses(0);
     }
   }, [profile, profileLoading]);
 
-  // Fetch expense budget (runs once on mount if profile exists)
-  useEffect(() => {
-    if (profile) {
-      const fetchExpenseBudget = async () => {
-        try {
-          // Find TOTAL_EXPENSE category
-          const { data: expenseCat, error: expenseCatError } = await supabase
-            .from('categories')
-            .select('id')
-            .eq('user_id', profile.id)
-            .eq('name', 'TOTAL_EXPENSE')
-            .eq('type', 'expense')
-            .single();
-
-          if (expenseCatError && expenseCatError.code !== 'PGRST116') {
-            console.error('Error fetching TOTAL_EXPENSE category:', expenseCatError);
-          }
-
-          let budgetedExpenses = 0;
-          if (expenseCat?.id) {
-            const { data: expenseBudget } = await supabase
-              .from('budgets')
-              .select('budgeted_amount')
-              .eq('user_id', profile.id)
-              .eq('category_id', expenseCat.id)
-              .eq('year', currentYear)
-              .eq('month', currentMonthNum)
-              .single();
-            budgetedExpenses = expenseBudget?.budgeted_amount || 0;
-          }
-
-          setBudgetedExpenses(budgetedExpenses);
-          console.log('Expense budget loaded:', budgetedExpenses);
-        } catch (err: any) {
-          console.error('Failed to load expense budget:', err);
-          setBudgetedExpenses(0);
-        }
-      };
-      fetchExpenseBudget();
-    } else {
+  // Simplified: Fetch overall budget directly (category_id IS NULL for overall; no category needed)
+  const fetchExpenseBudget = useCallback(async () => {
+    if (!profile) {
+      console.log('Dashboard: No profile, setting budget to 0');
       setBudgetedExpenses(0);
+      return;
+    }
+    try {
+      console.log('Dashboard: Fetching overall budget for', profile.id, currentYear, currentMonthNum);
+      
+      const { data: budgetData, error } = await supabase
+        .from('budgets')
+        .select('budgeted_amount')
+        .eq('user_id', profile.id)
+        .is('category_id', null)  // Overall budget: No specific category
+        .eq('year', currentYear)
+        .eq('month', currentMonthNum)
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {  // No rows
+          console.log('Dashboard: No overall budget row found (normal for first time)');
+          setBudgetedExpenses(0);
+        } else {
+          console.error('Dashboard: Budget fetch error:', error);
+          setBudgetedExpenses(0);
+          showError('Failed to load budget.');
+        }
+      } else {
+        const overallBudget = budgetData?.budgeted_amount || 0;
+        console.log('Dashboard: Overall budget fetched:', overallBudget);
+        setBudgetedExpenses(overallBudget);
+      }
+    } catch (err: any) {
+      console.error('Dashboard: Budget fetch exception:', err);
+      setBudgetedExpenses(0);
+      showError('Could not load budget.');
     }
   }, [profile, currentYear, currentMonthNum]);
 
-  const handleBudgetUpdate = (newExpenses: number) => {
-    console.log('Budget updated via inline form:', { newExpenses });
-    setBudgetedExpenses(newExpenses);
-  };
-
-  const handleEditClick = () => {
-    navigate('/budgets');
-  };
+  // Callback for after budget save: Update state and re-fetch to confirm
+  const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
+    console.log('Dashboard: Budget update callback:', newExpenses);
+    if (newExpenses >= 0) {
+      setBudgetedExpenses(newExpenses);
+    }
+    // Re-fetch to confirm persistence
+    await fetchExpenseBudget();
+  }, [fetchExpenseBudget]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -148,7 +166,7 @@ const Dashboard = () => {
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{error || "Could not load dashboard data. Your user profile might be missing or data could not be fetched."}</AlertDescription>
+        <AlertDescription>{error || "Could not load dashboard data."}</AlertDescription>
       </Alert>
     );
   }
@@ -180,11 +198,16 @@ const Dashboard = () => {
           currentYear={currentYear}
           currentMonthNum={currentMonthNum}
           profile={profile}
+          categoryIdForBudget={null}  // Pass null for overall budget (no category needed)
           onBudgetUpdate={handleBudgetUpdate}
-          onEditClick={handleEditClick}
         />
       )}
-      {financials && <FinancialChart data={financials.chartData} month={currentMonth} />}
+      {financials && (
+        <FinancialChart 
+          data={financials.chartData}  // Now compatible with dayNum
+          month={currentMonth}
+        />
+      )}
 
       <div>
         <h2 className="text-2xl font-bold tracking-tight mb-4">Your Tools</h2>
