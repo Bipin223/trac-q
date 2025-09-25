@@ -150,21 +150,61 @@ export const MonthlySummary = ({
     return progress <= 100 ? 'Under budget' : progress <= 120 ? 'Slightly over' : 'Over budget';
   };
 
-  const renderSummaryTiles = () => (
-    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <div>
-            <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
-            <CardDescription className="text-xs">for {month}</CardDescription>
-          </div>
-          <TrendingUp className="h-4 w-4 text-green-500" />
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</div>
-        </CardContent>
-      </Card>
+  const renderBudgetTile = () => {
+    if (hasNoBudget && profile) {
+      return (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle className="text-sm font-medium">Budget for {month}</CardTitle>
+              <CardDescription className="text-xs">Set your spending limit</CardDescription>
+            </div>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="space-y-4 pt-0">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Amount (NPR)</Label>
+              <Input
+                type="number"
+                value={tempExpenses}
+                onChange={(e) => setTempExpenses(e.target.value)}
+                placeholder={formatCurrency(suggestedExpenses)}
+                min="0"
+                step="0.01"
+                className="text-right font-mono"
+              />
+              {suggestedExpenses > 0 && (
+                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleInlineSave}
+                disabled={saving || tempExpenses === ''}
+                size="sm"
+                className="flex-1"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : 'Set Budget'}
+              </Button>
+              <Button
+                variant="outline"
+                asChild
+                size="sm"
+                className="flex-1"
+              >
+                <Link to="/budgets">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Later
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
+    return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
@@ -195,6 +235,25 @@ export const MonthlySummary = ({
           )}
         </CardContent>
       </Card>
+    );
+  };
+
+  const renderSummaryTiles = () => (
+    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
+            <CardDescription className="text-xs">for {month}</CardDescription>
+          </div>
+          <TrendingUp className="h-4 w-4 text-green-500" />
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</div>
+        </CardContent>
+      </Card>
+
+      {renderBudgetTile()}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -242,60 +301,7 @@ export const MonthlySummary = ({
     </div>
   );
 
-  if (hasNoBudget && profile) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
-            <CardDescription>Set your monthly budget</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Budget for {month} (NPR)</Label>
-              <Input
-                type="number"
-                value={tempExpenses}
-                onChange={(e) => setTempExpenses(e.target.value)}
-                placeholder={formatCurrency(suggestedExpenses)}
-                min="0"
-                step="0.01"
-                className="text-right font-mono"
-              />
-              {suggestedExpenses > 0 && (
-                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                onClick={handleInlineSave}
-                disabled={saving || tempExpenses === ''}
-                className="flex-1"
-                size="sm"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Saving...' : `Set Budget for ${month}`}
-              </Button>
-              <Button
-                variant="outline"
-                asChild
-                className="flex-1"
-                size="sm"
-              >
-                <Link to="/budgets">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Update Later
-                </Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-        {renderSummaryTiles()}
-      </div>
-    );
-  }
-
-  // Normal summary when budget exists
+  // Always render the grid, with budget tile handling no-budget case inline
   return (
     <div className="space-y-4">
       {renderSummaryTiles()}
