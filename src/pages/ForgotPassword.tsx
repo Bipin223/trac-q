@@ -13,6 +13,17 @@ const ForgotPasswordPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
+  const redactEmail = (email: string): string => {
+    const [localPart, domain] = email.split('@');
+    if (!localPart || !domain) return "an email address on file.";
+
+    const start = localPart.substring(0, Math.min(3, localPart.length - 1));
+    const end = localPart.length > 3 ? localPart.substring(localPart.length - 1) : '';
+    const redacted = start + '*'.repeat(Math.max(0, localPart.length - 4)) + end;
+    
+    return `${redacted}@${domain}`;
+  };
+
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -21,12 +32,12 @@ const ForgotPasswordPage = () => {
 
     const trimmedIdentifier = identifier.trim();
     let targetEmail = '';
+    let emailHint = 'the associated email address.';
 
-    // Check if the identifier is an email or a username
     if (trimmedIdentifier.includes('@')) {
       targetEmail = trimmedIdentifier;
+      emailHint = redactEmail(targetEmail);
     } else {
-      // It's a username, so find the associated email
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('email')
@@ -41,23 +52,17 @@ const ForgotPasswordPage = () => {
       
       if (profile && profile.email) {
         targetEmail = profile.email;
+        emailHint = redactEmail(targetEmail);
       }
     }
 
-    // If we found an email, attempt to send the reset link.
-    // We proceed even if no email was found to prevent user enumeration attacks.
     if (targetEmail) {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+      await supabase.auth.resetPasswordForEmail(targetEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
-
-      if (resetError) {
-        setError(resetError.message);
-      }
     }
     
-    // Always show a generic success message for security reasons.
-    setMessage('If an account with this username or email exists, password reset instructions have been sent to the associated email address.');
+    setMessage(`If an account exists, password reset instructions have been sent to ${emailHint}`);
     setLoading(false);
   };
 
@@ -68,7 +73,7 @@ const ForgotPasswordPage = () => {
           <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
           <h1 className="text-3xl font-bold">Forgot Password</h1>
           <p className="text-muted-foreground">
-            Enter your username or email and we'll send a reset link to your registered email address.
+            Enter your username or email and we'll send a reset link.
           </p>
         </div>
 
