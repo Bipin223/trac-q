@@ -24,6 +24,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
     const fetchProfile = async () => {
       if (user) {
         setLoading(true);
+        console.log("ProfileContext: User found, fetching profile for ID:", user.id);
         const { data, error } = await supabase
           .from('profiles')
           .select('id, username, role')
@@ -31,13 +32,18 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
           .single();
 
         if (error) {
-          console.error('Error fetching profile:', error);
+          console.error('ProfileContext: Error fetching profile:', error);
           setProfile(null);
-        } else {
+        } else if (data) {
+          console.log('ProfileContext: Profile data fetched successfully:', data);
           setProfile(data as Profile);
+        } else {
+          console.warn('ProfileContext: No profile found for user ID:', user.id);
+          setProfile(null);
         }
         setLoading(false);
       } else {
+        console.log("ProfileContext: No user session found.");
         setProfile(null);
         setLoading(false);
       }
