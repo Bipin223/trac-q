@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Save, AlertCircle, RefreshCw, Play } from "lucide-react";
+import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Save, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showSuccess, showError } from "@/utils/toast";
-import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 
 interface MonthlySummaryProps {
@@ -42,7 +41,6 @@ export const MonthlySummary = ({
   const [tempExpenses, setTempExpenses] = useState('');
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [categoryId, setCategoryId] = useState<string | null>(null); // Track category ID for logging
 
   // Suggestion for expenses budget (based on actuals + buffer)
   const suggestedExpenses = totalExpenses > 0 ? Math.round(totalExpenses * 1.2) : 50000; // 20% buffer over actual or default
@@ -52,17 +50,13 @@ export const MonthlySummary = ({
     if (hasNoBudget && profile?.id) {
       const quickCheck = async () => {
         try {
-          console.log('Form loaded with budget=0 - quick-checking Supabase for stale data...');
           const catId = await getTotalExpenseCategoryId(profile.id);
           const verified = await fetchAndVerifyBudget(catId);
           if (verified && verified > 0) {
-            console.log('Stale data found! Updating tile to', verified);
             await onBudgetUpdate(verified);
-          } else {
-            console.log('No stale budget found - form is correct.');
           }
         } catch (err) {
-          console.error('Quick check failed:', err);
+          // Silent fail - don't show errors for auto-check
         }
       };
       quickCheck();
@@ -72,7 +66,6 @@ export const MonthlySummary = ({
   // Helper to fetch/verify the single overall budget directly (for immediate sync after save)
   const fetchAndVerifyBudget = async (catId: string) => {
     try {
-      console.log('Verifying budget with category_id:', catId, 'for user', profile.id);
       const { data: budgetData, error } = await supabase
         .from('budgets')
         .select('budgeted_amount')
@@ -83,17 +76,11 @@ export const MonthlySummary = ({
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.error('Direct budget verification error:', error);
-        showError(`Failed to verify budget: ${error.message}. Check console (F12) for details and try refresh.`);
         return null;
       }
 
-      const verifiedAmount = budgetData?.budgeted_amount || 0;
-      console.log('Verification successful: Budget in Supabase is', verifiedAmount);
-      return verifiedAmount;
+      return budgetData?.budgeted_amount || 0;
     } catch (err: any) {
-      console.error('Unexpected verification error:', err);
-      showError(`Verification failed: ${err.message}. Check console and try manual refresh.`);
       return null;
     }
   };
@@ -101,7 +88,7 @@ export const MonthlySummary = ({
   const handleInlineSave = async () => {
     const expenses = parseFloat(tempExpenses) || 0;
     if (expenses === 0) {
-      showError('Set a budget amount for this month.');
+      showError('Please enter a budget amount.');
       return;
     }
     if (expenses < 0) {
@@ -109,15 +96,13 @@ export const MonthlySummary = ({
       return;
     }
     if (!profile?.id) {
-      showError('User profile not found. Please refresh the page.');
+      showError('Please refresh the page.');
       return;
     }
     setSaving(true);
 
     try {
-      console.log(`=== SAVE START: Overall budget for user ${profile.id}: NPR ${expenses} for ${month} (year ${currentYear}, month ${currentMonthNum}) ===`);
-      
-      // Step 1: Get/create TOTAL_EXPENSE category ID
+      // Get/create TOTAL_EXPENSE category ID
       let totalExpenseCategoryId: string;
       const { data: existing, error: existingError } = await supabase
         .from('categories')
@@ -128,49 +113,33 @@ export const MonthlySummary = ({
         .single();
 
       if (existingError && existingError.code !== 'PGRST116') {
-        console.error('STEP 1 ERROR - Checking TOTAL_EXPENSE:', existingError);
-        showError(`Failed to check category: ${existingError.message}. Check console (F12).`);
-        return;
+        throw existingError;
       }
 
       if (!existing) {
-        console.log('Creating new TOTAL_EXPENSE category...');
         const { data: inserted, error: insertError } = await supabase
           .from('categories')
           .insert({ name: 'TOTAL_EXPENSE', user_id: profile.id, type: 'expense' })
           .select('id')
           .single();
         if (insertError) {
-          console.error('STEP 1 ERROR - Creating TOTAL_EXPENSE:', insertError);
-          showError(`Failed to create category: ${insertError.message}. Check console.`);
-          return;
+          throw insertError;
         }
         totalExpenseCategoryId = inserted.id;
-        setCategoryId(totalExpenseCategoryId); // Track for logging
-        console.log('STEP 1 SUCCESS: Created new TOTAL_EXPENSE category ID:', totalExpenseCategoryId);
       } else {
         totalExpenseCategoryId = existing.id;
-        setCategoryId(totalExpenseCategoryId);
-        console.log('STEP 1 SUCCESS: Using existing TOTAL_EXPENSE category ID:', totalExpenseCategoryId);
       }
 
-      // Step 2: Delete existing budget for this month (to avoid duplicates)
-      console.log('STEP 2: Deleting existing budget if any...');
-      const { error: deleteError } = await supabase
+      // Delete existing budget for this month (to update)
+      await supabase
         .from('budgets')
         .delete()
         .eq('user_id', profile.id)
         .eq('category_id', totalExpenseCategoryId)
         .eq('year', currentYear)
         .eq('month', currentMonthNum);
-      if (deleteError) {
-        console.error('STEP 2 WARNING - Delete failed (non-critical):', deleteError);
-      } else {
-        console.log('STEP 2 SUCCESS: Cleared existing budget.');
-      }
 
-      // Step 3: Insert the new budget
-      console.log('STEP 3: Inserting budget with category_id:', totalExpenseCategoryId);
+      // Insert the overall budget (persistent in Supabase)
       const { error: insertError } = await supabase.from('budgets').insert({
         user_id: profile.id,
         category_id: totalExpenseCategoryId,
@@ -180,50 +149,42 @@ export const MonthlySummary = ({
       });
 
       if (insertError) {
-        console.error('STEP 3 ERROR - Insert failed:', insertError);
-        showError(`Failed to save budget to Supabase: ${insertError.message}. Check console (F12) for details. It won't persist.`);
-        return;
+        throw insertError;
       }
-      console.log('STEP 3 SUCCESS: Budget inserted to Supabase.');
 
-      // Step 4: Verify the insert immediately
-      console.log('STEP 4: Verifying insert...');
+      // Verify the insert immediately
       const verifiedAmount = await fetchAndVerifyBudget(totalExpenseCategoryId);
       if (verifiedAmount === expenses) {
-        console.log('STEP 4 SUCCESS: Verified! Updating tile immediately.');
         // Trigger parent refetch for full sync (tile updates via props)
         await onBudgetUpdate(expenses);
         setTempExpenses('');
-        showSuccess(`Overall budget of ${formatCurrency(expenses)} saved and verified for ${month}! Tile updated (persists across logouts/logins).`);
+        showSuccess(`Overall budget of ${formatCurrency(expenses)} set for ${month}.`);
       } else {
-        console.error('STEP 4 FAILURE: Verification mismatch! Expected', expenses, 'but got', verifiedAmount);
-        showError(`Saved to Supabase, but tile verification failed (expected ${formatCurrency(expenses)}, got ${formatCurrency(verifiedAmount || 0)}). Check console (F12), try manual refresh below, or refresh page.`);
+        showError('Budget saved, but could not update display. Please refresh.');
         await onBudgetUpdate(0); // Force full refetch
       }
-      console.log('=== SAVE COMPLETE ===');
     } catch (err: any) {
-      console.error('UNEXPECTED SAVE ERROR:', err);
-      showError(`Unexpected error saving budget: ${err.message || 'Unknown'}. Check console (F12) and try again. It may not persist.`);
+      showError('Failed to save budget. Please try again.');
     } finally {
       setSaving(false);
     }
   };
 
   const handleManualRefresh = async () => {
-    if (!profile?.id || !categoryId) return;
+    if (!profile?.id) return;
     setRefreshing(true);
     try {
-      console.log('Manual refresh requested - fetching with category_id:', categoryId);
-      const verifiedAmount = await fetchAndVerifyBudget(categoryId);
+      // Re-fetch category ID and budget (same logic as Dashboard's fetchExpenseBudget)
+      const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
+      const verifiedAmount = await fetchAndVerifyBudget(totalExpenseCategoryId);
       if (verifiedAmount !== null) {
-        await onBudgetUpdate(verifiedAmount); // Sync parent
-        showSuccess(`Budget refreshed from Supabase: ${formatCurrency(verifiedAmount)} for ${month}. Tile synced!`);
+        await onBudgetUpdate(verifiedAmount); // Sync to parent/tile
+        showSuccess(`Budget updated for ${month}.`);
       } else {
-        showError('Refresh failed—no budget found in Supabase. Check console.');
+        showError('No budget found. Please set one.');  
       }
     } catch (err: any) {
-      console.error('Manual refresh error:', err);
-      showError(`Refresh failed: ${err.message}. Check console.`);
+      showError('Refresh failed. Please try again.');
     } finally {
       setRefreshing(false);
     }
@@ -240,7 +201,6 @@ export const MonthlySummary = ({
       .single();
 
     if (existingError && existingError.code !== 'PGRST116') {
-      console.error('Error checking TOTAL_EXPENSE category:', existingError);
       throw existingError;
     }
 
@@ -251,7 +211,6 @@ export const MonthlySummary = ({
         .select('id')
         .single();
       if (insertError) {
-        console.error('Failed to create TOTAL_EXPENSE category:', insertError);
         throw insertError;
       }
       return inserted.id;
@@ -288,7 +247,7 @@ export const MonthlySummary = ({
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle className="text-sm font-medium">Overall Budget for {month}</CardTitle>
-            <CardDescription className="text-xs">Your single monthly spending limit (persistent in Supabase)</CardDescription>
+            <CardDescription className="text-xs">Your monthly spending limit</CardDescription>
           </div>
           <Target className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
@@ -343,7 +302,7 @@ export const MonthlySummary = ({
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
-            <CardDescription>Set your overall monthly spending limit (saved to Supabase, persists across logouts/logins for the entire month—updates the tile below).</CardDescription>
+            <CardDescription>Set your overall monthly spending limit.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -358,36 +317,18 @@ export const MonthlySummary = ({
                 className="text-right font-mono"
               />
               {suggestedExpenses > 0 && (
-                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)} (based on your expenses + 20% buffer)</p>
+                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
               )}
-              <p className="text-xs text-muted-foreground italic">Tip: Enter amount and click Save. Check console (F12) if issues.</p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleInlineSave}
-                disabled={saving || tempExpenses === ''}
-                className="flex-1"
-                size="sm"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Saving to Supabase...' : `Set Overall Budget for ${month} (Persists & Updates Tile)`}
-              </Button>
-              {/* Temporary debug button - remove later if not needed */}
-              <Button
-                variant="outline"
-                onClick={handleInlineSave}
-                disabled={saving || tempExpenses === ''}
-                className="flex-0"
-                size="sm"
-                title="Test Save (logs to console)"
-              >
-                <Play className="h-4 w-4 mr-2" />
-                Test
-              </Button>
-            </div>
-            {categoryId && (
-              <p className="text-xs text-muted-foreground">Debug: Using category ID {categoryId} (check console for full logs).</p>
-            )}
+            <Button
+              onClick={handleInlineSave}
+              disabled={saving || tempExpenses === ''}
+              className="w-full"
+              size="sm"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Saving...' : `Set Overall Budget for ${month}`}
+            </Button>
           </CardContent>
         </Card>
         {renderSummaryTiles()}
@@ -403,7 +344,7 @@ export const MonthlySummary = ({
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-bold">Update Overall Budget for {month}</CardTitle>
-          <CardDescription>Change your monthly spending limit (updates the tile above and persists in Supabase).</CardDescription>
+          <CardDescription>Change your monthly spending limit.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -436,12 +377,9 @@ export const MonthlySummary = ({
               size="sm"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh Tile'}
+              {refreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
-          {categoryId && (
-            <p className="text-xs text-muted-foreground">Debug: Using category ID {categoryId}.</p>
-          )}
         </CardContent>
       </Card>
     </div>

@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile } from "../contexts/ProfileContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError } from "@/utils/toast";
 
 interface ChartData {
   day: string;
@@ -65,9 +65,8 @@ const Dashboard = () => {
 
           setFinancials({ totalIncome, totalExpenses, chartData: dailyData });
         } catch (err: any) {
-          setError("Failed to load financial data. Please try again later.");
-          console.error('Dashboard fetch error:', err);
-          showError(`Data load failed: ${err.message}`);
+          setError("Could not load financial data. Please try again.");
+          showError('Failed to load data.');
         } finally {
           setLoadingFinancials(false);
         }
@@ -87,7 +86,6 @@ const Dashboard = () => {
       return;
     }
     try {
-      console.log(`Fetching overall budget for user ${profile.id}, year ${currentYear}, month ${currentMonthNum}`);
       const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
       const { data: budgetData, error } = await supabase
         .from('budgets')
@@ -99,18 +97,13 @@ const Dashboard = () => {
         .single();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 = no rows, which is fine (budget=0)
-        console.error('Budget fetch error:', error);
-        showError(`Failed to load budget: ${error.message}. Check console for details.`);
         setBudgetedExpenses(0);
         return;
       }
 
       const overallBudget = budgetData?.budgeted_amount || 0;
       setBudgetedExpenses(overallBudget);
-      console.log('Fetched overall budget from Supabase:', overallBudget, 'using category ID:', totalExpenseCategoryId);
     } catch (err: any) {
-      console.error('Unexpected budget fetch error:', err);
-      showError(`Budget load failed: ${err.message}`);
       setBudgetedExpenses(0);
     }
   }, [profile, currentYear, currentMonthNum]);
@@ -126,7 +119,6 @@ const Dashboard = () => {
       .single();
 
     if (existingError && existingError.code !== 'PGRST116') {
-      console.error('Error checking TOTAL_EXPENSE category:', existingError);
       throw existingError;
     }
 
@@ -137,7 +129,6 @@ const Dashboard = () => {
         .select('id')
         .single();
       if (insertError) {
-        console.error('Failed to create TOTAL_EXPENSE category:', insertError);
         throw insertError;
       }
       return inserted.id;
@@ -145,17 +136,13 @@ const Dashboard = () => {
     return existing.id;
   };
 
-  // Callback for after inline save: Refetch from DB to confirm persistence and update tile (now handles verified amount)
+  // Callback for after inline save: Refetch from DB to confirm persistence and update tile
   const handleBudgetUpdate = useCallback(async (newExpenses: number | null) => {
-    console.log('Form callback: Updating tile with', newExpenses, '- Refetching from Supabase to confirm');
     if (newExpenses !== null) {
       setBudgetedExpenses(newExpenses); // Immediate local update for instant tile response
     }
     await fetchExpenseBudget(); // Full refetch to sync with DB (ensures persistence)
-    if (newExpenses !== null) {
-      showSuccess(`Overall budget of ${formatCurrency(newExpenses)} set for ${currentMonth}! Tile synced (persists across logouts/logins).`);
-    }
-  }, [fetchExpenseBudget, currentMonth]);
+  }, [fetchExpenseBudget]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -180,7 +167,7 @@ const Dashboard = () => {
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
         <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{error || "Could not load dashboard data. Your user profile might be missing or data could not be fetched."}</AlertDescription>
+        <AlertDescription>{error || "Could not load dashboard data."}</AlertDescription>
       </Alert>
     );
   }
@@ -200,7 +187,7 @@ const Dashboard = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{getGreeting()}, {profile.role === "admin" ? `Admin - ${displayName}` : displayName}!</h1>
-        <p className="text-muted-foreground">Here's your financial summary for {currentMonth}. The overall budget is saved to Supabase and updates the tile below.</p>
+        <p className="text-muted-foreground">Here's your financial summary for {currentMonth}.</p>
       </div>
       
       {financials && (
