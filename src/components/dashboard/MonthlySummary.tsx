@@ -67,7 +67,7 @@ export const MonthlySummary = ({
     setSaving(true);
 
     try {
-      // Find/create TOTAL_EXPENSE category
+      // Find/create TOTAL_EXPENSE category (this will be included in the dynamic sum)
       const { data: existing, error: existingError } = await supabase
         .from('categories')
         .select('id')
@@ -104,7 +104,7 @@ export const MonthlySummary = ({
         return;
       }
 
-      // Delete existing budget for this month
+      // Delete existing TOTAL_EXPENSE budget for this month (to avoid duplicates)
       const { error: deleteError } = await supabase
         .from('budgets')
         .delete()
@@ -112,9 +112,9 @@ export const MonthlySummary = ({
         .eq('category_id', totalExpenseCategoryId)
         .eq('year', currentYear)
         .eq('month', currentMonthNum);
-      if (deleteError) console.error('Error deleting expense budget:', deleteError);
+      if (deleteError) console.error('Error deleting existing TOTAL_EXPENSE budget:', deleteError);
 
-      // Insert new budget
+      // Insert/update the TOTAL_EXPENSE budget (included in sum)
       const { error: insertError } = await supabase.from('budgets').insert({
         user_id: profile.id,
         category_id: totalExpenseCategoryId,
@@ -129,8 +129,9 @@ export const MonthlySummary = ({
         return;
       }
 
-      showSuccess(`Budget set for ${month}! Limit: ${formatCurrency(expenses)}`);
-      onBudgetUpdate(expenses);
+      // Note: The total will now include this in the dynamic sum; refresh to see updated total if other categories exist
+      showSuccess(`Overall budget set for ${month}! Total limit: ${formatCurrency(expenses)}. This will be part of your summed category total.`);
+      onBudgetUpdate(expenses); // Update local state immediately
       setTempExpenses('');
     } catch (err: any) {
       console.error('Unexpected error in handleInlineSave:', err);
@@ -169,11 +170,11 @@ export const MonthlySummary = ({
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle className="text-sm font-medium">Budget for {month}</CardTitle>
-            <CardDescription className="text-xs">Spending limit</CardDescription>
+            <CardDescription className="text-xs">Sum of all expense categories</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-muted-foreground" />
-            {onEditClick && !hasNoBudget && (
+            {onEditClick && (
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -192,6 +193,9 @@ export const MonthlySummary = ({
               <Progress value={expensesVsBudget} className={getProgressColor(expensesVsBudget)} />
               <p className="text-xs text-muted-foreground">{getProgressStatus(expensesVsBudget)} ({formatPercentage(expensesVsBudget)})</p>
             </div>
+          )}
+          {budgetedExpenses === 0 && (
+            <p className="text-xs text-muted-foreground">Set budgets in the Budgets page to see your total here.</p>
           )}
         </CardContent>
       </Card>
@@ -225,14 +229,14 @@ export const MonthlySummary = ({
             {formatCurrency(netSavings)}
           </div>
           <p className="text-xs text-muted-foreground">Your balance for {month}</p>
-          {onEditClick && !hasNoBudget && (
+          {onEditClick && (
             <Button 
               variant="outline" 
               size="sm" 
               onClick={onEditClick}
               className="mt-2 w-full"
             >
-              Update Budget
+              Manage Budgets
             </Button>
           )}
         </CardContent>
@@ -246,11 +250,11 @@ export const MonthlySummary = ({
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
-            <CardDescription>Set your monthly budget</CardDescription>
+            <CardDescription>Set your overall monthly spending limit (this creates a total category included in your summed budgets).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Budget for {month} (NPR)</Label>
+              <Label className="text-sm font-medium">Overall Budget for {month} (NPR)</Label>
               <Input
                 type="number"
                 value={tempExpenses}
@@ -261,8 +265,9 @@ export const MonthlySummary = ({
                 className="text-right font-mono"
               />
               {suggestedExpenses > 0 && (
-                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
+                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)} (based on your expenses + 20% buffer)</p>
               )}
+              <p className="text-xs text-muted-foreground">Tip: For detailed category budgets, visit the Budgets page.</p>
             </div>
             <Button
               onClick={handleInlineSave}
@@ -271,7 +276,7 @@ export const MonthlySummary = ({
               size="sm"
             >
               <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : `Set Budget for ${month}`}
+              {saving ? 'Saving...' : `Set Overall Budget for ${month}`}
             </Button>
           </CardContent>
         </Card>
@@ -280,7 +285,7 @@ export const MonthlySummary = ({
     );
   }
 
-  // Normal summary when budget exists
+  // Normal summary when budget exists (sum > 0)
   return (
     <div className="space-y-4">
       {renderSummaryTiles()}

@@ -72,41 +72,35 @@ const Dashboard = () => {
     }
   }, [profile, profileLoading]);
 
-  // Fetch expense budget (runs once on mount if profile exists)
+  // Fetch total expense budget as sum of all category budgets for this month (dynamic sum)
   useEffect(() => {
     if (profile) {
       const fetchExpenseBudget = async () => {
         try {
-          // Find TOTAL_EXPENSE category
-          const { data: expenseCat, error: expenseCatError } = await supabase
-            .from('categories')
-            .select('id')
+          const { data: budgetData, error } = await supabase
+            .from('budgets')
+            .select(`
+              budgeted_amount,
+              category_id,
+              categories!inner(id, type)
+            `)
             .eq('user_id', profile.id)
-            .eq('name', 'TOTAL_EXPENSE')
-            .eq('type', 'expense')
-            .single();
+            .eq('categories.type', 'expense')
+            .eq('year', currentYear)
+            .eq('month', currentMonthNum);
 
-          if (expenseCatError && expenseCatError.code !== 'PGRST116') {
-            console.error('Error fetching TOTAL_EXPENSE category:', expenseCatError);
+          if (error) {
+            console.error('Error fetching expense budgets:', error);
+            setBudgetedExpenses(0);
+            return;
           }
 
-          let budgetedExpenses = 0;
-          if (expenseCat?.id) {
-            const { data: expenseBudget } = await supabase
-              .from('budgets')
-              .select('budgeted_amount')
-              .eq('user_id', profile.id)
-              .eq('category_id', expenseCat.id)
-              .eq('year', currentYear)
-              .eq('month', currentMonthNum)
-              .single();
-            budgetedExpenses = expenseBudget?.budgeted_amount || 0;
-          }
-
-          setBudgetedExpenses(budgetedExpenses);
-          console.log('Expense budget loaded:', budgetedExpenses);
+          // Sum all budgeted amounts for expense categories
+          const totalBudgeted = budgetData?.reduce((sum, budget) => sum + (budget.budgeted_amount || 0), 0) || 0;
+          setBudgetedExpenses(totalBudgeted);
+          console.log('Total expense budget (sum of categories) loaded:', totalBudgeted);
         } catch (err: any) {
-          console.error('Failed to load expense budget:', err);
+          console.error('Failed to load expense budget sum:', err);
           setBudgetedExpenses(0);
         }
       };
