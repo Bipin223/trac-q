@@ -18,6 +18,7 @@ const Login = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showUserExistsOptions, setShowUserExistsOptions] = useState(false);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -34,6 +35,7 @@ const Login = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
+    setShowUserExistsOptions(false);
 
     let authError = null;
 
@@ -54,6 +56,10 @@ const Login = () => {
         setEmail('');
         setPassword('');
         setUsername('');
+      } else {
+        if (error.message.toLowerCase().includes('user already registered')) {
+          setShowUserExistsOptions(true);
+        }
       }
     } else {
       // Sign in with username
@@ -109,6 +115,25 @@ const Login = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
+          {showUserExistsOptions && (
+            <div className="p-4 border border-muted-foreground/20 bg-muted/50 rounded-lg space-y-3 text-center">
+                <p className="text-sm font-medium text-foreground">It looks like you already have an account.</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="outline" className="w-full" onClick={() => {
+                        setIsSignUp(false);
+                        setError(null);
+                        setShowUserExistsOptions(false);
+                    }}>
+                        Sign In Instead
+                    </Button>
+                    <Button variant="secondary" className="w-full" asChild>
+                        <Link to="/forgot-password">Forgot Password?</Link>
+                    </Button>
+                </div>
+            </div>
+          )}
+
           {success && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -223,6 +248,7 @@ const Login = () => {
                 setIsSignUp(!isSignUp);
                 setError(null);
                 setSuccess(null);
+                setShowUserExistsOptions(false);
               }}
               className="underline font-semibold"
             >
