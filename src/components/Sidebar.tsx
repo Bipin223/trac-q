@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { useEffect, useState } from 'react';
 
 const navItems = [
   { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
@@ -21,33 +20,9 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
   const user = useUser();
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(() => {
-    const checkUserRole = async () => {
-      if (user) {
-        // Hardcode admin role for specific user to bypass database issues
-        if (user.email === 'onni46239@gmail.com') {
-          setIsAdmin(true);
-          return;
-        }
-
-        // Check role for other users
-        const { data } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-        
-        if (data && data.role === 'admin') {
-          setIsAdmin(true);
-        } else {
-          setIsAdmin(false);
-        }
-      }
-    };
-    checkUserRole();
-  }, [user, supabase]);
+  // Direct check for admin user, no state or effects needed.
+  const isAdmin = user?.email === 'onni46239@gmail.com';
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();

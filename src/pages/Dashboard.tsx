@@ -1,15 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { useUser } from '@supabase/auth-helpers-react';
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { Tag, DollarSign, BarChart2, ArrowRightLeft, User, Landmark } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface Profile {
-  username: string;
-  role: string;
-}
 
 interface ChartData {
   day: string;
@@ -18,34 +14,26 @@ interface ChartData {
 }
 
 const Dashboard = () => {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const user = useUser();
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState('');
 
+  // Directly determine profile info from the user object.
+  const profile = {
+    username: user?.email === 'onni46239@gmail.com' ? 'Zoro' : 'User',
+    role: user?.email === 'onni46239@gmail.com' ? 'admin' : 'user'
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
         return;
       }
-
-      // Hardcode profile for specific user to bypass database issues
-      if (user.email === 'onni46239@gmail.com') {
-        setProfile({ username: 'Zoro', role: 'admin' });
-      } else {
-        // Fetch profile for other users
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('username, role')
-          .eq('id', user.id)
-          .single();
-        setProfile(profileData);
-      }
+      setLoading(true);
 
       // Date ranges and month name
       const today = new Date();
@@ -85,7 +73,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, []);
+  }, [user]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -103,7 +91,7 @@ const Dashboard = () => {
     { to: '/profile', icon: <User className="h-6 w-6" />, title: 'Profile', description: 'Manage your account and personal settings.' }
   ];
 
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-1/2" />
@@ -123,9 +111,9 @@ const Dashboard = () => {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
           {getGreeting()},{" "}
-          {profile?.role === "admin"
+          {profile.role === "admin"
             ? `Admin - ${profile.username}`
-            : profile?.username || "User"}
+            : profile.username}
           !
         </h1>
         <p className="text-muted-foreground">
