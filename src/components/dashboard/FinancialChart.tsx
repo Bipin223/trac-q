@@ -12,6 +12,7 @@ import {
 
 interface ChartData {
   day: string;
+  dayNum: number;  // Numeric for X-axis domain control
   income: number;
   expenses: number;
   cumulativeIncome: number;
@@ -29,41 +30,43 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
 
-  // Create full month data (up to actual days in month)
+  // Get actual days in current month (e.g., 30 for Sep, 31 for Oct)
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const fullMonthData = Array.from({ length: daysInMonth }, (_, i) => ({
-    day: (i + 1).toString(),
-    income: 0,
-    expenses: 0,
-    cumulativeIncome: 0,
-    cumulativeExpenses: 0,
-  }));
 
-  // Populate actual data from input (only up to today)
+  // Create data ONLY for days 1 to TODAY (no future days)
+  const chartData: ChartData[] = Array.from({ length: currentDay }, (_, i) => {
+    const dayNum = i + 1;
+    const dayStr = dayNum.toString();
+    return {
+      day: dayStr,
+      dayNum,  // Numeric for X-axis
+      income: 0,
+      expenses: 0,
+      cumulativeIncome: 0,
+      cumulativeExpenses: 0,
+    };
+  });
+
+  // Populate actual data from input (only for days <= today)
   data.forEach(item => {
     const dayIndex = parseInt(item.day) - 1;
-    if (dayIndex >= 0 && dayIndex < fullMonthData.length) {
-      fullMonthData[dayIndex].income = item.income;
-      fullMonthData[dayIndex].expenses = item.expenses;
+    if (dayIndex >= 0 && dayIndex < currentDay) {
+      chartData[dayIndex].income = item.income;
+      chartData[dayIndex].expenses = item.expenses;
     }
   });
 
-  // Compute cumulatives: Only accumulate up to today, stay flat after
+  // Compute cumulatives (running totals up to today only)
   let runningIncome = 0;
   let runningExpenses = 0;
-  fullMonthData.forEach((item, index) => {
-    const dayNum = parseInt(item.day);
-    if (dayNum <= currentDay) {
-      // Accumulate only up to today
-      runningIncome += item.income;
-      runningExpenses += item.expenses;
-    }
-    // After today, stay flat (no further accumulation)
+  chartData.forEach((item) => {
+    runningIncome += item.income;
+    runningExpenses += item.expenses;
     item.cumulativeIncome = runningIncome;
     item.cumulativeExpenses = runningExpenses;
   });
 
-  const hasData = fullMonthData.some(d => d.cumulativeIncome > 0 || d.cumulativeExpenses > 0);
+  const hasData = chartData.some(d => d.cumulativeIncome > 0 || d.cumulativeExpenses > 0);
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat("en-NP", {
@@ -112,17 +115,20 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
     <Card>
       <CardHeader>
         <CardTitle>Financial Overview {month}</CardTitle>
-        <CardDescription>Your income and expenses for {month}.</CardDescription>
+        <CardDescription>Your income and expenses for {month} (up to today).</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={fullMonthData}>
+          <LineChart data={chartData} margin={{ right: 30 }}>
             {/* No grid lines - fully transparent/invisible */}
             <CartesianGrid stroke="none" />
             
             <XAxis 
-              dataKey="day" 
-              tickFormatter={(value) => value}  // Plain day numbers (e.g., "1", "15", "30")
+              dataKey="dayNum"  // Use numeric day for domain control
+              type="number"
+              domain={[1, daysInMonth]}  // Force full month ticks (1 to 30/31)
+              ticks={Array.from({ length: daysInMonth }, (_, i) => i + 1)}  // Show all day ticks
+              tickFormatter={(value) => value.toString()}  // Plain numbers ("1", "2", ..., "30")
               label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
             />
             <YAxis 
@@ -132,7 +138,7 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
             <Tooltip content={<CustomTooltip />} />
             <Legend />
             
-            {/* Cumulative Income (Green) */}
+            {/* Cumulative Income (Green) - stops at today */}
             <Line 
               type="monotone" 
               dataKey="cumulativeIncome" 
@@ -140,15 +146,17 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
               name="Income"
               activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2 }}
               strokeWidth={2}
+              connectNulls={false}  // Don't connect across nulls (ensures clean stop)
             />
             
-            {/* Cumulative Expenses (Red) */}
+            {/* Cumulative Expenses (Red) - stops at today */}
             <Line 
               type="monotone" 
               dataKey="cumulativeExpenses" 
               stroke="#ef4444" 
               name="Expenses"
               strokeWidth={2}
+              connectNulls={false}  // Don't connect across nulls (ensures clean stop)
             />
           </LineChart>
         </ResponsiveContainer>

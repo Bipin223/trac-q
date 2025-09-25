@@ -13,6 +13,7 @@ import { showError } from "@/utils/toast";
 
 interface ChartData {
   day: string;
+  dayNum: number;  // Added for X-axis domain control in FinancialChart
   income: number;
   expenses: number;
   cumulativeIncome: number;
@@ -58,6 +59,7 @@ const Dashboard = () => {
 
           const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
             day: (i + 1).toString().padStart(2, '0'), 
+            dayNum: i + 1,  // Added for type consistency with FinancialChart
             income: 0, 
             expenses: 0,
             cumulativeIncome: 0,
@@ -202,8 +204,8 @@ const Dashboard = () => {
       )}
       {financials && (
         <FinancialChart 
-          data={financials.chartData} 
-          month={currentMonth} 
+          data={financials.chartData}  // Now compatible with dayNum
+          month={currentMonth}
         />
       )}
 
