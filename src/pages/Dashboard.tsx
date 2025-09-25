@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { useUser } from '@supabase/auth-helpers-react';
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { Tag, DollarSign, BarChart2, ArrowRightLeft, User, Landmark } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
@@ -15,30 +14,30 @@ interface ChartData {
 }
 
 const Dashboard = () => {
-  const user = useUser();
   const { profile } = useProfile();
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [chartData, setChartData] = useState<ChartData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [currentMonth, setCurrentMonth] = useState('');
+  const [loadingFinancials, setLoadingFinancials] = useState(true);
+  
+  const currentMonth = new Date().toLocaleString('default', { month: 'long' });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!user) {
-        setLoading(false);
+      if (!profile) {
+        setLoadingFinancials(false);
         return;
       }
-      setLoading(true);
+      
+      setLoadingFinancials(true);
 
       const today = new Date();
-      setCurrentMonth(today.toLocaleString('default', { month: 'long' }));
       const firstDayCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
       const lastDayCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
       const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
-      const { data: incomes } = await supabase.from('incomes').select('amount, income_date').eq('user_id', user.id).gte('income_date', firstDayCurrentMonth).lte('income_date', lastDayCurrentMonth);
-      const { data: expenses } = await supabase.from('expenses').select('amount, expense_date').eq('user_id', user.id).gte('expense_date', firstDayCurrentMonth).lte('expense_date', lastDayCurrentMonth);
+      const { data: incomes } = await supabase.from('incomes').select('amount, income_date').eq('user_id', profile.id).gte('income_date', firstDayCurrentMonth).lte('income_date', lastDayCurrentMonth);
+      const { data: expenses } = await supabase.from('expenses').select('amount, expense_date').eq('user_id', profile.id).gte('expense_date', firstDayCurrentMonth).lte('expense_date', lastDayCurrentMonth);
 
       const monthlyIncome = incomes?.reduce((sum, item) => sum + item.amount, 0) || 0;
       const monthlyExpenses = expenses?.reduce((sum, item) => sum + item.amount, 0) || 0;
@@ -62,11 +61,11 @@ const Dashboard = () => {
       });
       
       setChartData(dailyData);
-      setLoading(false);
+      setLoadingFinancials(false);
     };
 
     fetchDashboardData();
-  }, [user]);
+  }, [profile]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -84,7 +83,7 @@ const Dashboard = () => {
     { to: '/profile', icon: <User className="h-6 w-6" />, title: 'Profile', description: 'Manage your account and personal settings.' }
   ];
 
-  if (loading || !profile) {
+  if (!profile || loadingFinancials) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-1/2" />
@@ -99,14 +98,16 @@ const Dashboard = () => {
     );
   }
 
+  const displayName = profile.username || "Valued User";
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
           {getGreeting()},{" "}
           {profile.role === "admin"
-            ? `Admin - ${profile.username}`
-            : profile.username}
+            ? `Admin - ${displayName}`
+            : displayName}
           !
         </h1>
         <p className="text-muted-foreground">
