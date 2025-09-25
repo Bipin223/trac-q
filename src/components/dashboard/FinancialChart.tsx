@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { format } from "date-fns";
 
 interface ChartData {
   day: string;
@@ -29,31 +28,42 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
   const currentDay = today.getDate();
   const currentMonth = today.getMonth();
   const currentYear = today.getFullYear();
-  const monthAbbr = format(today, 'MMM'); // e.g., "Sep"
 
-  // Filter data to only include dates up to today
-  const filteredData = data.filter(item => {
-    const itemDate = new Date(currentYear, currentMonth, parseInt(item.day));
-    return itemDate <= today;
+  // Create full month data (up to actual days in month)
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const fullMonthData = Array.from({ length: daysInMonth }, (_, i) => ({
+    day: (i + 1).toString(),
+    income: 0,
+    expenses: 0,
+    cumulativeIncome: 0,
+    cumulativeExpenses: 0,
+  }));
+
+  // Populate actual data from input (only up to today)
+  data.forEach(item => {
+    const dayIndex = parseInt(item.day) - 1;
+    if (dayIndex >= 0 && dayIndex < fullMonthData.length) {
+      fullMonthData[dayIndex].income = item.income;
+      fullMonthData[dayIndex].expenses = item.expenses;
+    }
   });
 
-  // Compute cumulative values (running totals) for filtered data
-  const processedData = filteredData.map((item, index) => {
-    const cumulativeIncome = filteredData
-      .slice(0, index + 1)
-      .reduce((sum, d) => sum + d.income, 0);
-    const cumulativeExpenses = filteredData
-      .slice(0, index + 1)
-      .reduce((sum, d) => sum + d.expenses, 0);
-
-    return {
-      ...item,
-      cumulativeIncome,
-      cumulativeExpenses,
-    };
+  // Compute cumulatives: Only accumulate up to today, stay flat after
+  let runningIncome = 0;
+  let runningExpenses = 0;
+  fullMonthData.forEach((item, index) => {
+    const dayNum = parseInt(item.day);
+    if (dayNum <= currentDay) {
+      // Accumulate only up to today
+      runningIncome += item.income;
+      runningExpenses += item.expenses;
+    }
+    // After today, stay flat (no further accumulation)
+    item.cumulativeIncome = runningIncome;
+    item.cumulativeExpenses = runningExpenses;
   });
 
-  const hasData = processedData.some(d => d.cumulativeIncome > 0 || d.cumulativeExpenses > 0);
+  const hasData = fullMonthData.some(d => d.cumulativeIncome > 0 || d.cumulativeExpenses > 0);
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat("en-NP", {
@@ -66,12 +76,6 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
       return `${(value / 1000).toFixed(0)}k`;
     }
     return value.toString();
-  };
-
-  // X-Axis formatter: Show "Sep 1", "Sep 2", etc. (month abbr + day, no leading zero)
-  const formatXAxis = (value: string) => {
-    const dayNum = parseInt(value);
-    return `${monthAbbr} ${dayNum}`;
   };
 
   const CustomTooltip = ({ active, payload }: any) => {
@@ -112,13 +116,13 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={processedData}>
+          <LineChart data={fullMonthData}>
             {/* No grid lines - fully transparent/invisible */}
             <CartesianGrid stroke="none" />
             
             <XAxis 
               dataKey="day" 
-              tickFormatter={formatXAxis}  // "Sep 1", "Sep 2", etc.
+              tickFormatter={(value) => value}  // Plain day numbers (e.g., "1", "15", "30")
               label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
             />
             <YAxis 
