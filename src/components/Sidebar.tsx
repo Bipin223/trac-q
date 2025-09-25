@@ -1,6 +1,6 @@
 import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSupabaseClient, useUser } from '@supabase/auth-helpers-react';
+import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
@@ -16,13 +16,15 @@ const navItems = [
   { to: '/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
 ];
 
-export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: boolean, onLinkClick?: () => void }) => {
+interface SidebarContentProps {
+  isSidebarOpen: boolean;
+  isAdmin: boolean;
+  onLinkClick?: () => void;
+}
+
+export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarContentProps) => {
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
-  const user = useUser();
-
-  // Direct check for admin user, no state or effects needed.
-  const isAdmin = user?.email === 'onni46239@gmail.com';
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
@@ -89,15 +91,16 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
 
 interface SidebarProps {
   isOpen: boolean;
+  isAdmin: boolean;
 }
 
-const Sidebar = ({ isOpen }: SidebarProps) => {
+const Sidebar = ({ isOpen, isAdmin }: SidebarProps) => {
   return (
     <aside className={cn(
       "hidden md:flex flex-col shadow-lg transition-all duration-300 ease-in-out",
       isOpen ? "w-64" : "w-20"
     )}>
-      <SidebarContent isSidebarOpen={isOpen} />
+      <SidebarContent isSidebarOpen={isOpen} isAdmin={isAdmin} />
     </aside>
   );
 };

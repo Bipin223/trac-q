@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { useUser } from '@supabase/auth-helpers-react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { Tag, DollarSign, BarChart2, ArrowRightLeft, User, Landmark } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
@@ -13,15 +13,18 @@ interface ChartData {
   expenses: number;
 }
 
-const Dashboard = () => {
-  const user = useUser();
+interface DashboardProps {
+  user: SupabaseUser | null;
+}
+
+const Dashboard = ({ user }: DashboardProps) => {
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState('');
 
-  // Directly determine profile info from the user object.
+  // Directly determine profile info from the user prop.
   const profile = {
     username: user?.email === 'onni46239@gmail.com' ? 'Zoro' : 'User',
     role: user?.email === 'onni46239@gmail.com' ? 'admin' : 'user'

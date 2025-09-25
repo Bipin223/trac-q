@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useSession } from '@supabase/auth-helpers-react';
+import { useSession, useUser } from '@supabase/auth-helpers-react';
 import Sidebar, { SidebarContent } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Incomes from './pages/Incomes';
@@ -17,6 +17,7 @@ import AdminPage from './pages/Admin';
 
 function App() {
   const session = useSession();
+  const user = useUser();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -24,9 +25,12 @@ function App() {
     return <Navigate to="/login" />;
   }
 
+  // Centralize the admin check to pass it down as a prop
+  const isAdmin = user?.email === 'onni46239@gmail.com';
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-background">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} isAdmin={isAdmin} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between h-20 px-4 sm:px-6 bg-white dark:bg-card border-b dark:border-border shrink-0">
           <div className="flex items-center">
@@ -38,7 +42,7 @@ function App() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-64 bg-white dark:bg-card">
-                <SidebarContent isSidebarOpen={true} onLinkClick={() => setMobileMenuOpen(false)} />
+                <SidebarContent isSidebarOpen={true} onLinkClick={() => setMobileMenuOpen(false)} isAdmin={isAdmin} />
               </SheetContent>
             </Sheet>
 
@@ -59,7 +63,7 @@ function App() {
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-background">
           <div className="container mx-auto px-6 py-8">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
+              <Route path="/" element={<Dashboard user={user} />} />
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/budgets" element={<Budgets />} />
               <Route path="/incomes" element={<Incomes />} />
