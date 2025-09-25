@@ -15,6 +15,9 @@ interface ChartData {
   day: string;
   income: number;
   expenses: number;
+  cumulativeIncome: number;
+  cumulativeExpenses: number;
+  cumulativeBudget?: number;
 }
 
 const formatCurrency = (amount: number) => {
@@ -54,7 +57,15 @@ const Dashboard = () => {
           const totalIncome = incomes?.reduce((sum, item) => sum + item.amount, 0) || 0;
           const totalExpenses = expenses?.reduce((sum, item) => sum + item.amount, 0) || 0;
 
-          const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ day: (i + 1).toString().padStart(2, '0'), income: 0, expenses: 0 }));
+          const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
+            day: (i + 1).toString().padStart(2, '0'), 
+            income: 0, 
+            expenses: 0,
+            cumulativeIncome: 0,
+            cumulativeExpenses: 0,
+            cumulativeBudget: undefined
+          }));
+          
           incomes?.forEach(i => { 
             const date = new Date(i.income_date).getDate();
             if(dailyData[date - 1]) dailyData[date - 1].income += i.amount; 
@@ -191,7 +202,13 @@ const Dashboard = () => {
           onBudgetUpdate={handleBudgetUpdate}
         />
       )}
-      {financials && <FinancialChart data={financials.chartData} month={currentMonth} />}
+      {financials && (
+        <FinancialChart 
+          data={financials.chartData} 
+          month={currentMonth} 
+          budgetedExpenses={budgetedExpenses}  // New: Pass budget for line integration
+        />
+      )}
 
       <div>
         <h2 className="text-2xl font-bold tracking-tight mb-4">Your Tools</h2>
