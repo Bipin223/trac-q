@@ -8,7 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
 const ForgotPasswordPage = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -19,15 +19,45 @@ const ForgotPasswordPage = () => {
     setError(null);
     setMessage(null);
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const trimmedIdentifier = identifier.trim();
+    let targetEmail = '';
 
-    if (error) {
-      setError(error.message);
+    // Check if the identifier is an email or a username
+    if (trimmedIdentifier.includes('@')) {
+      targetEmail = trimmedIdentifier;
     } else {
-      setMessage('If an account with this email exists, password reset instructions have been sent.');
+      // It's a username, so find the associated email
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', trimmedIdentifier)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+        setError("An error occurred while looking up your account.");
+        setLoading(false);
+        return;
+      }
+      
+      if (profile && profile.email) {
+        targetEmail = profile.email;
+      }
     }
+
+    // If we found an email, attempt to send the reset link.
+    // We proceed even if no email was found to prevent user enumeration attacks.
+    if (targetEmail) {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (resetError) {
+        setError(resetError.message);
+      }
+    }
+    
+    // Always show a generic success message for security reasons.
+    setMessage('If an account with this username or email exists, password reset instructions have been sent to the associated email address.');
     setLoading(false);
   };
 
@@ -38,7 +68,7 @@ const ForgotPasswordPage = () => {
           <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
           <h1 className="text-3xl font-bold">Forgot Password</h1>
           <p className="text-muted-foreground">
-            Enter your email and we'll send you a link to reset your password.
+            Enter your username or email and we'll send a reset link to your registered email address.
           </p>
         </div>
 
@@ -59,13 +89,13 @@ const ForgotPasswordPage = () => {
 
         <form onSubmit={handlePasswordReset} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="identifier">Username or Email</Label>
             <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your_email@example.com"
+              id="identifier"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="your_username or your_email@example.com"
               required
               disabled={!!message}
             />
