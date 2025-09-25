@@ -1,4 +1,4 @@
-import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 
 const navItems = [
   { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
+  { to: '/accounts', icon: <Landmark className="h-5 w-5" />, label: 'Accounts' },
   { to: '/budgets', icon: <Tag className="h-5 w-5" />, label: 'Budgets' },
   { to: '/incomes', icon: <DollarSign className="h-5 w-5" />, label: 'Incomes' },
   { to: '/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },

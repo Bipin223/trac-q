@@ -8,6 +8,7 @@ import Expenses from './pages/Expenses';
 import Budgets from './pages/Budgets';
 import Profile from './pages/Profile';
 import ExchangeRatesPage from './pages/ExchangeRates';
+import Accounts from './pages/Accounts';
 import { Button } from './components/ui/button';
 import { Menu } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
@@ -58,6 +59,7 @@ function App() {
           <div className="container mx-auto px-6 py-8">
             <Routes>
               <Route path="/" element={<Dashboard />} />
+              <Route path="/accounts" element={<Accounts />} />
               <Route path="/budgets" element={<Budgets />} />
               <Route path="/incomes" element={<Incomes />} />
               <Route path="/expenses" element={<Expenses />} />
