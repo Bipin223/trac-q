@@ -16,9 +16,9 @@ interface ChartData {
 }
 
 const Dashboard = () => {
-  const { profile } = useProfile();
+  const { profile, loading: profileLoading } = useProfile();
   const [financials, setFinancials] = useState<{ totalIncome: number; totalExpenses: number; chartData: ChartData[] } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingFinancials, setLoadingFinancials] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
@@ -26,7 +26,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (profile) {
       const fetchDashboardData = async () => {
-        setLoading(true);
+        setLoadingFinancials(true);
         setError(null);
         try {
           const today = new Date();
@@ -58,14 +58,14 @@ const Dashboard = () => {
           setError("Failed to load financial data. Please try again later.");
           console.error(err);
         } finally {
-          setLoading(false);
+          setLoadingFinancials(false);
         }
       };
       fetchDashboardData();
-    } else {
-      setLoading(false);
+    } else if (!profileLoading) {
+      setLoadingFinancials(false);
     }
-  }, [profile]);
+  }, [profile, profileLoading]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -74,7 +74,7 @@ const Dashboard = () => {
     return 'Good evening';
   };
 
-  if (loading) {
+  if (profileLoading || loadingFinancials) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-1/2" />
@@ -85,7 +85,7 @@ const Dashboard = () => {
     );
   }
 
-  if (!profile || !financials) {
+  if (!profile || error) {
     return (
       <Alert variant="destructive">
         <AlertCircle className="h-4 w-4" />
@@ -111,8 +111,14 @@ const Dashboard = () => {
         <h1 className="text-3xl font-bold tracking-tight">{getGreeting()}, {profile.role === "admin" ? `Admin - ${displayName}` : displayName}!</h1>
         <p className="text-muted-foreground">Here's your financial summary for {currentMonth}.</p>
       </div>
-      <MonthlySummary totalIncome={financials.totalIncome} totalExpenses={financials.totalExpenses} month={currentMonth} />
-      <FinancialChart data={financials.chartData} month={currentMonth} />
+      
+      {financials && (
+        <>
+          <MonthlySummary totalIncome={financials.totalIncome} totalExpenses={financials.totalExpenses} month={currentMonth} />
+          <FinancialChart data={financials.chartData} month={currentMonth} />
+        </>
+      )}
+
       <div>
         <h2 className="text-2xl font-bold tracking-tight mb-4">Your Tools</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
