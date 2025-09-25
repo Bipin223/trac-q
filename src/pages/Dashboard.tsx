@@ -15,6 +15,8 @@ interface ChartData {
   day: string;
   income: number;
   expenses: number;
+  cumulativeIncome: number;
+  cumulativeExpenses: number;
 }
 
 const formatCurrency = (amount: number) => {
@@ -57,7 +59,9 @@ const Dashboard = () => {
           const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
             day: (i + 1).toString().padStart(2, '0'), 
             income: 0, 
-            expenses: 0
+            expenses: 0,
+            cumulativeIncome: 0,
+            cumulativeExpenses: 0
           }));
           
           incomes?.forEach(i => { 

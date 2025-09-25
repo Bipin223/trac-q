@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -13,6 +13,8 @@ interface ChartData {
   day: string;
   income: number;
   expenses: number;
+  cumulativeIncome: number;
+  cumulativeExpenses: number;
 }
 
 interface FinancialChartProps {
@@ -21,7 +23,23 @@ interface FinancialChartProps {
 }
 
 export const FinancialChart = ({ data, month }: FinancialChartProps) => {
-  const hasData = data.some(d => d.income > 0 || d.expenses > 0);
+  // Compute cumulative values (running totals) for smooth income/expenses visualization
+  const processedData = data.map((item, index) => {
+    const cumulativeIncome = data
+      .slice(0, index + 1)
+      .reduce((sum, d) => sum + d.income, 0);
+    const cumulativeExpenses = data
+      .slice(0, index + 1)
+      .reduce((sum, d) => sum + d.expenses, 0);
+
+    return {
+      ...item,
+      cumulativeIncome,
+      cumulativeExpenses,
+    };
+  });
+
+  const hasData = processedData.some(d => d.cumulativeIncome > 0 || d.cumulativeExpenses > 0);
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat("en-NP", {
@@ -53,7 +71,7 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
           <CardDescription>Your income and expenses for {month}.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px] text-muted-foreground">
-          <p>No financial activity yet. Add incomes or expenses to see your daily progress!</p>
+          <p>No financial activity yet. Add incomes or expenses to see your progress!</p>
         </CardContent>
       </Card>
     );
@@ -62,12 +80,12 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Daily Financial Overview</CardTitle>
-        <CardDescription>Your income and expenses by day for {month}.</CardDescription>
+        <CardTitle>Financial Overview</CardTitle>
+        <CardDescription>Cumulative progress for {month}—track your income vs. expenses over time.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={data}>
+          <LineChart data={processedData}>
             <XAxis 
               dataKey="day" 
               tickFormatter={(value) => `#${value}`}  // e.g., "#15" for day 15
@@ -80,22 +98,25 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
             <Tooltip content={<CustomTooltip />} />
             <Legend />
             
-            {/* Daily Income (Green Bar) */}
-            <Bar 
-              dataKey="income" 
-              fill="#22c55e" 
-              name="Daily Income"
-              radius={[4, 4, 0, 0]}  // Rounded top corners for clean look
+            {/* Cumulative Income (Green) */}
+            <Line 
+              type="monotone" 
+              dataKey="cumulativeIncome" 
+              stroke="#22c55e" 
+              name="Cumulative Income"
+              activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2 }}
+              strokeWidth={2}
             />
             
-            {/* Daily Expenses (Red Bar) */}
-            <Bar 
-              dataKey="expenses" 
-              fill="#ef4444" 
-              name="Daily Expenses"
-              radius={[4, 4, 0, 0]}
+            {/* Cumulative Expenses (Red) */}
+            <Line 
+              type="monotone" 
+              dataKey="cumulativeExpenses" 
+              stroke="#ef4444" 
+              name="Cumulative Expenses"
+              strokeWidth={2}
             />
-          </BarChart>
+          </LineChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
