@@ -7,6 +7,7 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
+  CartesianGrid,
 } from "recharts";
 
 interface ChartData {
@@ -80,15 +81,18 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Financial Overview</CardTitle>
-        <CardDescription>Cumulative progress for {month}—track your income vs. expenses over time.</CardDescription>
+        <CardTitle>Financial Overview {month}</CardTitle>
+        <CardDescription>Your income and expenses for {month}.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={processedData}>
+            {/* No grid lines - fully transparent/invisible */}
+            <CartesianGrid stroke="none" />
+            
             <XAxis 
               dataKey="day" 
-              tickFormatter={(value) => `#${value}`}  // e.g., "#15" for day 15
+              tickFormatter={(value) => value}  // Plain day numbers (e.g., "15", no "#")
               label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
             />
             <YAxis 
@@ -103,7 +107,7 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
               type="monotone" 
               dataKey="cumulativeIncome" 
               stroke="#22c55e" 
-              name="Cumulative Income"
+              name="Income"
               activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2 }}
               strokeWidth={2}
             />
@@ -113,7 +117,7 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
               type="monotone" 
               dataKey="cumulativeExpenses" 
               stroke="#ef4444" 
-              name="Cumulative Expenses"
+              name="Expenses"
               strokeWidth={2}
             />
           </LineChart>
