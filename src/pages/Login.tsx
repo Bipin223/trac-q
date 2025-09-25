@@ -407,7 +407,7 @@ const Login = () => {
                   disabled={loading}
                 />
                 <Label htmlFor="remember" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Remember me (Remember me (quick login ^_^ ))
+                  Remember me(quick login ^_^ )
                 </Label>
               </div>
             )}
