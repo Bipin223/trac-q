@@ -5,15 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, User, Lock } from 'lucide-react';
+import { AlertCircle, Mail, Lock } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const DUMMY_DOMAIN = 'trac-q.app';
 
 const Login = () => {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,30 +33,30 @@ const Login = () => {
     setError(null);
     setSuccess(null);
 
-    const email = `${username.trim()}@${DUMMY_DOMAIN}`;
-
+    const trimmedEmail = email.trim();
     let authError = null;
 
     if (isSignUp) {
+      const usernameFromEmail = trimmedEmail.split('@')[0];
       const { error } = await supabase.auth.signUp({
-        email,
+        email: trimmedEmail,
         password,
         options: {
           data: {
-            username: username.trim(),
+            username: usernameFromEmail,
           },
         },
       });
       authError = error;
       if (!authError) {
-        setSuccess("Sign-up successful! Please sign in with your new credentials.");
+        setSuccess("Sign-up successful! Please check your email to verify your account, then sign in.");
         setIsSignUp(false);
-        setUsername('');
+        setEmail('');
         setPassword('');
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: trimmedEmail,
         password,
       });
       authError = error;
@@ -106,15 +104,15 @@ const Login = () => {
 
           <form onSubmit={handleAuthAction} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
                   required
                   className="pl-10 bg-transparent"
                 />

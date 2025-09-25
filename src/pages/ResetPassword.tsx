@@ -88,7 +88,7 @@ const ResetPasswordPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
+          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
           <h1 className="text-3xl font-bold">Reset Your Password</h1>
           <p className="text-muted-foreground">
             Enter your new password below.

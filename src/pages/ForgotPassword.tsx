@@ -7,10 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 
-const DUMMY_DOMAIN = 'trac-q.app';
-
 const ForgotPasswordPage = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -21,16 +19,14 @@ const ForgotPasswordPage = () => {
     setError(null);
     setMessage(null);
 
-    const email = `${username.trim()}@${DUMMY_DOMAIN}`;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/reset-password`,
     });
 
     if (error) {
       setError(error.message);
     } else {
-      setMessage('If an account with this username exists, password reset instructions have been sent to the associated email address.');
+      setMessage('If an account with this email exists, password reset instructions have been sent.');
     }
     setLoading(false);
   };
@@ -39,10 +35,10 @@ const ForgotPasswordPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
+          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
           <h1 className="text-3xl font-bold">Forgot Password</h1>
           <p className="text-muted-foreground">
-            Enter your username and we'll send you a link to reset your password.
+            Enter your email and we'll send you a link to reset your password.
           </p>
         </div>
 
@@ -63,13 +59,13 @@ const ForgotPasswordPage = () => {
 
         <form onSubmit={handlePasswordReset} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
-              id="username"
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="your_username"
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your_email@example.com"
               required
               disabled={!!message}
             />
