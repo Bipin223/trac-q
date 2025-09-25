@@ -41,7 +41,7 @@ const ForgotPasswordPage = () => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('email')
-        .eq('username', trimmedIdentifier)
+        .ilike('username', trimmedIdentifier)
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "No rows found"

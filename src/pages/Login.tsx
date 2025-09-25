@@ -66,7 +66,7 @@ const Login = () => {
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('email')
-        .eq('username', username.trim())
+        .ilike('username', username.trim())
         .single();
 
       if (profileError || !profile || !profile.email) {
