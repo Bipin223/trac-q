@@ -88,11 +88,12 @@ const Dashboard = () => {
     }
     try {
       console.log(`Fetching overall budget for user ${profile.id}, year ${currentYear}, month ${currentMonthNum}`);
+      const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
       const { data: budgetData, error } = await supabase
         .from('budgets')
         .select('budgeted_amount')
         .eq('user_id', profile.id)
-        .eq('category_id', (await getTotalExpenseCategoryId(profile.id)))
+        .eq('category_id', totalExpenseCategoryId)
         .eq('year', currentYear)
         .eq('month', currentMonthNum)
         .single();
@@ -106,7 +107,7 @@ const Dashboard = () => {
 
       const overallBudget = budgetData?.budgeted_amount || 0;
       setBudgetedExpenses(overallBudget);
-      console.log('Fetched overall budget from Supabase:', overallBudget);
+      console.log('Fetched overall budget from Supabase:', overallBudget, 'using category ID:', totalExpenseCategoryId);
     } catch (err: any) {
       console.error('Unexpected budget fetch error:', err);
       showError(`Budget load failed: ${err.message}`);
@@ -144,11 +145,16 @@ const Dashboard = () => {
     return existing.id;
   };
 
-  // Callback for after inline save: Refetch from DB to confirm persistence and update tile
-  const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
-    console.log('Overall budget saved:', newExpenses, '- Refetching from Supabase to confirm');
-    await fetchExpenseBudget(); // Refetch to sync tile with DB
-    showSuccess(`Overall budget of ${formatCurrency(newExpenses)} set for ${currentMonth}! It persists across logouts/logins.`);
+  // Callback for after inline save: Refetch from DB to confirm persistence and update tile (now handles verified amount)
+  const handleBudgetUpdate = useCallback(async (newExpenses: number | null) => {
+    console.log('Form callback: Updating tile with', newExpenses, '- Refetching from Supabase to confirm');
+    if (newExpenses !== null) {
+      setBudgetedExpenses(newExpenses); // Immediate local update for instant tile response
+    }
+    await fetchExpenseBudget(); // Full refetch to sync with DB (ensures persistence)
+    if (newExpenses !== null) {
+      showSuccess(`Overall budget of ${formatCurrency(newExpenses)} set for ${currentMonth}! Tile synced (persists across logouts/logins).`);
+    }
   }, [fetchExpenseBudget, currentMonth]);
 
   const getGreeting = () => {
@@ -194,7 +200,7 @@ const Dashboard = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{getGreeting()}, {profile.role === "admin" ? `Admin - ${displayName}` : displayName}!</h1>
-        <p className="text-muted-foreground">Here's your financial summary for {currentMonth}. Set your overall monthly budget below if needed.</p>
+        <p className="text-muted-foreground">Here's your financial summary for {currentMonth}. The overall budget is saved to Supabase and updates the tile below.</p>
       </div>
       
       {financials && (
