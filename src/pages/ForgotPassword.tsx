@@ -38,20 +38,16 @@ const ForgotPasswordPage = () => {
       targetEmail = trimmedIdentifier;
       emailHint = redactEmail(targetEmail);
     } else {
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .ilike('username', trimmedIdentifier)
-        .single();
+      const { data, error: rpcError } = await supabase.rpc('get_email_from_username', {
+        p_username: trimmedIdentifier,
+      });
 
-      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "No rows found"
-        setError("An error occurred while looking up your account.");
-        setLoading(false);
-        return;
+      if (rpcError) {
+        console.error('RPC Error:', rpcError);
       }
-      
-      if (profile && profile.email) {
-        targetEmail = profile.email;
+
+      if (data) {
+        targetEmail = data;
         emailHint = redactEmail(targetEmail);
       }
     }

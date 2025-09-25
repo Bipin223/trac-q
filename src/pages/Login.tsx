@@ -63,20 +63,18 @@ const Login = () => {
       }
     } else {
       // Sign in with username
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .ilike('username', username.trim())
-        .single();
+      const { data: emailFromUsername, error: rpcError } = await supabase.rpc('get_email_from_username', {
+        p_username: username.trim(),
+      });
 
-      if (profileError || !profile || !profile.email) {
+      if (rpcError || !emailFromUsername) {
         setError('Invalid username or password.');
         setLoading(false);
         return;
       }
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: profile.email,
+        email: emailFromUsername,
         password,
       });
       
