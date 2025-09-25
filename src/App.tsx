@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useSession, useUser } from '@supabase/auth-helpers-react';
+import { useSession } from '@supabase/auth-helpers-react';
 import Sidebar, { SidebarContent } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Incomes from './pages/Incomes';
@@ -10,14 +10,15 @@ import Profile from './pages/Profile';
 import ExchangeRatesPage from './pages/ExchangeRates';
 import Accounts from './pages/Accounts';
 import { Button } from './components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { ThemeToggle } from './components/theme-toggle';
 import AdminPage from './pages/Admin';
+import { useProfile } from './contexts/ProfileContext';
 
 function App() {
   const session = useSession();
-  const user = useUser();
+  const { profile, loading } = useProfile();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -25,8 +26,15 @@ function App() {
     return <Navigate to="/login" />;
   }
 
-  // Centralize the admin check to pass it down as a prop
-  const isAdmin = user?.email === 'onni46239@gmail.com';
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const isAdmin = profile?.role === 'admin';
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-background">
@@ -63,7 +71,7 @@ function App() {
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-background">
           <div className="container mx-auto px-6 py-8">
             <Routes>
-              <Route path="/" element={<Dashboard user={user} />} />
+              <Route path="/" element={<Dashboard />} />
               <Route path="/accounts" element={<Accounts />} />
               <Route path="/budgets" element={<Budgets />} />
               <Route path="/incomes" element={<Incomes />} />

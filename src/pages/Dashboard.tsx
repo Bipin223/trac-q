@@ -1,11 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
-import { User as SupabaseUser } from '@supabase/supabase-js';
+import { useUser } from '@supabase/auth-helpers-react';
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { Tag, DollarSign, BarChart2, ArrowRightLeft, User, Landmark } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useProfile } from "../contexts/ProfileContext";
 
 interface ChartData {
   day: string;
@@ -13,22 +14,14 @@ interface ChartData {
   expenses: number;
 }
 
-interface DashboardProps {
-  user: SupabaseUser | null;
-}
-
-const Dashboard = ({ user }: DashboardProps) => {
+const Dashboard = () => {
+  const user = useUser();
+  const { profile } = useProfile();
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState('');
-
-  // Directly determine profile info from the user prop.
-  const profile = {
-    username: user?.email === 'onni46239@gmail.com' ? 'Zoro' : 'User',
-    role: user?.email === 'onni46239@gmail.com' ? 'admin' : 'user'
-  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -38,23 +31,20 @@ const Dashboard = ({ user }: DashboardProps) => {
       }
       setLoading(true);
 
-      // Date ranges and month name
       const today = new Date();
       setCurrentMonth(today.toLocaleString('default', { month: 'long' }));
       const firstDayCurrentMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
       const lastDayCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
       const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
-      // Fetch incomes and expenses for the month
-      const { data: incomes } = await supabase.from('incomes').select('amount, income_date').gte('income_date', firstDayCurrentMonth).lte('income_date', lastDayCurrentMonth);
-      const { data: expenses } = await supabase.from('expenses').select('amount, expense_date').gte('expense_date', firstDayCurrentMonth).lte('expense_date', lastDayCurrentMonth);
+      const { data: incomes } = await supabase.from('incomes').select('amount, income_date').eq('user_id', user.id).gte('income_date', firstDayCurrentMonth).lte('income_date', lastDayCurrentMonth);
+      const { data: expenses } = await supabase.from('expenses').select('amount, expense_date').eq('user_id', user.id).gte('expense_date', firstDayCurrentMonth).lte('expense_date', lastDayCurrentMonth);
 
       const monthlyIncome = incomes?.reduce((sum, item) => sum + item.amount, 0) || 0;
       const monthlyExpenses = expenses?.reduce((sum, item) => sum + item.amount, 0) || 0;
       setTotalIncome(monthlyIncome);
       setTotalExpenses(monthlyExpenses);
 
-      // Prepare chart data
       const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({
         day: (i + 1).toString().padStart(2, '0'),
         income: 0,
@@ -94,7 +84,7 @@ const Dashboard = ({ user }: DashboardProps) => {
     { to: '/profile', icon: <User className="h-6 w-6" />, title: 'Profile', description: 'Manage your account and personal settings.' }
   ];
 
-  if (loading && !user) {
+  if (loading || !profile) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-1/2" />
