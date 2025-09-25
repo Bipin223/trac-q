@@ -6,7 +6,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, Mail, Lock, User, Eye, EyeOff, User as UserIcon, LogOut } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+const REMEMBERED_USERS_KEY = 'tracq-remembered-users';
+const MAX_REMEMBERED_USERS = 5;
 
 const Login = () => {
   const navigate = useNavigate();
@@ -20,7 +31,11 @@ const Login = () => {
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showUserExistsOptions, setShowUserExistsOptions] = useState(false);
+  const [rememberedUsers, setRememberedUsers] = useState<string[]>([]);
+  const [usernameInputRef, setUsernameInputRef] = useState<HTMLInputElement | null>(null);
+  const [passwordInputRef, setPasswordInputRef] = useState<HTMLInputElement | null>(null);
   const beforeUnloadHandlerRef = useRef<(() => void) | null>(null);
+  const usernameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -30,6 +45,12 @@ const Login = () => {
       }
     };
     checkSession();
+
+    // Load remembered users from localStorage
+    const storedUsers = localStorage.getItem(REMEMBERED_USERS_KEY);
+    if (storedUsers) {
+      setRememberedUsers(JSON.parse(storedUsers));
+    }
 
     // Cleanup any existing beforeunload handler on unmount
     return () => {
@@ -52,6 +73,26 @@ const Login = () => {
     // Add new handler for temporary session
     beforeUnloadHandlerRef.current = handleBeforeUnload;
     window.addEventListener('beforeunload', beforeUnloadHandlerRef.current);
+  };
+
+  const addToRememberedUsers = (newUsername: string) => {
+    const updatedUsers = [newUsername, ...rememberedUsers.filter(u => u !== newUsername)].slice(0, MAX_REMEMBERED_USERS);
+    setRememberedUsers(updatedUsers);
+    localStorage.setItem(REMEMBERED_USERS_KEY, JSON.stringify(updatedUsers));
+  };
+
+  const removeFromRememberedUsers = (usernameToRemove: string) => {
+    const updatedUsers = rememberedUsers.filter(u => u !== usernameToRemove);
+    setRememberedUsers(updatedUsers);
+    localStorage.setItem(REMEMBERED_USERS_KEY, JSON.stringify(updatedUsers));
+  };
+
+  const handleQuickLogin = (selectedUsername: string) => {
+    setUsername(selectedUsername);
+    // Focus on password field after a brief delay to ensure pre-fill
+    setTimeout(() => {
+      passwordInputRef?.focus();
+    }, 100);
   };
 
   const handleAuthAction = async (e: React.FormEvent) => {
@@ -107,7 +148,9 @@ const Login = () => {
       authError = signInError;
       if (!authError) {
         // Handle remember me logic
-        if (!rememberMe) {
+        if (rememberMe) {
+          addToRememberedUsers(username.trim());
+        } else {
           setupTemporarySession();
         }
         navigate('/');
@@ -120,8 +163,49 @@ const Login = () => {
     setLoading(false);
   };
 
+  const hasRememberedUsers = rememberedUsers.length > 0 && !isSignUp;
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-white dark:from-gray-900 dark:via-purple-900/80 dark:to-blue-900/80 p-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-white dark:from-gray-900 dark:via-purple-900/80 dark:to-blue-900/80 p-4 relative">
+      {/* Floating Quick Login Button - Only for sign-in mode with remembered users */}
+      {hasRememberedUsers && (
+        <div className="fixed top-4 right-4 z-50">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <UserIcon className="h-4 w-4" />
+                Quick Login ({rememberedUsers.length})
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Remembered Users</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {rememberedUsers.map((user) => (
+                <DropdownMenuItem key={user} onClick={() => handleQuickLogin(user)} className="flex justify-between items-center">
+                  <span className="truncate">{user}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromRememberedUsers(user);
+                    }}
+                    className="h-6 w-6 p-0 ml-2"
+                  >
+                    <LogOut className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuItem>
+              ))}
+              {rememberedUsers.length >= MAX_REMEMBERED_USERS && (
+                <DropdownMenuItem disabled className="text-muted-foreground text-xs">
+                  Max {MAX_REMEMBERED_USERS} users remembered
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
+
       <div className="w-full max-w-4xl grid md:grid-cols-2 rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-8 space-y-6 bg-white/80 dark:bg-card/80 backdrop-blur-sm">
           <div className="space-y-2 text-center">
@@ -210,6 +294,7 @@ const Login = () => {
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
+                    ref={usernameRef}
                     id="username-login"
                     type="text"
                     value={username}
@@ -226,6 +311,7 @@ const Login = () => {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
+                  ref={el => setPasswordInputRef(el)}
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -262,7 +348,7 @@ const Login = () => {
                   onCheckedChange={(checked) => setRememberMe(!!checked)}
                 />
                 <Label htmlFor="remember" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Remember me
+                  Remember me (saves username for quick access)
                 </Label>
               </div>
             )}
