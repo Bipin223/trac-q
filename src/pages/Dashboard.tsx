@@ -39,6 +39,7 @@ const Dashboard = () => {
         setLoadingFinancials(true);
         setError(null);
         try {
+          console.log('Dashboard: Fetching data for user', profile.id);
           const today = new Date();
           const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
           const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
@@ -64,7 +65,9 @@ const Dashboard = () => {
           });
 
           setFinancials({ totalIncome, totalExpenses, chartData: dailyData });
+          console.log('Dashboard: Fetched financials - Income:', totalIncome, 'Expenses:', totalExpenses);
         } catch (err: any) {
+          console.error('Dashboard: Fetch error:', err);
           setError("Could not load financial data. Please try again.");
           showError('Failed to load data.');
         } finally {
@@ -79,14 +82,18 @@ const Dashboard = () => {
     }
   }, [profile, profileLoading]);
 
-  // Fetch the single overall expense budget (TOTAL_EXPENSE) for this month (persistent in Supabase)
+  // Fetch the single overall expense budget (TOTAL_EXPENSE) for this month
   const fetchExpenseBudget = useCallback(async () => {
     if (!profile) {
+      console.log('Dashboard: No profile, setting budget to 0');
       setBudgetedExpenses(0);
       return;
     }
     try {
+      console.log('Dashboard: Fetching budget for', profile.id, currentYear, currentMonthNum);
       const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
+      console.log('Dashboard: Category ID:', totalExpenseCategoryId);
+      
       const { data: budgetData, error } = await supabase
         .from('budgets')
         .select('budgeted_amount')
@@ -96,52 +103,72 @@ const Dashboard = () => {
         .eq('month', currentMonthNum)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows, which is fine (budget=0)
-        setBudgetedExpenses(0);
-        return;
+      if (error) {
+        if (error.code === 'PGRST116') {
+          console.log('Dashboard: No budget row found');
+          setBudgetedExpenses(0);
+        } else {
+          console.error('Dashboard: Budget fetch error:', error);
+          setBudgetedExpenses(0);
+          showError('Failed to load budget.');
+        }
+      } else {
+        const overallBudget = budgetData?.budgeted_amount || 0;
+        console.log('Dashboard: Budget fetched:', overallBudget);
+        setBudgetedExpenses(overallBudget);
       }
-
-      const overallBudget = budgetData?.budgeted_amount || 0;
-      setBudgetedExpenses(overallBudget);
     } catch (err: any) {
+      console.error('Dashboard: Budget fetch exception:', err);
       setBudgetedExpenses(0);
     }
   }, [profile, currentYear, currentMonthNum]);
 
   // Helper to get TOTAL_EXPENSE category ID (create if missing)
   const getTotalExpenseCategoryId = async (userId: string): Promise<string> => {
-    const { data: existing, error: existingError } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('name', 'TOTAL_EXPENSE')
-      .eq('type', 'expense')
-      .single();
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('name', 'TOTAL_EXPENSE')
+        .eq('type', 'expense')
+        .single();
 
-    if (existingError && existingError.code !== 'PGRST116') {
-      throw existingError;
-    }
+      if (existingError && existingError.code !== 'PGRST116') {
+        throw existingError;
+      }
 
-    if (!existing) {
+      if (existing) {
+        return existing.id;
+      }
+
+      // Create if missing
       const { data: inserted, error: insertError } = await supabase
         .from('categories')
         .insert({ name: 'TOTAL_EXPENSE', user_id: userId, type: 'expense' })
         .select('id')
         .single();
+
       if (insertError) {
         throw insertError;
       }
+
+      console.log('Dashboard: Created TOTAL_EXPENSE category:', inserted.id);
       return inserted.id;
+    } catch (err: any) {
+      console.error('Dashboard: Category error:', err);
+      throw new Error(`Category setup failed: ${err.message}`);
     }
-    return existing.id;
   };
 
-  // Callback for after inline save: Refetch from DB to confirm persistence and update tile
-  const handleBudgetUpdate = useCallback(async (newExpenses: number | null) => {
-    if (newExpenses !== null) {
-      setBudgetedExpenses(newExpenses); // Immediate local update for instant tile response
+  // Callback for after budget save: Only update if verified successful
+  const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
+    console.log('Dashboard: Budget update callback:', newExpenses);
+    if (newExpenses >= 0) {
+      setBudgetedExpenses(newExpenses);
     }
-    await fetchExpenseBudget(); // Full refetch to sync with DB (ensures persistence)
+    // Re-fetch to confirm persistence (prevents reset)
+    await fetchExpenseBudget();
   }, [fetchExpenseBudget]);
 
   const getGreeting = () => {

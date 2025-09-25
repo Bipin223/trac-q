@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Save, RefreshCw } from "lucide-react";
@@ -37,58 +39,61 @@ export const MonthlySummary = ({
 }: MonthlySummaryProps) => {
   const netSavings = totalIncome - totalExpenses;
   const expensesVsBudget = budgetedExpenses > 0 ? ((totalExpenses / budgetedExpenses) * 100) : 0;
-  const hasNoBudget = budgetedExpenses === 0;
-  const [tempExpenses, setTempExpenses] = useState('');
+  const [currentBudget, setCurrentBudget] = useState(budgetedExpenses || 0);
+  const [tempExpenses, setTempExpenses] = useState(currentBudget.toString());
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   // Suggestion for expenses budget (based on actuals + buffer)
   const suggestedExpenses = totalExpenses > 0 ? Math.round(totalExpenses * 1.2) : 50000; // 20% buffer over actual or default
 
-  // Auto-refetch when form loads (to rule out stale data)
+  // Re-fetch budget on mount to ensure latest from DB (prevents reset on refresh)
   useEffect(() => {
-    if (hasNoBudget && profile?.id) {
-      const quickCheck = async () => {
+    if (profile?.id) {
+      const refetchBudget = async () => {
         try {
-          const catId = await getTotalExpenseCategoryId(profile.id);
-          const verified = await fetchAndVerifyBudget(catId);
-          if (verified && verified > 0) {
-            await onBudgetUpdate(verified);
+          console.log('MonthlySummary: Refetching budget for user', profile.id, 'year', currentYear, 'month', currentMonthNum);
+          const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
+          console.log('MonthlySummary: Found TOTAL_EXPENSE category ID:', totalExpenseCategoryId);
+          
+          const { data: budgetData, error } = await supabase
+            .from('budgets')
+            .select('budgeted_amount')
+            .eq('user_id', profile.id)
+            .eq('category_id', totalExpenseCategoryId)
+            .eq('year', currentYear)
+            .eq('month', currentMonthNum)
+            .single();
+
+          if (error) {
+            if (error.code === 'PGRST116') { // No rows
+              console.log('MonthlySummary: No budget found, setting to 0');
+              setCurrentBudget(0);
+              setTempExpenses('0');
+            } else {
+              console.error('MonthlySummary: Fetch error:', error);
+              showError('Failed to fetch budget. Using cached value.');
+            }
+          } else {
+            const fetchedBudget = budgetData?.budgeted_amount || 0;
+            console.log('MonthlySummary: Fetched budget:', fetchedBudget);
+            setCurrentBudget(fetchedBudget);
+            setTempExpenses(fetchedBudget.toString());
+            await onBudgetUpdate(fetchedBudget); // Sync parent
           }
-        } catch (err) {
-          // Silent fail - don't show errors for auto-check
+        } catch (err: any) {
+          console.error('MonthlySummary: Refetch error:', err);
+          showError('Could not sync budget. Please refresh.');
         }
       };
-      quickCheck();
+      refetchBudget();
     }
-  }, [hasNoBudget, profile, currentYear, currentMonthNum, onBudgetUpdate]);
+  }, [profile, currentYear, currentMonthNum, onBudgetUpdate]);
 
-  // Helper to fetch/verify the single overall budget directly (for immediate sync after save)
-  const fetchAndVerifyBudget = async (catId: string) => {
-    try {
-      const { data: budgetData, error } = await supabase
-        .from('budgets')
-        .select('budgeted_amount')
-        .eq('user_id', profile.id)
-        .eq('category_id', catId)
-        .eq('year', currentYear)
-        .eq('month', currentMonthNum)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        return null;
-      }
-
-      return budgetData?.budgeted_amount || 0;
-    } catch (err: any) {
-      return null;
-    }
-  };
-
-  const handleInlineSave = async () => {
+  const handleSaveBudget = async () => {
     const expenses = parseFloat(tempExpenses) || 0;
     if (expenses === 0) {
-      showError('Please enter a budget amount.');
+      showError('Please enter a budget amount greater than 0.');
       return;
     }
     if (expenses < 0) {
@@ -96,42 +101,20 @@ export const MonthlySummary = ({
       return;
     }
     if (!profile?.id) {
-      showError('Please refresh the page.');
+      showError('User session invalid. Please refresh the page.');
       return;
     }
     setSaving(true);
 
     try {
+      console.log('MonthlySummary: Saving budget', expenses, 'for user', profile.id);
+      
       // Get/create TOTAL_EXPENSE category ID
-      let totalExpenseCategoryId: string;
-      const { data: existing, error: existingError } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', profile.id)
-        .eq('name', 'TOTAL_EXPENSE')
-        .eq('type', 'expense')
-        .single();
+      const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
+      console.log('MonthlySummary: Using category ID for save:', totalExpenseCategoryId);
 
-      if (existingError && existingError.code !== 'PGRST116') {
-        throw existingError;
-      }
-
-      if (!existing) {
-        const { data: inserted, error: insertError } = await supabase
-          .from('categories')
-          .insert({ name: 'TOTAL_EXPENSE', user_id: profile.id, type: 'expense' })
-          .select('id')
-          .single();
-        if (insertError) {
-          throw insertError;
-        }
-        totalExpenseCategoryId = inserted.id;
-      } else {
-        totalExpenseCategoryId = existing.id;
-      }
-
-      // Delete existing budget for this month (to update)
-      await supabase
+      // Delete any existing budget for this month (ensures single row)
+      const { error: deleteError } = await supabase
         .from('budgets')
         .delete()
         .eq('user_id', profile.id)
@@ -139,7 +122,12 @@ export const MonthlySummary = ({
         .eq('year', currentYear)
         .eq('month', currentMonthNum);
 
-      // Insert the overall budget (persistent in Supabase)
+      if (deleteError && deleteError.code !== 'PGRST116') { // Ignore "no rows" error
+        console.error('MonthlySummary: Delete error:', deleteError);
+        throw new Error(`Failed to clear old budget: ${deleteError.message}`);
+      }
+
+      // Insert new budget
       const { error: insertError } = await supabase.from('budgets').insert({
         user_id: profile.id,
         category_id: totalExpenseCategoryId,
@@ -149,22 +137,35 @@ export const MonthlySummary = ({
       });
 
       if (insertError) {
-        throw insertError;
+        console.error('MonthlySummary: Insert error:', insertError);
+        throw new Error(`Failed to save budget: ${insertError.message}`);
       }
 
-      // Verify the insert immediately
-      const verifiedAmount = await fetchAndVerifyBudget(totalExpenseCategoryId);
-      if (verifiedAmount === expenses) {
-        // Trigger parent refetch for full sync (tile updates via props)
-        await onBudgetUpdate(expenses);
-        setTempExpenses('');
-        showSuccess(`Overall budget of ${formatCurrency(expenses)} set for ${month}.`);
+      // Verify insert by re-fetching immediately
+      const verified = await getTotalExpenseCategoryId(profile.id); // Reuse to get ID
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('budgets')
+        .select('budgeted_amount')
+        .eq('user_id', profile.id)
+        .eq('category_id', verified)
+        .eq('year', currentYear)
+        .eq('month', currentMonthNum)
+        .single();
+
+      if (verifyError || verifyData?.budgeted_amount !== expenses) {
+        console.error('MonthlySummary: Verification failed:', verifyError, verifyData);
+        showError('Budget saved but could not verify. Please refresh.');
+        await onBudgetUpdate(0); // Trigger full refetch
       } else {
-        showError('Budget saved, but could not update display. Please refresh.');
-        await onBudgetUpdate(0); // Force full refetch
+        console.log('MonthlySummary: Budget verified successfully:', expenses);
+        setCurrentBudget(expenses);
+        await onBudgetUpdate(expenses); // Sync parent and prevent reset
+        setTempExpenses(expenses.toString());
+        showSuccess(`Overall budget of ${formatCurrency(expenses)} set for ${month}.`);
       }
     } catch (err: any) {
-      showError('Failed to save budget. Please try again.');
+      console.error('MonthlySummary: Save error:', err);
+      showError(err.message || 'Failed to save budget. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -174,48 +175,71 @@ export const MonthlySummary = ({
     if (!profile?.id) return;
     setRefreshing(true);
     try {
-      // Re-fetch category ID and budget (same logic as Dashboard's fetchExpenseBudget)
+      console.log('MonthlySummary: Manual refresh triggered');
       const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
-      const verifiedAmount = await fetchAndVerifyBudget(totalExpenseCategoryId);
-      if (verifiedAmount !== null) {
-        await onBudgetUpdate(verifiedAmount); // Sync to parent/tile
-        showSuccess(`Budget updated for ${month}.`);
-      } else {
-        showError('No budget found. Please set one.');  
+      const { data: budgetData, error } = await supabase
+        .from('budgets')
+        .select('budgeted_amount')
+        .eq('user_id', profile.id)
+        .eq('category_id', totalExpenseCategoryId)
+        .eq('year', currentYear)
+        .eq('month', currentMonthNum)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
       }
+
+      const refreshedBudget = budgetData?.budgeted_amount || 0;
+      console.log('MonthlySummary: Refreshed budget:', refreshedBudget);
+      setCurrentBudget(refreshedBudget);
+      setTempExpenses(refreshedBudget.toString());
+      await onBudgetUpdate(refreshedBudget);
+      showSuccess(`Budget refreshed for ${month}: ${formatCurrency(refreshedBudget)}`);
     } catch (err: any) {
+      console.error('MonthlySummary: Refresh error:', err);
       showError('Refresh failed. Please try again.');
     } finally {
       setRefreshing(false);
     }
   };
 
-  // Helper to get TOTAL_EXPENSE category ID (create if missing) - shared with Dashboard
+  // Helper to get/create TOTAL_EXPENSE category ID
   const getTotalExpenseCategoryId = async (userId: string): Promise<string> => {
-    const { data: existing, error: existingError } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('name', 'TOTAL_EXPENSE')
-      .eq('type', 'expense')
-      .single();
+    try {
+      const { data: existing, error: existingError } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('name', 'TOTAL_EXPENSE')
+        .eq('type', 'expense')
+        .single();
 
-    if (existingError && existingError.code !== 'PGRST116') {
-      throw existingError;
-    }
+      if (existingError && existingError.code !== 'PGRST116') {
+        throw existingError;
+      }
 
-    if (!existing) {
+      if (existing) {
+        return existing.id;
+      }
+
+      // Create if missing
       const { data: inserted, error: insertError } = await supabase
         .from('categories')
         .insert({ name: 'TOTAL_EXPENSE', user_id: userId, type: 'expense' })
         .select('id')
         .single();
+
       if (insertError) {
         throw insertError;
       }
+
+      console.log('MonthlySummary: Created new TOTAL_EXPENSE category ID:', inserted.id);
       return inserted.id;
+    } catch (err: any) {
+      console.error('MonthlySummary: Category error:', err);
+      throw new Error(`Failed to get/create category: ${err.message}`);
     }
-    return existing.id;
   };
 
   const getProgressColor = (progress: number) => {
@@ -224,7 +248,7 @@ export const MonthlySummary = ({
   };
 
   const getProgressStatus = (progress: number) => {
-    if (progress === 0) return 'N/A';
+    if (progress === 0) return 'No budget set';
     return progress <= 100 ? 'Under budget' : progress <= 120 ? 'Slightly over' : 'Over budget';
   };
 
@@ -252,8 +276,8 @@ export const MonthlySummary = ({
           <Target className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="text-2xl font-bold">{formatCurrency(budgetedExpenses)}</div>
-          {budgetedExpenses > 0 && (
+          <div className="text-2xl font-bold">{formatCurrency(currentBudget)}</div>
+          {currentBudget > 0 && (
             <div className="space-y-1">
               <Progress value={expensesVsBudget} className={getProgressColor(expensesVsBudget)} />
               <p className="text-xs text-muted-foreground">{getProgressStatus(expensesVsBudget)} ({formatPercentage(expensesVsBudget)})</p>
@@ -272,7 +296,7 @@ export const MonthlySummary = ({
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</div>
-          {budgetedExpenses > 0 && (
+          {currentBudget > 0 && (
             <div className="space-y-1">
               <Progress value={expensesVsBudget} className={getProgressColor(expensesVsBudget)} />
               <p className="text-xs text-muted-foreground">{getProgressStatus(expensesVsBudget)} ({formatPercentage(expensesVsBudget)})</p>
@@ -296,78 +320,43 @@ export const MonthlySummary = ({
     </div>
   );
 
-  if (hasNoBudget && profile) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
-            <CardDescription>Set your overall monthly spending limit.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Overall Budget for {month} (NPR)</Label>
-              <Input
-                type="number"
-                value={tempExpenses}
-                onChange={(e) => setTempExpenses(e.target.value)}
-                placeholder={formatCurrency(suggestedExpenses)}
-                min="0"
-                step="0.01"
-                className="text-right font-mono"
-              />
-              {suggestedExpenses > 0 && (
-                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
-              )}
-            </div>
-            <Button
-              onClick={handleInlineSave}
-              disabled={saving || tempExpenses === ''}
-              className="w-full"
-              size="sm"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : `Set Overall Budget for ${month}`}
-            </Button>
-          </CardContent>
-        </Card>
-        {renderSummaryTiles()}
-      </div>
-    );
-  }
+  // Unified form: Always show, prefilled with current (0 if none), label adapts
+  const formTitle = currentBudget > 0 ? `Update Overall Budget for ${month}` : `Set Overall Budget for ${month}`;
+  const buttonText = saving ? 'Saving...' : (currentBudget > 0 ? 'Update Budget' : 'Set Budget');
+  const placeholder = currentBudget > 0 ? formatCurrency(currentBudget) : formatCurrency(suggestedExpenses);
 
-  // Normal summary when budget exists (fetched from Supabase)
   return (
     <div className="space-y-4">
       {renderSummaryTiles()}
-      {/* Show update form if budget exists but user might want to change it */}
+      
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="text-xl font-bold">Update Overall Budget for {month}</CardTitle>
-          <CardDescription>Change your monthly spending limit.</CardDescription>
+          <CardTitle className="text-xl font-bold">{formTitle}</CardTitle>
+          <CardDescription>Enter your monthly spending limit in NPR. {currentBudget > 0 ? `Current: ${formatCurrency(currentBudget)}` : `Suggested: ${formatCurrency(suggestedExpenses)}`}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">New Overall Budget (NPR)</Label>
+            <Label className="text-sm font-medium">Overall Budget (NPR)</Label>
             <Input
               type="number"
               value={tempExpenses}
               onChange={(e) => setTempExpenses(e.target.value)}
-              placeholder={formatCurrency(budgetedExpenses)} // Pre-fill current
+              placeholder={placeholder}
               min="0"
               step="0.01"
               className="text-right font-mono"
+              disabled={saving}
             />
           </div>
           <div className="flex gap-2">
             <Button
-              onClick={handleInlineSave}
-              disabled={saving || tempExpenses === ''}
+              onClick={handleSaveBudget}
+              disabled={saving || parseFloat(tempExpenses || '0') === 0}
               className="flex-1"
               size="sm"
             >
               <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Updating...' : 'Update Overall Budget'}
+              {buttonText}
             </Button>
             <Button
               variant="outline"
@@ -380,6 +369,9 @@ export const MonthlySummary = ({
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
+          {currentBudget === 0 && (
+            <p className="text-xs text-muted-foreground text-center">Setting a budget helps track spending progress!</p>
+          )}
         </CardContent>
       </Card>
     </div>
