@@ -19,7 +19,6 @@ interface Transaction {
   description: string | null;
   amount: number;
   category: { name: string } | null;
-  account: { name: string } | null;
 }
 
 interface TransactionsDataTableProps {
@@ -45,7 +44,6 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
               <TableHead>Date</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Category</TableHead>
-              <TableHead>Account</TableHead>
               <TableHead className="text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
@@ -55,7 +53,6 @@ export function TransactionsDataTable({ data }: TransactionsDataTableProps) {
                 <TableCell>{format(new Date(item.date), 'PPP')}</TableCell>
                 <TableCell>{item.description || '-'}</TableCell>
                 <TableCell>{item.category?.name || 'Uncategorized'}</TableCell>
-                <TableCell>{item.account?.name || 'N/A'}</TableCell>
                 <TableCell className="text-right font-medium">{formatCurrency(item.amount)}</TableCell>
               </TableRow>
             ))}

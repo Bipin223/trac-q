@@ -37,11 +37,10 @@ import { format } from "date-fns";
 import { showSuccess, showError } from "@/utils/toast";
 
 const formSchema = z.object({
-  amount: z.coerce.number().positive({ message: "Amount must be a positive number." }),
+  amount: z.coerce.number().positive({ message: "Amount must be a positive number in NPR." }),
   description: z.string().optional(),
   date: z.date(),
-  categoryId: z.string({ required_error: "Please select a category." }),
-  accountId: z.string({ required_error: "Please select an account." }),
+  categoryId: z.string({ required_error: "Please select or create a category." }),
 });
 
 type TransactionType = "income" | "expense";
@@ -51,15 +50,14 @@ interface AddTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  defaultCategoryId?: string;
 }
 
 interface Category { id: string; name: string; }
-interface Account { id: string; name: string; }
 
-export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: AddTransactionDialogProps) {
+export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defaultCategoryId }: AddTransactionDialogProps) {
   const user = useUser();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -67,68 +65,88 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
     defaultValues: {
       date: new Date(),
       description: "",
+      categoryId: defaultCategoryId || "",
     },
   });
 
   useEffect(() => {
     if (open && user) {
       const fetchPrerequisites = async () => {
-        const { data: categoriesData } = await supabase
-          .from("categories")
-          .select("id, name")
-          .eq("user_id", user.id)
-          .eq("type", type);
-        setCategories(categoriesData || []);
+        try {
+          const { data: categoriesData, error: catError } = await supabase
+            .from("categories")
+            .select("id, name")
+            .eq("user_id", user.id)
+            .eq("type", type);
+          if (catError) throw catError;
+          setCategories(categoriesData || []);
 
-        const { data: accountsData } = await supabase
-          .from("accounts")
-          .select("id, name")
-          .eq("user_id", user.id);
-        setAccounts(accountsData || []);
+          // Prefill if default provided
+          if (defaultCategoryId && categoriesData) {
+            const matchingCategory = categoriesData.find(cat => cat.id === defaultCategoryId);
+            if (matchingCategory) {
+              form.setValue("categoryId", defaultCategoryId);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching categories:', error);
+          showError('Failed to load categories. Please try again.');
+        }
       };
       fetchPrerequisites();
     }
-  }, [open, user, type]);
+  }, [open, user, type, defaultCategoryId, form]);
 
   const handleCreateCategory = async (categoryName: string) => {
     if (!user) return null;
-    const { data, error } = await supabase
-      .from("categories")
-      .insert({ name: categoryName, user_id: user.id, type })
-      .select("id, name")
-      .single();
-    if (error) {
-      showError("Failed to create category.");
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .insert({ name: categoryName, user_id: user.id, type })
+        .select("id, name")
+        .single();
+      if (error) {
+        showError(`Failed to create ${type} category.`);
+        return null;
+      }
+      showSuccess(`Custom ${type} category "${categoryName}" created.`);
+      setCategories((prev) => [...prev, data]);
+      return data;
+    } catch (error) {
+      console.error('Error creating category:', error);
+      showError('Failed to create category.');
       return null;
     }
-    showSuccess(`Category "${categoryName}" created.`);
-    setCategories((prev) => [...prev, data]);
-    return data;
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!user) return;
     setLoading(true);
 
-    const payload = {
-      user_id: user.id,
-      amount: values.amount,
-      description: values.description,
-      category_id: values.categoryId,
-      account_id: values.accountId,
-      [type === 'income' ? 'income_date' : 'expense_date']: format(values.date, 'yyyy-MM-dd'),
-    };
+    try {
+      const payload = {
+        user_id: user.id,
+        amount: values.amount,
+        description: values.description,
+        category_id: values.categoryId,
+        [type === 'income' ? 'income_date' : 'expense_date']: format(values.date, 'yyyy-MM-dd'),
+      };
 
-    const { error } = await supabase.from(type === 'income' ? 'incomes' : 'expenses').insert(payload);
+      const { error } = await supabase.from(type === 'income' ? 'incomes' : 'expenses').insert(payload);
 
-    if (error) {
-      showError(`Failed to add ${type}.`);
-    } else {
-      showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} added successfully.`);
-      onSuccess();
-      form.reset({ date: new Date(), description: "" });
+      if (error) {
+        showError(`Failed to add ${type}.`);
+      } else {
+        showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount} added successfully.`);
+        onSuccess();
+        form.reset({ date: new Date(), description: "", categoryId: defaultCategoryId || "" });
+      }
+    } catch (error) {
+      console.error('Error adding transaction:', error);
+      showError('Failed to add transaction.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -144,9 +162,9 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount</FormLabel>
+                  <FormLabel>Amount (NPR)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="NPR 1,000.00" {...field} />
+                    <Input type="number" placeholder="e.g., 50000.00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -157,9 +175,9 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Groceries, Salary" {...field} />
+                    <Input placeholder="e.g., Monthly salary" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -205,7 +223,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
               name="categoryId"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>{type === 'income' ? 'Income Source' : 'Category'}</FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
@@ -219,29 +237,30 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
                         >
                           {field.value
                             ? categories.find((cat) => cat.id === field.value)?.name
-                            : "Select category"}
+                            : type === 'income' ? "Select income source" : "Select category"}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                       <Command>
-                        <CommandInput placeholder="Search or create category..." />
+                        <CommandInput placeholder={`Search or create ${type} category...`} />
                         <CommandList>
                           <CommandEmpty>
                             <Button
                               variant="ghost"
-                              className="w-full"
+                              className="w-full justify-left"
                               onClick={async () => {
-                                const newCategory = await handleCreateCategory(
-                                  form.getValues('categoryId')
-                                );
-                                if (newCategory) {
-                                  form.setValue("categoryId", newCategory.id);
+                                const inputValue = form.getValues('categoryId');
+                                if (inputValue) {
+                                  const newCategory = await handleCreateCategory(inputValue);
+                                  if (newCategory) {
+                                    form.setValue("categoryId", newCategory.id);
+                                  }
                                 }
                               }}
                             >
-                              Create "{form.getValues('categoryId')}"
+                              Create "{form.getValues('categoryId')}" ({type})
                             </Button>
                           </CommandEmpty>
                           <CommandGroup>
@@ -271,65 +290,9 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="accountId"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Account</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={cn(
-                            "w-full justify-between",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value
-                            ? accounts.find((acc) => acc.id === field.value)?.name
-                            : "Select account"}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                      <Command>
-                        <CommandInput placeholder="Search account..." />
-                        <CommandList>
-                          <CommandEmpty>No account found.</CommandEmpty>
-                          <CommandGroup>
-                            {accounts.map((acc) => (
-                              <CommandItem
-                                value={acc.name}
-                                key={acc.id}
-                                onSelect={() => {
-                                  form.setValue("accountId", acc.id);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    acc.id === field.value ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {acc.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <DialogFooter>
               <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : "Save Transaction"}
+                {loading ? "Saving..." : `Save ${type === 'income' ? 'Income' : 'Expense'} (NPR)`}
               </Button>
             </DialogFooter>
           </form>

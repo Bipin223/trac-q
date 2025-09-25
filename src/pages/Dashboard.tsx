@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { Tag, DollarSign, BarChart2, ArrowRightLeft, User, Landmark } from 'lucide-react';
+import { DollarSign, BarChart2, ArrowRightLeft } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,12 +17,16 @@ interface ChartData {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { profile, loading: profileLoading } = useProfile();
   const [financials, setFinancials] = useState<{ totalIncome: number; totalExpenses: number; chartData: ChartData[] } | null>(null);
+  const [budgetedExpenses, setBudgetedExpenses] = useState(0);
   const [loadingFinancials, setLoadingFinancials] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+  const currentYear = new Date().getFullYear();
+  const currentMonthNum = new Date().getMonth() + 1;
 
   useEffect(() => {
     if (profile) {
@@ -67,6 +72,59 @@ const Dashboard = () => {
     }
   }, [profile, profileLoading]);
 
+  // Fetch expense budget (runs once on mount if profile exists)
+  useEffect(() => {
+    if (profile) {
+      const fetchExpenseBudget = async () => {
+        try {
+          // Find TOTAL_EXPENSE category
+          const { data: expenseCat, error: expenseCatError } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('user_id', profile.id)
+            .eq('name', 'TOTAL_EXPENSE')
+            .eq('type', 'expense')
+            .single();
+
+          if (expenseCatError && expenseCatError.code !== 'PGRST116') {
+            console.error('Error fetching TOTAL_EXPENSE category:', expenseCatError);
+          }
+
+          let budgetedExpenses = 0;
+          if (expenseCat?.id) {
+            const { data: expenseBudget } = await supabase
+              .from('budgets')
+              .select('budgeted_amount')
+              .eq('user_id', profile.id)
+              .eq('category_id', expenseCat.id)
+              .eq('year', currentYear)
+              .eq('month', currentMonthNum)
+              .single();
+            budgetedExpenses = expenseBudget?.budgeted_amount || 0;
+          }
+
+          setBudgetedExpenses(budgetedExpenses);
+          console.log('Expense budget loaded:', budgetedExpenses);
+        } catch (err: any) {
+          console.error('Failed to load expense budget:', err);
+          setBudgetedExpenses(0);
+        }
+      };
+      fetchExpenseBudget();
+    } else {
+      setBudgetedExpenses(0);
+    }
+  }, [profile, currentYear, currentMonthNum]);
+
+  const handleBudgetUpdate = (newExpenses: number) => {
+    console.log('Budget updated via inline form:', { newExpenses });
+    setBudgetedExpenses(newExpenses);
+  };
+
+  const handleEditClick = () => {
+    navigate('/budgets');
+  };
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -97,13 +155,14 @@ const Dashboard = () => {
 
   const displayName = profile.username || "Valued User";
   const dashboardItems = [
-    { to: '/accounts', icon: <Landmark className="h-6 w-6" />, title: 'Accounts', description: 'Manage your cash, bank, and credit accounts.' },
-    { to: '/budgets', icon: <Tag className="h-6 w-6" />, title: 'Budgets', description: 'Set spending limits and track your categories.' },
     { to: '/incomes', icon: <DollarSign className="h-6 w-6" />, title: 'Incomes', description: 'Log your earnings and manage income sources.' },
     { to: '/expenses', icon: <BarChart2 className="h-6 w-6" />, title: 'Expenses', description: 'Record your spending and analyze your habits.' },
-    { to: '/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' },
-    { to: '/profile', icon: <User className="h-6 w-6" />, title: 'Profile', description: 'Manage your account and personal settings.' }
+    { to: '/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' }
   ];
+
+  const actualIncome = financials?.totalIncome || 0;
+  const actualExpenses = financials?.totalExpenses || 0;
+  const netSavings = actualIncome - actualExpenses;
 
   return (
     <div className="space-y-8">
@@ -113,11 +172,19 @@ const Dashboard = () => {
       </div>
       
       {financials && (
-        <>
-          <MonthlySummary totalIncome={financials.totalIncome} totalExpenses={financials.totalExpenses} month={currentMonth} />
-          <FinancialChart data={financials.chartData} month={currentMonth} />
-        </>
+        <MonthlySummary 
+          totalIncome={actualIncome} 
+          totalExpenses={actualExpenses} 
+          budgetedExpenses={budgetedExpenses}
+          month={currentMonth}
+          currentYear={currentYear}
+          currentMonthNum={currentMonthNum}
+          profile={profile}
+          onBudgetUpdate={handleBudgetUpdate}
+          onEditClick={handleEditClick}
+        />
       )}
+      {financials && <FinancialChart data={financials.chartData} month={currentMonth} />}
 
       <div>
         <h2 className="text-2xl font-bold tracking-tight mb-4">Your Tools</h2>

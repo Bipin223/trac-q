@@ -14,7 +14,7 @@ export default function Expenses() {
     setLoading(true);
     const { data } = await supabase
       .from('expenses')
-      .select('*, category:categories(name), account:accounts(name)')
+      .select('*, category:categories(name)')
       .order('expense_date', { ascending: false });
     
     if (data) {
