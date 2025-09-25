@@ -47,6 +47,7 @@ const Login = () => {
           data: {
             username: username.trim(),
           },
+          emailRedirectTo: 'https://fgyoexlosyvvgumpzgwe.dyad.sh/',
         },
       });
       authError = error;

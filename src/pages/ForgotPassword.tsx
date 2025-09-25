@@ -65,7 +65,7 @@ const ForgotPasswordPage = () => {
     }
 
     await supabase.auth.resetPasswordForEmail(foundEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+      redirectTo: 'https://fgyoexlosyvvgumpzgwe.dyad.sh/reset-password',
     });
     
     setMessage(`Success! A password reset link has been sent to ${foundEmail}.`);
