@@ -245,10 +245,10 @@ export const MonthlySummary = ({
   if (hasNoBudget && profile) {
     return (
       <div className="space-y-4">
-        <Card className="bg-primary text-primary-foreground border-primary/20">
+        <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
-            <CardDescription className="text-primary-foreground/80">Set your monthly budget</CardDescription>
+            <CardDescription>Set your monthly budget</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -260,17 +260,17 @@ export const MonthlySummary = ({
                 placeholder={formatCurrency(suggestedExpenses)}
                 min="0"
                 step="0.01"
-                className="text-right font-mono bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"
+                className="text-right font-mono"
               />
               {suggestedExpenses > 0 && (
-                <p className="text-xs text-primary-foreground/70">Suggested: {formatCurrency(suggestedExpenses)}</p>
+                <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
               )}
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <Button
                 onClick={handleInlineSave}
                 disabled={saving || tempExpenses === ''}
-                className="flex-1 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                className="flex-1"
                 size="sm"
               >
                 <Save className="h-4 w-4 mr-2" />
@@ -279,7 +279,7 @@ export const MonthlySummary = ({
               <Button
                 variant="outline"
                 asChild
-                className="flex-1 border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10"
+                className="flex-1"
                 size="sm"
               >
                 <Link to="/budgets">
