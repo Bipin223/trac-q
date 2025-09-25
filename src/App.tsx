@@ -10,12 +10,15 @@ import Profile from './pages/Profile';
 import ExchangeRatesPage from './pages/ExchangeRates';
 import Accounts from './pages/Accounts';
 import { Button } from './components/ui/button';
-import { Menu } from 'lucide-react';
+import { Menu, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { ThemeToggle } from './components/theme-toggle';
+import AdminPage from './pages/Admin';
+import { useProfile } from './contexts/ProfileContext';
 
 function App() {
   const session = useSession();
+  const { profile, loading } = useProfile();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -23,9 +26,19 @@ function App() {
     return <Navigate to="/login" />;
   }
 
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  const isAdmin = profile?.role === 'admin';
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-background">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} isAdmin={isAdmin} />
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between h-20 px-4 sm:px-6 bg-white dark:bg-card border-b dark:border-border shrink-0">
           <div className="flex items-center">
@@ -37,7 +50,7 @@ function App() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="p-0 w-64 bg-white dark:bg-card">
-                <SidebarContent isSidebarOpen={true} onLinkClick={() => setMobileMenuOpen(false)} />
+                <SidebarContent isSidebarOpen={true} onLinkClick={() => setMobileMenuOpen(false)} isAdmin={isAdmin} />
               </SheetContent>
             </Sheet>
 
@@ -65,6 +78,7 @@ function App() {
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </div>
         </main>

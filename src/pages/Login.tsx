@@ -5,19 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, User, Lock } from 'lucide-react';
+import { AlertCircle, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const DUMMY_DOMAIN = 'trac-q.app';
 
 const Login = () => {
   const navigate = useNavigate();
   const [isSignUp, setIsSignUp] = useState(false);
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showUserExistsOptions, setShowUserExistsOptions] = useState(false);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -34,34 +35,51 @@ const Login = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
-
-    const email = `${username.trim()}@${DUMMY_DOMAIN}`;
+    setShowUserExistsOptions(false);
 
     let authError = null;
 
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({
-        email,
+        email: email.trim(),
         password,
         options: {
           data: {
             username: username.trim(),
           },
+          emailRedirectTo: 'https://fgyoexlosyvvgumpzgwe.dyad.sh/',
         },
       });
       authError = error;
       if (!authError) {
-        setSuccess("Sign-up successful! Please sign in with your new credentials.");
+        setSuccess("Sign-up successful! Please check your email to verify your account, then sign in.");
         setIsSignUp(false);
-        setUsername('');
+        setEmail('');
         setPassword('');
+        setUsername('');
+      } else {
+        if (error.message.toLowerCase().includes('user already registered')) {
+          setShowUserExistsOptions(true);
+        }
       }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
+      // Sign in with username
+      const { data: emailFromUsername, error: rpcError } = await supabase.rpc('get_email_from_username', {
+        p_username: username.trim(),
+      });
+
+      if (rpcError || !emailFromUsername) {
+        setError('Invalid username or password.');
+        setLoading(false);
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: emailFromUsername,
         password,
       });
-      authError = error;
+      
+      authError = signInError;
       if (!authError) {
         navigate('/');
       }
@@ -96,6 +114,25 @@ const Login = () => {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
+          {showUserExistsOptions && (
+            <div className="p-4 border border-muted-foreground/20 bg-muted/50 rounded-lg space-y-3 text-center">
+                <p className="text-sm font-medium text-foreground">It looks like you already have an account.</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Button variant="outline" className="w-full" onClick={() => {
+                        setIsSignUp(false);
+                        setError(null);
+                        setShowUserExistsOptions(false);
+                    }}>
+                        Sign In Instead
+                    </Button>
+                    <Button variant="secondary" className="w-full" asChild>
+                        <Link to="/forgot-password">Forgot Password?</Link>
+                    </Button>
+                </div>
+            </div>
+          )}
+
           {success && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
@@ -105,34 +142,77 @@ const Login = () => {
           )}
 
           <form onSubmit={handleAuthAction} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                  id="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter username"
-                  required
-                  className="pl-10 bg-transparent"
-                />
+            {isSignUp ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="username-signup">Username</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      id="username-signup"
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      placeholder="Choose a username"
+                      required
+                      className="pl-10 bg-transparent"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      required
+                      className="pl-10 bg-transparent"
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="username-login">Username</Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    id="username-login"
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Enter your username"
+                    required
+                    className="pl-10 bg-transparent"
+                  />
+                </div>
               </div>
-            </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter Password"
                   required
-                  className="pl-10 bg-transparent"
+                  className="pl-10 pr-10 bg-transparent"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                </button>
               </div>
                {!isSignUp && (
                 <div className="flex justify-end mt-2">
@@ -167,6 +247,7 @@ const Login = () => {
                 setIsSignUp(!isSignUp);
                 setError(null);
                 setSuccess(null);
+                setShowUserExistsOptions(false);
               }}
               className="underline font-semibold"
             >

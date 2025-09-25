@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { AddTransactionDialog } from '../components/AddTransactionDialog';
-import { TransactionsDataTable } from '../components/TransactionsDataTable';
+import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
+import { TransactionsDataTable } from '@/components/transactions/TransactionsDataTable';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Expenses() {

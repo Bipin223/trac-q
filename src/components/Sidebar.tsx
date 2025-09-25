@@ -1,4 +1,4 @@
-import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark } from 'lucide-react';
+import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
@@ -16,7 +16,13 @@ const navItems = [
   { to: '/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
 ];
 
-export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: boolean, onLinkClick?: () => void }) => {
+interface SidebarContentProps {
+  isSidebarOpen: boolean;
+  isAdmin: boolean;
+  onLinkClick?: () => void;
+}
+
+export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarContentProps) => {
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
 
@@ -38,6 +44,15 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
         {navItems.map((item) => (
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
         ))}
+        {isAdmin && (
+          <SidebarLink 
+            to="/admin" 
+            icon={<Shield className="h-5 w-5" />} 
+            label="Admin" 
+            isSidebarOpen={isSidebarOpen} 
+            onClick={onLinkClick} 
+          />
+        )}
       </nav>
       <div className="px-2 py-4 mt-auto border-t dark:border-gray-700">
         {isSidebarOpen ? (
@@ -76,15 +91,16 @@ export const SidebarContent = ({ isSidebarOpen, onLinkClick }: { isSidebarOpen: 
 
 interface SidebarProps {
   isOpen: boolean;
+  isAdmin: boolean;
 }
 
-const Sidebar = ({ isOpen }: SidebarProps) => {
+const Sidebar = ({ isOpen, isAdmin }: SidebarProps) => {
   return (
     <aside className={cn(
       "hidden md:flex flex-col shadow-lg transition-all duration-300 ease-in-out",
       isOpen ? "w-64" : "w-20"
     )}>
-      <SidebarContent isSidebarOpen={isOpen} />
+      <SidebarContent isSidebarOpen={isOpen} isAdmin={isAdmin} />
     </aside>
   );
 };
