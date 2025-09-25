@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface Profile {
   username: string;
+  role: string;
 }
 
 interface ChartData {
@@ -36,7 +37,7 @@ const Dashboard = () => {
       // Fetch profile
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('username')
+        .select('username, role')
         .eq('id', user.id)
         .single();
       setProfile(profileData);
@@ -116,7 +117,11 @@ const Dashboard = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          {getGreeting()}, {profile?.username || 'User'}!
+          {getGreeting()},{" "}
+          {profile?.role === "admin"
+            ? `Admin - ${profile.username}`
+            : profile?.username || "User"}
+          !
         </h1>
         <p className="text-muted-foreground">
           Here's your financial summary for {currentMonth}.
