@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
@@ -13,11 +14,13 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showUserExistsOptions, setShowUserExistsOptions] = useState(false);
+  const beforeUnloadHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -27,7 +30,29 @@ const Login = () => {
       }
     };
     checkSession();
+
+    // Cleanup any existing beforeunload handler on unmount
+    return () => {
+      if (beforeUnloadHandlerRef.current) {
+        window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
+      }
+    };
   }, [navigate]);
+
+  const handleBeforeUnload = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const setupTemporarySession = () => {
+    // Remove any existing handler to avoid duplicates
+    if (beforeUnloadHandlerRef.current) {
+      window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
+    }
+
+    // Add new handler for temporary session
+    beforeUnloadHandlerRef.current = handleBeforeUnload;
+    window.addEventListener('beforeunload', beforeUnloadHandlerRef.current);
+  };
 
   const handleAuthAction = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +81,7 @@ const Login = () => {
         setEmail('');
         setPassword('');
         setUsername('');
+        setRememberMe(false);
       } else {
         if (error.message.toLowerCase().includes('user already registered')) {
           setShowUserExistsOptions(true);
@@ -80,6 +106,10 @@ const Login = () => {
       
       authError = signInError;
       if (!authError) {
+        // Handle remember me logic
+        if (!rememberMe) {
+          setupTemporarySession();
+        }
         navigate('/');
       }
     }
@@ -224,6 +254,18 @@ const Login = () => {
                 </div>
               )}
             </div>
+            {!isSignUp && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(!!checked)}
+                />
+                <Label htmlFor="remember" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Remember me
+                </Label>
+              </div>
+            )}
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
             </Button>
@@ -236,6 +278,7 @@ const Login = () => {
                 setError(null);
                 setSuccess(null);
                 setShowUserExistsOptions(false);
+                setRememberMe(false);
               }}
               className="underline font-semibold"
             >
