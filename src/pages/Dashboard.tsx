@@ -15,13 +15,22 @@ interface ChartData {
   expenses: number;
 }
 
+interface BudgetSummary {
+  budgetedIncome: number;
+  budgetedExpenses: number;
+}
+
 const Dashboard = () => {
   const { profile, loading: profileLoading } = useProfile();
   const [financials, setFinancials] = useState<{ totalIncome: number; totalExpenses: number; chartData: ChartData[] } | null>(null);
+  const [budgetSummary, setBudgetSummary] = useState<BudgetSummary | null>(null);
   const [loadingFinancials, setLoadingFinancials] = useState(true);
+  const [loadingBudgets, setLoadingBudgets] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
+  const currentYear = new Date().getFullYear();
+  const currentMonthNum = new Date().getMonth() + 1;
 
   useEffect(() => {
     if (profile) {
@@ -67,6 +76,44 @@ const Dashboard = () => {
     }
   }, [profile, profileLoading]);
 
+  useEffect(() => {
+    if (profile) {
+      const fetchBudgets = async () => {
+        setLoadingBudgets(true);
+        try {
+          const { data: incomeBudgets } = await supabase
+            .from('budgets')
+            .select('budgeted_amount')
+            .eq('user_id', profile.id)
+            .eq('year', currentYear)
+            .eq('month', currentMonthNum)
+            .eq('category_id', supabase.from('categories').select('id').eq('type', 'income').eq('user_id', profile.id));
+
+          const { data: expenseBudgets } = await supabase
+            .from('budgets')
+            .select('budgeted_amount')
+            .eq('user_id', profile.id)
+            .eq('year', currentYear)
+            .eq('month', currentMonthNum)
+            .eq('category_id', supabase.from('categories').select('id').eq('type', 'expense').eq('user_id', profile.id));
+
+          const budgetedIncome = incomeBudgets?.reduce((sum, b) => sum + (b.budgeted_amount || 0), 0) || 0;
+          const budgetedExpenses = expenseBudgets?.reduce((sum, b) => sum + (b.budgeted_amount || 0), 0) || 0;
+
+          setBudgetSummary({ budgetedIncome, budgetedExpenses });
+        } catch (err: any) {
+          console.error('Failed to load budgets:', err);
+          setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
+        } finally {
+          setLoadingBudgets(false);
+        }
+      };
+      fetchBudgets();
+    } else {
+      setLoadingBudgets(false);
+    }
+  }, [profile, currentYear, currentMonthNum]);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
@@ -74,7 +121,7 @@ const Dashboard = () => {
     return 'Good evening';
   };
 
-  if (profileLoading || loadingFinancials) {
+  if (profileLoading || loadingFinancials || loadingBudgets) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-1/2" />
@@ -105,6 +152,10 @@ const Dashboard = () => {
     { to: '/profile', icon: <User className="h-6 w-6" />, title: 'Profile', description: 'Manage your account and personal settings.' }
   ];
 
+  const actualIncome = financials?.totalIncome || 0;
+  const actualExpenses = financials?.totalExpenses || 0;
+  const netSavings = actualIncome - actualExpenses;
+
   return (
     <div className="space-y-8">
       <div>
@@ -112,12 +163,16 @@ const Dashboard = () => {
         <p className="text-muted-foreground">Here's your financial summary for {currentMonth}.</p>
       </div>
       
-      {financials && (
-        <>
-          <MonthlySummary totalIncome={financials.totalIncome} totalExpenses={financials.totalExpenses} month={currentMonth} />
-          <FinancialChart data={financials.chartData} month={currentMonth} />
-        </>
+      {financials && budgetSummary && (
+        <MonthlySummary 
+          totalIncome={actualIncome} 
+          totalExpenses={actualExpenses} 
+          budgetedIncome={budgetSummary.budgetedIncome}
+          budgetedExpenses={budgetSummary.budgetedExpenses}
+          month={currentMonth} 
+        />
       )}
+      {financials && <FinancialChart data={financials.chartData} month={currentMonth} />}
 
       <div>
         <h2 className="text-2xl font-bold tracking-tight mb-4">Your Tools</h2>
