@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { Tag, DollarSign, BarChart2, ArrowRightLeft, User, Landmark } from 'lucide-react';
+import { Tag, DollarSign, BarChart2, ArrowRightLeft, User } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -169,7 +169,6 @@ const Dashboard = () => {
 
   const displayName = profile.username || "Valued User";
   const dashboardItems = [
-    { to: '/accounts', icon: <Landmark className="h-6 w-6" />, title: 'Accounts', description: 'Manage your cash, bank, and credit accounts.' },
     { to: '/budgets', icon: <Tag className="h-6 w-6" />, title: 'Budgets', description: 'Set spending limits and track your categories.' },
     { to: '/incomes', icon: <DollarSign className="h-6 w-6" />, title: 'Incomes', description: 'Log your earnings and manage income sources.' },
     { to: '/expenses', icon: <BarChart2 className="h-6 w-6" />, title: 'Expenses', description: 'Record your spending and analyze your habits.' },
