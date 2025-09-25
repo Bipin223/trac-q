@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle, Lock } from 'lucide-react';
+import { AlertCircle, Lock, Loader2 } from 'lucide-react';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -14,24 +14,29 @@ const ResetPasswordPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(true);
   const [tokenFound, setTokenFound] = useState(false);
 
   useEffect(() => {
+    // This effect runs once to check for the recovery token.
     // Supabase client automatically handles the session from the URL fragment.
     // We listen for the PASSWORD_RECOVERY event to confirm we are in the right state.
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setTokenFound(true);
+        setIsVerifying(false);
       }
     });
 
-    // Also check for hash on mount, in case event fires before listener is attached.
-    if (window.location.hash.includes('access_token')) {
-        setTokenFound(true);
-    }
+    // Set a timeout as a fallback in case the event doesn't fire.
+    const timer = setTimeout(() => {
+      setIsVerifying(false);
+    }, 2500);
 
     return () => {
       subscription.unsubscribe();
+      clearTimeout(timer);
     };
   }, []);
 
@@ -50,6 +55,7 @@ const ResetPasswordPage = () => {
     setError(null);
     setMessage(null);
 
+    // The user's session is automatically set by Supabase from the URL fragment
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
@@ -63,25 +69,35 @@ const ResetPasswordPage = () => {
     setLoading(false);
   };
 
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+        <h1 className="text-xl font-semibold">Verifying link...</h1>
+        <p className="text-muted-foreground">Please wait a moment.</p>
+      </div>
+    );
+  }
+
   if (!tokenFound) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background p-4">
-            <div className="w-full max-w-md space-y-6 text-center">
-                <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Invalid Link</AlertTitle>
-                    <AlertDescription>
-                        The password reset link is invalid or has expired. Please request a new one.
-                    </AlertDescription>
-                </Alert>
-                 <div className="mt-4 text-center text-sm">
-                    <Link to="/forgot-password" className="underline font-semibold">
-                        Request a new link
-                    </Link>
-                </div>
-            </div>
-        </div>
-      )
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+          <div className="w-full max-w-md space-y-6 text-center">
+              <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Invalid Link</AlertTitle>
+                  <AlertDescription>
+                      The password reset link is invalid or has expired. Please request a new one.
+                  </AlertDescription>
+              </Alert>
+               <div className="mt-4 text-center text-sm">
+                  <Link to="/forgot-password" className="underline font-semibold">
+                      Request a new link
+                  </Link>
+              </div>
+          </div>
+      </div>
+    )
   }
 
   return (
