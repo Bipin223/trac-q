@@ -41,7 +41,6 @@ const formSchema = z.object({
   description: z.string().optional(),
   date: z.date(),
   categoryId: z.string({ required_error: "Please select or create an income source/category." }),
-  accountId: z.string({ required_error: "Please select an account." }),
 });
 
 type TransactionType = "income" | "expense";
@@ -54,12 +53,10 @@ interface AddTransactionDialogProps {
 }
 
 interface Category { id: string; name: string; }
-interface Account { id: string; name: string; }
 
 export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: AddTransactionDialogProps) {
   const user = useUser();
   const [categories, setCategories] = useState<Category[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -79,12 +76,6 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
           .eq("user_id", user.id)
           .eq("type", type);
         setCategories(categoriesData || []);
-
-        const { data: accountsData } = await supabase
-          .from("accounts")
-          .select("id, name")
-          .eq("user_id", user.id);
-        setAccounts(accountsData || []);
       };
       fetchPrerequisites();
     }
@@ -115,7 +106,6 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
       amount: values.amount,
       description: values.description,
       category_id: values.categoryId,
-      account_id: values.accountId,
       [type === 'income' ? 'income_date' : 'expense_date']: format(values.date, 'yyyy-MM-dd'),
     };
 
@@ -261,62 +251,6 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
                                   )}
                                 />
                                 {cat.name}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="accountId"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Account</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={cn(
-                            "w-full justify-between",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value
-                            ? accounts.find((acc) => acc.id === field.value)?.name
-                            : "Select account"}
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                      <Command>
-                        <CommandInput placeholder="Search account..." />
-                        <CommandList>
-                          <CommandEmpty>No account found.</CommandEmpty>
-                          <CommandGroup>
-                            {accounts.map((acc) => (
-                              <CommandItem
-                                value={acc.name}
-                                key={acc.id}
-                                onSelect={() => {
-                                  form.setValue("accountId", acc.id);
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    acc.id === field.value ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {acc.name}
                               </CommandItem>
                             ))}
                           </CommandGroup>

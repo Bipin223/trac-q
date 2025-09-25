@@ -27,7 +27,7 @@ export default function Incomes() {
     setLoading(true);
     const { data } = await supabase
       .from('incomes')
-      .select('*, category:categories(name), account:accounts(name)')
+      .select('*, category:categories(name)')
       .eq('user_id', profile.id)
       .order('income_date', { ascending: false });
     
