@@ -20,7 +20,7 @@ interface MonthlySummaryProps {
   currentYear: number;
   currentMonthNum: number;
   profile: any; // Profile from context
-  onBudgetUpdate: (newExpenses: number) => void;
+  onBudgetUpdate: (newExpenses: number) => Promise<void>; // Now async for refetch
   onEditClick?: () => void; // For edit buttons
 }
 
@@ -67,7 +67,9 @@ export const MonthlySummary = ({
     setSaving(true);
 
     try {
-      // Find/create TOTAL_EXPENSE category (this will be included in the dynamic sum)
+      console.log(`Saving budget for user ${profile.id}: NPR ${expenses} for ${month} (year ${currentYear}, month ${currentMonthNum})`);
+      
+      // Find/create TOTAL_EXPENSE category (this will be included in the dynamic sum from Supabase)
       const { data: existing, error: existingError } = await supabase
         .from('categories')
         .select('id')
@@ -78,7 +80,7 @@ export const MonthlySummary = ({
 
       if (existingError && existingError.code !== 'PGRST116') {
         console.error('Error checking existing TOTAL_EXPENSE:', existingError);
-        showError('Failed to check budget setup.');
+        showError('Failed to check budget setup. See console.');
         return;
       }
 
@@ -91,12 +93,14 @@ export const MonthlySummary = ({
           .single();
         if (insertError) {
           console.error('Failed to create TOTAL_EXPENSE:', insertError);
-          showError('Failed to create budget category.');
+          showError(`Failed to create budget category: ${insertError.message}`);
           return;
         }
         totalExpenseCategoryId = inserted.id;
+        console.log('Created new TOTAL_EXPENSE category ID:', totalExpenseCategoryId);
       } else {
         totalExpenseCategoryId = existing.id;
+        console.log('Using existing TOTAL_EXPENSE category ID:', totalExpenseCategoryId);
       }
 
       if (!totalExpenseCategoryId) {
@@ -112,9 +116,12 @@ export const MonthlySummary = ({
         .eq('category_id', totalExpenseCategoryId)
         .eq('year', currentYear)
         .eq('month', currentMonthNum);
-      if (deleteError) console.error('Error deleting existing TOTAL_EXPENSE budget:', deleteError);
+      if (deleteError) {
+        console.error('Error deleting existing TOTAL_EXPENSE budget:', deleteError);
+        // Don't fail on delete—proceed to insert
+      }
 
-      // Insert/update the TOTAL_EXPENSE budget (included in sum)
+      // Insert/update the TOTAL_EXPENSE budget (persistent in Supabase, included in sum)
       const { error: insertError } = await supabase.from('budgets').insert({
         user_id: profile.id,
         category_id: totalExpenseCategoryId,
@@ -125,17 +132,17 @@ export const MonthlySummary = ({
 
       if (insertError) {
         console.error('Failed to insert budget:', insertError);
-        showError(`Failed to save budget: ${insertError.message}`);
+        showError(`Failed to save budget to Supabase: ${insertError.message}. It won't persist.`);
         return;
       }
 
-      // Note: The total will now include this in the dynamic sum; refresh to see updated total if other categories exist
-      showSuccess(`Overall budget set for ${month}! Total limit: ${formatCurrency(expenses)}. This will be part of your summed category total.`);
-      onBudgetUpdate(expenses); // Update local state immediately
+      console.log('Budget saved successfully to Supabase - now refetching to update tile');
+      // Trigger refetch in parent (Dashboard) to sync tile with DB sum (ensures persistence visible immediately)
+      await onBudgetUpdate(expenses);
       setTempExpenses('');
     } catch (err: any) {
       console.error('Unexpected error in handleInlineSave:', err);
-      showError(`Failed to save budget: ${err.message || 'Unknown error. Please try again.'}`);
+      showError(`Failed to save budget to Supabase: ${err.message || 'Unknown error. It may not persist.'}`);
     } finally {
       setSaving(false);
     }
@@ -170,7 +177,7 @@ export const MonthlySummary = ({
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
             <CardTitle className="text-sm font-medium">Budget for {month}</CardTitle>
-            <CardDescription className="text-xs">Sum of all expense categories</CardDescription>
+            <CardDescription className="text-xs">Sum of all expense categories (persistent in Supabase)</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-muted-foreground" />
@@ -195,7 +202,7 @@ export const MonthlySummary = ({
             </div>
           )}
           {budgetedExpenses === 0 && (
-            <p className="text-xs text-muted-foreground">Set budgets in the Budgets page to see your total here.</p>
+            <p className="text-xs text-muted-foreground">Set budgets in the Budgets page or use the form below to see your total here. It persists across logins.</p>
           )}
         </CardContent>
       </Card>
@@ -250,7 +257,7 @@ export const MonthlySummary = ({
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
-            <CardDescription>Set your overall monthly spending limit (this creates a total category included in your summed budgets).</CardDescription>
+            <CardDescription>Set your overall monthly spending limit (saved to Supabase as TOTAL_EXPENSE, included in sum. Persists across logouts/logins).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -267,7 +274,7 @@ export const MonthlySummary = ({
               {suggestedExpenses > 0 && (
                 <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)} (based on your expenses + 20% buffer)</p>
               )}
-              <p className="text-xs text-muted-foreground">Tip: For detailed category budgets, visit the Budgets page.</p>
+              <p className="text-xs text-muted-foreground">Tip: For detailed category budgets, visit the Budgets page. This total will update the tile above.</p>
             </div>
             <Button
               onClick={handleInlineSave}
@@ -276,7 +283,7 @@ export const MonthlySummary = ({
               size="sm"
             >
               <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving...' : `Set Overall Budget for ${month}`}
+              {saving ? 'Saving to Supabase...' : `Set Overall Budget for ${month} (Persists)`}
             </Button>
           </CardContent>
         </Card>
@@ -285,7 +292,7 @@ export const MonthlySummary = ({
     );
   }
 
-  // Normal summary when budget exists (sum > 0)
+  // Normal summary when budget exists (sum > 0, fetched from Supabase)
   return (
     <div className="space-y-4">
       {renderSummaryTiles()}

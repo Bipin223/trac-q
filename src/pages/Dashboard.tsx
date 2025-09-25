@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { DollarSign, BarChart2, ArrowRightLeft } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile } from "../contexts/ProfileContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
+import { showError, showSuccess } from "@/utils/toast";
 
 interface ChartData {
   day: string;
@@ -61,59 +62,64 @@ const Dashboard = () => {
           setFinancials({ totalIncome, totalExpenses, chartData: dailyData });
         } catch (err: any) {
           setError("Failed to load financial data. Please try again later.");
-          console.error(err);
+          console.error('Dashboard fetch error:', err);
+          showError(`Data load failed: ${err.message}`);
         } finally {
           setLoadingFinancials(false);
         }
       };
       fetchDashboardData();
+      fetchExpenseBudget(); // Initial budget fetch
     } else if (!profileLoading) {
       setLoadingFinancials(false);
+      setBudgetedExpenses(0);
     }
   }, [profile, profileLoading]);
 
-  // Fetch total expense budget as sum of all category budgets for this month (dynamic sum)
-  useEffect(() => {
-    if (profile) {
-      const fetchExpenseBudget = async () => {
-        try {
-          const { data: budgetData, error } = await supabase
-            .from('budgets')
-            .select(`
-              budgeted_amount,
-              category_id,
-              categories!inner(id, type)
-            `)
-            .eq('user_id', profile.id)
-            .eq('categories.type', 'expense')
-            .eq('year', currentYear)
-            .eq('month', currentMonthNum);
+  // Fetch total expense budget as sum of all category budgets for this month (dynamic sum, persistent in Supabase)
+  const fetchExpenseBudget = useCallback(async () => {
+    if (!profile) {
+      setBudgetedExpenses(0);
+      return;
+    }
+    try {
+      console.log(`Fetching budgets for user ${profile.id}, year ${currentYear}, month ${currentMonthNum}`);
+      const { data: budgetData, error } = await supabase
+        .from('budgets')
+        .select(`
+          budgeted_amount,
+          category_id,
+          categories!inner(id, type)
+        `)
+        .eq('user_id', profile.id)
+        .eq('categories.type', 'expense')
+        .eq('year', currentYear)
+        .eq('month', currentMonthNum);
 
-          if (error) {
-            console.error('Error fetching expense budgets:', error);
-            setBudgetedExpenses(0);
-            return;
-          }
+      if (error) {
+        console.error('Budget fetch error:', error);
+        showError(`Failed to load budgets: ${error.message}. Check console for details.`);
+        setBudgetedExpenses(0);
+        return;
+      }
 
-          // Sum all budgeted amounts for expense categories
-          const totalBudgeted = budgetData?.reduce((sum, budget) => sum + (budget.budgeted_amount || 0), 0) || 0;
-          setBudgetedExpenses(totalBudgeted);
-          console.log('Total expense budget (sum of categories) loaded:', totalBudgeted);
-        } catch (err: any) {
-          console.error('Failed to load expense budget sum:', err);
-          setBudgetedExpenses(0);
-        }
-      };
-      fetchExpenseBudget();
-    } else {
+      // Sum all budgeted amounts for expense categories (includes TOTAL_EXPENSE if set)
+      const totalBudgeted = budgetData?.reduce((sum, budget) => sum + (budget.budgeted_amount || 0), 0) || 0;
+      setBudgetedExpenses(totalBudgeted);
+      console.log('Fetched total budget sum from Supabase:', totalBudgeted, 'for categories:', budgetData?.map(b => ({ catId: b.category_id, amount: b.budgeted_amount })));
+    } catch (err: any) {
+      console.error('Unexpected budget fetch error:', err);
+      showError(`Budget load failed: ${err.message}`);
       setBudgetedExpenses(0);
     }
   }, [profile, currentYear, currentMonthNum]);
 
-  const handleBudgetUpdate = (newExpenses: number) => {
-    console.log('Budget updated via inline form:', { newExpenses });
-    setBudgetedExpenses(newExpenses);
-  };
+  // Callback for after inline save: Refetch from DB to confirm persistence and update tile
+  const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
+    console.log('Inline budget saved locally:', newExpenses, '- Now refetching from Supabase to confirm persistence');
+    await fetchExpenseBudget(); // Refetch to sync with DB (ensures tile shows exact sum, including new TOTAL_EXPENSE)
+    showSuccess(`Budget updated and saved to Supabase for ${currentMonth}! It will persist across logouts/logins.`);
+  }, [fetchExpenseBudget, currentMonth]);
 
   const handleEditClick = () => {
     navigate('/budgets');
@@ -162,7 +168,7 @@ const Dashboard = () => {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{getGreeting()}, {profile.role === "admin" ? `Admin - ${displayName}` : displayName}!</h1>
-        <p className="text-muted-foreground">Here's your financial summary for {currentMonth}.</p>
+        <p className="text-muted-foreground">Here's your financial summary for {currentMonth}. Budgets are stored in Supabase and persist across sessions.</p>
       </div>
       
       {financials && (
