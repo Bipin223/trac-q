@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Edit3, Save } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Edit3, Save, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
 import { useProfile } from "@/contexts/ProfileContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +28,8 @@ const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(amount);
 };
 
+const formatPercentage = (value: number) => Math.round(value) + '%';
+
 export const MonthlySummary = ({ 
   totalIncome, 
   totalExpenses, 
@@ -48,11 +50,19 @@ export const MonthlySummary = ({
   const [tempExpenses, setTempExpenses] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Prefill suggestions for inline form (based on actuals + buffer)
+  const suggestedIncome = totalIncome > 0 ? Math.round(totalIncome * 1.1) : 0; // 10% buffer over actual
+  const suggestedExpenses = totalExpenses > 0 ? Math.round(totalExpenses * 1.2) : 50000; // Conservative estimate if no data
+
   const handleInlineSave = async () => {
     const income = parseFloat(tempIncome) || 0;
     const expenses = parseFloat(tempExpenses) || 0;
     if (income === 0 && expenses === 0) {
       showError('Set at least one budget amount.');
+      return;
+    }
+    if (income < 0 || expenses < 0) {
+      showError('Budget amounts must be positive.');
       return;
     }
     if (!profile?.id) {
@@ -93,7 +103,8 @@ export const MonthlySummary = ({
             .single();
           if (insertError) {
             console.error(`Failed to create ${cat.name}:`, insertError);
-            continue;
+            showError(`Failed to create ${cat.name.toLowerCase()} category.`);
+            return;
           }
           if (inserted) {
             if (cat.name === 'TOTAL_INCOME') totalIncomeCategoryId = inserted.id;
@@ -161,20 +172,38 @@ export const MonthlySummary = ({
         const { error: insertError } = await supabase.from('budgets').insert(inserts);
         if (insertError) {
           console.error('Failed to insert budgets:', insertError);
-          showError('Failed to save budgets. Please try again.');
+          showError(`Failed to save budgets: ${insertError.message}`);
           return;
         }
       }
 
-      showSuccess(`Budgets set for ${month}!`);
+      showSuccess(`Budgets set for ${month}! Income: ${formatCurrency(income)}, Expenses: ${formatCurrency(expenses)}`);
       onBudgetUpdate(income, expenses);
       setTempIncome('');
       setTempExpenses('');
     } catch (err: any) {
       console.error('Unexpected error in handleInlineSave:', err);
-      showError('Failed to save budgets. Please try again or refresh the page.');
+      showError(`Failed to save budgets: ${err.message || 'Unknown error. Please try again.'}`);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const getProgressColor = (progress: number, isIncome: boolean) => {
+    if (progress === 0) return 'bg-gray-200';
+    if (isIncome) {
+      return progress >= 100 ? 'bg-green-500' : progress >= 80 ? 'bg-yellow-500' : 'bg-red-500';
+    } else {
+      return progress <= 100 ? 'bg-green-500' : progress <= 120 ? 'bg-yellow-500' : 'bg-red-500';
+    }
+  };
+
+  const getProgressStatus = (progress: number, isIncome: boolean) => {
+    if (progress === 0) return 'N/A';
+    if (isIncome) {
+      return progress >= 100 ? 'On track' : progress >= 80 ? 'Slightly behind' : 'Behind target';
+    } else {
+      return progress <= 100 ? 'Under budget' : progress <= 120 ? 'Slightly over' : 'Over budget';
     }
   };
 
@@ -182,7 +211,10 @@ export const MonthlySummary = ({
     <div className="grid gap-4 md:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
+          <div>
+            <CardTitle className="text-sm font-medium">Budgeted Income</CardTitle>
+            <CardDescription className="text-xs">Target for {month}</CardDescription>
+          </div>
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-muted-foreground" />
             {onEditClick && !hasNoBudgets && (
@@ -197,31 +229,42 @@ export const MonthlySummary = ({
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <div className="text-2xl font-bold">{formatCurrency(budgetedIncome)}</div>
-          <p className="text-xs text-muted-foreground">Target for {month}</p>
+          {budgetedIncome > 0 && (
+            <div className="space-y-1">
+              <Progress value={incomeVsBudget} className={getProgressColor(incomeVsBudget, true)} />
+              <p className="text-xs text-muted-foreground">{getProgressStatus(incomeVsBudget, true)} ({formatPercentage(incomeVsBudget)})</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
+          <div>
+            <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
+            <CardDescription className="text-xs">for {month}</CardDescription>
+          </div>
           <TrendingUp className="h-4 w-4 text-green-500" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</div>
           {budgetedIncome > 0 && (
-            <p className={`text-xs ${incomeVsBudget >= 100 ? 'text-green-600' : 'text-yellow-600'}`}>
-              {incomeVsBudget >= 100 ? 'On track' : 'Below target'} ({Math.round(incomeVsBudget)}%)
-            </p>
+            <div className="space-y-1">
+              <Progress value={incomeVsBudget} className={getProgressColor(incomeVsBudget, true)} />
+              <p className="text-xs text-muted-foreground">{getProgressStatus(incomeVsBudget, true)} ({formatPercentage(incomeVsBudget)})</p>
+            </div>
           )}
-          <p className="text-xs text-muted-foreground">for {month}</p>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Budgeted Expenses</CardTitle>
+          <div>
+            <CardTitle className="text-sm font-medium">Budgeted Expenses</CardTitle>
+            <CardDescription className="text-xs">Limit for {month}</CardDescription>
+          </div>
           <div className="flex items-center gap-2">
             <Target className="h-4 w-4 text-muted-foreground" />
             {onEditClick && !hasNoBudgets && (
@@ -236,25 +279,33 @@ export const MonthlySummary = ({
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <div className="text-2xl font-bold">{formatCurrency(budgetedExpenses)}</div>
-          <p className="text-xs text-muted-foreground">Limit for {month}</p>
+          {budgetedExpenses > 0 && (
+            <div className="space-y-1">
+              <Progress value={expensesVsBudget} className={getProgressColor(expensesVsBudget, false)} />
+              <p className="text-xs text-muted-foreground">{getProgressStatus(expensesVsBudget, false)} ({formatPercentage(expensesVsBudget)})</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Actual Expenses</CardTitle>
+          <div>
+            <CardTitle className="text-sm font-medium">Actual Expenses</CardTitle>
+            <CardDescription className="text-xs">for {month}</CardDescription>
+          </div>
           <TrendingDown className="h-4 w-4 text-red-500" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <div className="text-2xl font-bold text-red-600">{formatCurrency(totalExpenses)}</div>
           {budgetedExpenses > 0 && (
-            <p className={`text-xs ${expensesVsBudget <= 100 ? 'text-green-600' : 'text-red-600'}`}>
-              {expensesVsBudget <= 100 ? 'Under budget' : 'Over budget'} ({Math.round(expensesVsBudget)}%)
-            </p>
+            <div className="space-y-1">
+              <Progress value={expensesVsBudget} className={getProgressColor(expensesVsBudget, false)} />
+              <p className="text-xs text-muted-foreground">{getProgressStatus(expensesVsBudget, false)} ({formatPercentage(expensesVsBudget)})</p>
+            </div>
           )}
-          <p className="text-xs text-muted-foreground">for {month}</p>
         </CardContent>
       </Card>
 
@@ -290,13 +341,13 @@ export const MonthlySummary = ({
       <div className="space-y-4">
         <div className="p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
           <div className="flex items-start gap-3">
-            <Edit3 className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
                 No budgets set for {month}
               </p>
               <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                Insert budget for this month to better track your finances.
+                Set your income target and expense limit to track progress thoroughly. Suggestions based on your actuals.
               </p>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
@@ -305,11 +356,14 @@ export const MonthlySummary = ({
                     type="number"
                     value={tempIncome}
                     onChange={(e) => setTempIncome(e.target.value)}
-                    placeholder="e.g., 100000"
+                    placeholder={formatCurrency(suggestedIncome)}
                     min="0"
                     step="0.01"
                     className="text-right font-mono"
                   />
+                  {suggestedIncome > 0 && (
+                    <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedIncome)}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-medium">Budgeted Expenses (NPR)</Label>
@@ -317,11 +371,14 @@ export const MonthlySummary = ({
                     type="number"
                     value={tempExpenses}
                     onChange={(e) => setTempExpenses(e.target.value)}
-                    placeholder="e.g., 60000"
+                    placeholder={formatCurrency(suggestedExpenses)}
                     min="0"
                     step="0.01"
                     className="text-right font-mono"
                   />
+                  {suggestedExpenses > 0 && (
+                    <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
+                  )}
                 </div>
               </div>
               <Button
