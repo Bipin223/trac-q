@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -225,17 +224,6 @@ const Login = () => {
                 </div>
               )}
             </div>
-            {!isSignUp && (
-              <div className="flex items-center space-x-2">
-                <Checkbox id="remember-me" />
-                <label
-                  htmlFor="remember-me"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Remember me
-                </label>
-              </div>
-            )}
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
             </Button>
