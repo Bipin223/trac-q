@@ -245,56 +245,51 @@ export const MonthlySummary = ({
   if (hasNoBudget && profile) {
     return (
       <div className="space-y-4">
-        <div className="p-4 bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                No budget set for {month}
-              </p>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
-                Set a monthly spending limit to track your expenses better. You can update it later in detail.
-              </p>
-              <div className="space-y-2">
-                <Label className="text-xs font-medium">Budget for {month} (NPR)</Label>
-                <Input
-                  type="number"
-                  value={tempExpenses}
-                  onChange={(e) => setTempExpenses(e.target.value)}
-                  placeholder={formatCurrency(suggestedExpenses)}
-                  min="0"
-                  step="0.01"
-                  className="text-right font-mono"
-                />
-                {suggestedExpenses > 0 && (
-                  <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
-                )}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2 mt-3">
-                <Button
-                  onClick={handleInlineSave}
-                  disabled={saving || tempExpenses === ''}
-                  className="flex-1"
-                  size="sm"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saving ? 'Saving...' : `Set Budget for ${month}`}
-                </Button>
-                <Button
-                  variant="outline"
-                  asChild
-                  className="flex-1"
-                  size="sm"
-                >
-                  <Link to="/budgets">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Update Later
-                  </Link>
-                </Button>
-              </div>
+        <Card className="bg-primary text-primary-foreground border-primary/20">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
+            <CardDescription className="text-primary-foreground/80">Set your monthly budget</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Budget for {month} (NPR)</Label>
+              <Input
+                type="number"
+                value={tempExpenses}
+                onChange={(e) => setTempExpenses(e.target.value)}
+                placeholder={formatCurrency(suggestedExpenses)}
+                min="0"
+                step="0.01"
+                className="text-right font-mono bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground"
+              />
+              {suggestedExpenses > 0 && (
+                <p className="text-xs text-primary-foreground/70">Suggested: {formatCurrency(suggestedExpenses)}</p>
+              )}
             </div>
-          </div>
-        </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                onClick={handleInlineSave}
+                disabled={saving || tempExpenses === ''}
+                className="flex-1 bg-primary-foreground text-primary hover:bg-primary-foreground/90"
+                size="sm"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving...' : `Set Budget for ${month}`}
+              </Button>
+              <Button
+                variant="outline"
+                asChild
+                className="flex-1 border-primary-foreground/50 text-primary-foreground hover:bg-primary-foreground/10"
+                size="sm"
+              >
+                <Link to="/budgets">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Update Later
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         {renderSummaryTiles()}
       </div>
     );
