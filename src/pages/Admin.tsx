@@ -15,7 +15,6 @@ interface Account {
   name: string;
   type: string;
   balance: number;
-  user_id: string; // Added user_id for debugging
   profiles: {
     username: string;
   } | null;
@@ -41,37 +40,26 @@ const AdminPage = () => {
         .eq('id', user.id)
         .single();
 
-      if (profileError) {
-        console.error('AdminPage: Error fetching profile role:', profileError);
-        showError("Failed to verify admin status.");
-        navigate('/');
-        return;
-      }
-
-      if (profileData?.role !== 'admin') {
+      if (profileError || profileData?.role !== 'admin') {
         showError("Access Denied. You are not an admin.");
         navigate('/');
         return;
       }
       setIsAdmin(true);
 
-      // Temporarily simplify the select to debug RLS on accounts table itself
       const { data: accountsData, error: accountsError } = await supabase
         .from('accounts')
-        .select('id, name, type, balance, user_id'); // Removed profiles(username) for debugging
+        .select('id, name, type, balance, profiles(username)');
       
       if (accountsError) {
         console.error('AdminPage: Error fetching accounts:', accountsError);
         showError('Failed to fetch accounts.');
       } else if (accountsData) {
-        console.log('AdminPage: Fetched raw accounts data:', accountsData);
-        // We need to fetch profile usernames separately if the join is removed
-        // For now, let's just display the user_id or a placeholder
-        const accountsWithPlaceholderProfiles = accountsData.map((account: any) => ({
+        const transformedData = accountsData.map(account => ({
           ...account,
-          profiles: { username: `User ID: ${account.user_id}` } // Placeholder
+          profiles: Array.isArray(account.profiles) ? account.profiles[0] : account.profiles,
         }));
-        setAccounts(accountsWithPlaceholderProfiles);
+        setAccounts(transformedData as Account[]);
       }
       setLoading(false);
     };
