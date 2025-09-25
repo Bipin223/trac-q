@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/t
 const navItems = [
   { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
   { to: '/accounts', icon: <Landmark className="h-5 w-5" />, label: 'Accounts' },
-  { to: '/budgets', icon: <Tag className="h-5 w-5" />, label: 'Budgets' },
+  // Removed budgets link as it's covered in dashboard summary
   { to: '/incomes', icon: <DollarSign className="h-5 w-5" />, label: 'Incomes' },
   { to: '/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
   { to: '/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },

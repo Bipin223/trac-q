@@ -50,11 +50,12 @@ interface AddTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  defaultCategoryId?: string; // New prop for preselecting category from quick actions
 }
 
 interface Category { id: string; name: string; }
 
-export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: AddTransactionDialogProps) {
+export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defaultCategoryId }: AddTransactionDialogProps) {
   const user = useUser();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -64,6 +65,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
     defaultValues: {
       date: new Date(),
       description: "",
+      categoryId: defaultCategoryId || "", // Prefill if provided
     },
   });
 
@@ -76,10 +78,18 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
           .eq("user_id", user.id)
           .eq("type", type);
         setCategories(categoriesData || []);
+
+        // If defaultCategoryId is provided and dialog opens, set it in form
+        if (defaultCategoryId && categoriesData) {
+          const matchingCategory = categoriesData.find(cat => cat.id === defaultCategoryId);
+          if (matchingCategory) {
+            form.setValue("categoryId", defaultCategoryId);
+          }
+        }
       };
       fetchPrerequisites();
     }
-  }, [open, user, type]);
+  }, [open, user, type, defaultCategoryId, form]);
 
   const handleCreateCategory = async (categoryName: string) => {
     if (!user) return null;
@@ -116,7 +126,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess }: Ad
     } else {
       showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount} added successfully.`);
       onSuccess();
-      form.reset({ date: new Date(), description: "" });
+      form.reset({ date: new Date(), description: "", categoryId: defaultCategoryId || "" });
     }
     setLoading(false);
   };
