@@ -31,24 +31,13 @@ const AdminUsersPage = () => {
         return;
       }
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError || profileData?.role !== 'admin') {
-        showError("Access Denied. You are not an admin.");
-        navigate('/');
-        return;
-      }
-
+      // We don't need to check for admin role here, as the RPC function does it for us.
       const { data: usersData, error: usersError } = await supabase
-        .from('profiles')
-        .select('id, username, email, role');
+        .rpc('get_all_users_for_admin');
       
       if (usersError) {
-        showError('Failed to fetch users.');
+        showError('Failed to fetch users. You may not have admin privileges.');
+        navigate('/');
       } else {
         setProfiles(usersData as Profile[]);
       }
