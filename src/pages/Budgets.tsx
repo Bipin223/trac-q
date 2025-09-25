@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Calendar } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,143 +20,166 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
-
-interface Category {
-  id: string;
-  name: string;
-  type: 'income' | 'expense';
-}
 
 const Budgets = () => {
   const user = useUser();
   const { profile } = useProfile();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [budgets, setBudgets] = useState<{ [key: string]: number }>({});
+  const [budgetedIncome, setBudgetedIncome] = useState(0);
+  const [budgetedExpenses, setBudgetedExpenses] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showSaveConfirm, setShowSaveConfirm] = useState(false);
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [totalIncomeCategoryId, setTotalIncomeCategoryId] = useState<string | null>(null);
+  const [totalExpenseCategoryId, setTotalExpenseCategoryId] = useState<string | null>(null);
 
   const fetchData = async () => {
     if (!user || !profile) return;
     setLoading(true);
 
-    const { data: catData } = await supabase
-      .from('categories')
-      .select('id, name, type')
-      .eq('user_id', profile.id);
+    // Create or find special total categories
+    const specialCategories = [
+      { name: 'TOTAL_INCOME', type: 'income' as const },
+      { name: 'TOTAL_EXPENSE', type: 'expense' as const },
+    ];
 
-    setCategories(catData || []);
+    for (const cat of specialCategories) {
+      const { data: existing } = await supabase
+        .from('categories')
+        .select('id')
+        .eq('user_id', profile.id)
+        .eq('name', cat.name)
+        .eq('type', cat.type)
+        .single();
 
+      if (!existing) {
+        const { data: inserted, error } = await supabase
+          .from('categories')
+          .insert({ name: cat.name, user_id: profile.id, type: cat.type })
+          .select('id')
+          .single();
+
+        if (error) {
+          console.error(`Failed to create ${cat.name} category:`, error);
+        } else if (inserted) {
+          if (cat.name === 'TOTAL_INCOME') setTotalIncomeCategoryId(inserted.id);
+          if (cat.name === 'TOTAL_EXPENSE') setTotalExpenseCategoryId(inserted.id);
+        }
+      } else {
+        if (cat.name === 'TOTAL_INCOME') setTotalIncomeCategoryId(existing.id);
+        if (cat.name === 'TOTAL_EXPENSE') setTotalExpenseCategoryId(existing.id);
+      }
+    }
+
+    // Fetch existing total budgets
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth() + 1;
-    const { data: budgetData } = await supabase
-      .from('budgets')
-      .select('category_id, budgeted_amount')
-      .eq('user_id', profile.id)
-      .eq('year', year)
-      .eq('month', month);
 
-    const budgetMap: { [key: string]: number } = {};
-    budgetData?.forEach((b: any) => {
-      budgetMap[b.category_id] = b.budgeted_amount;
-    });
-    setBudgets(budgetMap);
+    if (totalIncomeCategoryId) {
+      const { data: incomeBudget } = await supabase
+        .from('budgets')
+        .select('budgeted_amount')
+        .eq('user_id', profile.id)
+        .eq('category_id', totalIncomeCategoryId)
+        .eq('year', year)
+        .eq('month', month)
+        .single();
+
+      setBudgetedIncome(incomeBudget?.budgeted_amount || 0);
+    }
+
+    if (totalExpenseCategoryId) {
+      const { data: expenseBudget } = await supabase
+        .from('budgets')
+        .select('budgeted_amount')
+        .eq('user_id', profile.id)
+        .eq('category_id', totalExpenseCategoryId)
+        .eq('year', year)
+        .eq('month', month)
+        .single();
+
+      setBudgetedExpenses(expenseBudget?.budgeted_amount || 0);
+    }
 
     setLoading(false);
   };
 
   useEffect(() => {
     fetchData();
-  }, [user, profile, currentMonth]);
+  }, [user, profile, currentMonth, totalIncomeCategoryId, totalExpenseCategoryId]);
 
-  const handleBudgetChange = (categoryId: string, amount: string) => {
-    const numAmount = parseFloat(amount) || 0;
-    setBudgets(prev => ({ ...prev, [categoryId]: numAmount }));
+  const handleIncomeChange = (value: string) => {
+    setBudgetedIncome(parseFloat(value) || 0);
   };
 
-  const getBudgetSummary = () => {
-    const totalIncomeBudget = categories
-      .filter(c => c.type === 'income')
-      .reduce((sum, cat) => sum + (budgets[cat.id] || 0), 0);
-    const totalExpenseBudget = categories
-      .filter(c => c.type === 'expense')
-      .reduce((sum, cat) => sum + (budgets[cat.id] || 0), 0);
-    return { totalIncomeBudget, totalExpenseBudget };
+  const handleExpenseChange = (value: string) => {
+    setBudgetedExpenses(parseFloat(value) || 0);
   };
 
   const confirmSaveBudgets = () => {
-    const summary = getBudgetSummary();
-    if (summary.totalIncomeBudget === 0 && summary.totalExpenseBudget === 0) {
-      showError('No budgets to save.');
+    if (budgetedIncome === 0 && budgetedExpenses === 0) {
+      showError('Set at least one budget amount.');
       return;
     }
     setShowSaveConfirm(true);
   };
 
   const saveBudgets = async () => {
-    if (!user || !profile) return;
+    if (!user || !profile || !totalIncomeCategoryId || !totalExpenseCategoryId) return;
     setSaving(true);
 
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth() + 1;
 
+    // Delete existing total budgets for this month
     await supabase
       .from('budgets')
       .delete()
       .eq('user_id', profile.id)
+      .eq('category_id', totalIncomeCategoryId)
       .eq('year', year)
       .eq('month', month);
 
-    const budgetEntries = Object.entries(budgets)
-      .filter(([_, amount]) => amount > 0)
-      .map(([category_id, budgeted_amount]) => ({
+    await supabase
+      .from('budgets')
+      .delete()
+      .eq('user_id', profile.id)
+      .eq('category_id', totalExpenseCategoryId)
+      .eq('year', year)
+      .eq('month', month);
+
+    // Insert new ones if > 0
+    const inserts: any[] = [];
+    if (budgetedIncome > 0) {
+      inserts.push({
         user_id: profile.id,
-        category_id,
+        category_id: totalIncomeCategoryId,
         year,
         month,
-        budgeted_amount,
-      }));
+        budgeted_amount: budgetedIncome,
+      });
+    }
+    if (budgetedExpenses > 0) {
+      inserts.push({
+        user_id: profile.id,
+        category_id: totalExpenseCategoryId,
+        year,
+        month,
+        budgeted_amount: budgetedExpenses,
+      });
+    }
 
-    const { error } = await supabase.from('budgets').insert(budgetEntries);
+    const { error } = await supabase.from('budgets').insert(inserts);
 
     if (error) {
       showError('Failed to save budgets.');
     } else {
-      showSuccess(`Budgets saved for ${format(currentMonth, 'MMMM yyyy')}!`);
+      showSuccess(`Monthly budgets saved for ${format(currentMonth, 'MMMM yyyy')}!`);
     }
     setSaving(false);
     setShowSaveConfirm(false);
-  };
-
-  const confirmClearBudgets = () => {
-    setShowClearConfirm(true);
-  };
-
-  const clearBudgets = async () => {
-    if (!user || !profile) return;
-
-    const year = currentMonth.getFullYear();
-    const month = currentMonth.getMonth() + 1;
-
-    const { error } = await supabase
-      .from('budgets')
-      .delete()
-      .eq('user_id', profile.id)
-      .eq('year', year)
-      .eq('month', month);
-
-    if (error) {
-      showError('Failed to clear budgets.');
-    } else {
-      showSuccess('All budgets cleared for this month.');
-      setBudgets({});
-    }
-    setShowClearConfirm(false);
   };
 
   const formatCurrency = (amount: number) => {
@@ -167,8 +190,7 @@ const Budgets = () => {
     return (
       <div className="space-y-6">
         <Skeleton className="h-9 w-1/2" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-32" />
+        <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
         </div>
@@ -176,154 +198,110 @@ const Budgets = () => {
     );
   }
 
-  const incomeCategories = categories.filter(c => c.type === 'income');
-  const expenseCategories = categories.filter(c => c.type === 'expense');
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Budgets</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Monthly Budget</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}>
             Previous Month
           </Button>
-          <Badge variant="secondary">{format(currentMonth, 'MMMM yyyy')}</Badge>
+          <Badge variant="secondary">
+            <Calendar className="h-4 w-4 mr-1" />
+            {format(currentMonth, 'MMMM yyyy')}
+          </Badge>
           <Button variant="outline" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}>
             Next Month
           </Button>
         </div>
       </div>
 
-      {incomeCategories.length === 0 && expenseCategories.length === 0 ? (
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardContent className="p-6 text-center">
-            <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Categories</h3>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-600" />
+              Total Budgeted Income
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Expected Income (NPR)</Label>
+              <Input
+                type="number"
+                value={budgetedIncome || ''}
+                onChange={(e) => handleIncomeChange(e.target.value)}
+                placeholder="e.g., 100000"
+                min="0"
+                step="0.01"
+                className="text-right font-mono text-lg"
+              />
+              {budgetedIncome > 0 && (
+                <p className="text-sm text-green-600 font-medium">
+                  {formatCurrency(budgetedIncome)}
+                </p>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Set your total expected income for {format(currentMonth, 'MMMM yyyy')}.
+            </p>
           </CardContent>
         </Card>
-      ) : (
-        <>
-          {incomeCategories.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                Income Budgets
-              </h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {incomeCategories.map((cat) => (
-                  <Card key={cat.id} className="border-2 border-border hover:border-primary/50 transition-colors">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base font-medium truncate">{cat.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Budget (NPR)</Label>
-                        <Input
-                          type="number"
-                          value={budgets[cat.id] || ''}
-                          onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
-                          placeholder="0.00"
-                          className="text-right font-mono"
-                          min="0"
-                          step="0.01"
-                        />
-                        {budgets[cat.id] > 0 && (
-                          <p className="text-xs text-green-600 font-medium">
-                            {formatCurrency(budgets[cat.id])}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-red-600" />
+              Total Budgeted Expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Expected Expenses (NPR)</Label>
+              <Input
+                type="number"
+                value={budgetedExpenses || ''}
+                onChange={(e) => handleExpenseChange(e.target.value)}
+                placeholder="e.g., 60000"
+                min="0"
+                step="0.01"
+                className="text-right font-mono text-lg"
+              />
+              {budgetedExpenses > 0 && (
+                <p className="text-sm text-red-600 font-medium">
+                  {formatCurrency(budgetedExpenses)}
+                </p>
+              )}
             </div>
-          )}
+            <p className="text-xs text-muted-foreground">
+              Set your total spending limit for {format(currentMonth, 'MMMM yyyy')}.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-          {expenseCategories.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-red-600" />
-                Expense Budgets
-              </h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {expenseCategories.map((cat) => (
-                  <Card key={cat.id} className="border-2 border-border hover:border-primary/50 transition-colors">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base font-medium truncate">{cat.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Budget (NPR)</Label>
-                        <Input
-                          type="number"
-                          value={budgets[cat.id] || ''}
-                          onChange={(e) => handleBudgetChange(cat.id, e.target.value)}
-                          placeholder="0.00"
-                          className="text-right font-mono"
-                          min="0"
-                          step="0.01"
-                        />
-                        {budgets[cat.id] > 0 && (
-                          <p className="text-xs text-red-600 font-medium">
-                            {formatCurrency(budgets[cat.id])}
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
+      <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Save Monthly Budget?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Income: {formatCurrency(budgetedIncome)}, Expenses: {formatCurrency(budgetedExpenses)} for {format(currentMonth, 'MMMM yyyy')}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={saveBudgets} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Budget'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-end">
-            <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Clear All Budgets?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will remove all budgeted amounts for {format(currentMonth, 'MMMM yyyy')}. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction className={cn(
-                    "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  )} onClick={clearBudgets}>
-                    Clear Budgets
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <Button variant="outline" onClick={confirmClearBudgets} className="w-full sm:w-auto">
-              Clear All Budgets
-            </Button>
-
-            <AlertDialog open={showSaveConfirm} onOpenChange={setShowSaveConfirm}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Save Budgets?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will update your budgets for {format(currentMonth, 'MMMM yyyy')}. Total income budget: {formatCurrency(getBudgetSummary().totalIncomeBudget)}, total expense budget: {formatCurrency(getBudgetSummary().totalExpenseBudget)}.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={saveBudgets} disabled={saving}>
-                    {saving ? 'Saving...' : 'Save Budgets'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
-            <Button onClick={confirmSaveBudgets} disabled={saving} className="w-full sm:w-auto">
-              {saving ? 'Saving...' : 'Save Budgets'}
-            </Button>
-          </div>
-        </>
-      )}
+      <div className="flex justify-end">
+        <Button onClick={confirmSaveBudgets} disabled={saving || (!totalIncomeCategoryId && !totalExpenseCategoryId)} className="w-full sm:w-auto">
+          {saving ? 'Saving...' : 'Save Monthly Budget'}
+        </Button>
+      </div>
     </div>
   );
 };

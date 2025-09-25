@@ -81,78 +81,70 @@ const Dashboard = () => {
       const fetchBudgets = async () => {
         setLoadingBudgets(true);
         try {
-          // Fetch income category IDs
-          const { data: incomeCatIds, error: incomeCatError } = await supabase
+          // Find special total categories
+          const { data: incomeCat, error: incomeCatError } = await supabase
             .from('categories')
             .select('id')
             .eq('user_id', profile.id)
-            .eq('type', 'income');
+            .eq('name', 'TOTAL_INCOME')
+            .eq('type', 'income')
+            .single();
 
-          if (incomeCatError) {
-            console.error('Error fetching income categories:', incomeCatError);
-            setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
-            setLoadingBudgets(false);
-            return;
+          if (incomeCatError && incomeCatError.code !== 'PGRST116') { // Ignore no rows error
+            console.error('Error fetching TOTAL_INCOME category:', incomeCatError);
           }
 
-          const incomeIds = incomeCatIds?.map(cat => cat.id) || [];
+          const { data: expenseCat, error: expenseCatError } = await supabase
+            .from('categories')
+            .select('id')
+            .eq('user_id', profile.id)
+            .eq('name', 'TOTAL_EXPENSE')
+            .eq('type', 'expense')
+            .single();
 
-          // Sum budgeted income
+          if (expenseCatError && expenseCatError.code !== 'PGRST116') {
+            console.error('Error fetching TOTAL_EXPENSE category:', expenseCatError);
+          }
+
           let budgetedIncome = 0;
-          if (incomeIds.length > 0) {
-            const { data: incomeBudgets, error: incomeBudgetError } = await supabase
+          if (incomeCat?.id) {
+            const { data: incomeBudget, error: incomeBudgetError } = await supabase
               .from('budgets')
               .select('budgeted_amount')
               .eq('user_id', profile.id)
+              .eq('category_id', incomeCat.id)
               .eq('year', currentYear)
               .eq('month', currentMonthNum)
-              .in('category_id', incomeIds);
+              .single();
             
             if (incomeBudgetError) {
-              console.error('Error fetching income budgets:', incomeBudgetError);
+              console.error('Error fetching income budget:', incomeBudgetError);
             } else {
-              budgetedIncome = incomeBudgets?.reduce((sum, b) => sum + (b.budgeted_amount || 0), 0) || 0;
+              budgetedIncome = incomeBudget?.budgeted_amount || 0;
             }
           }
 
-          // Fetch expense category IDs
-          const { data: expenseCatIds, error: expenseCatError } = await supabase
-            .from('categories')
-            .select('id')
-            .eq('user_id', profile.id)
-            .eq('type', 'expense');
-
-          if (expenseCatError) {
-            console.error('Error fetching expense categories:', expenseCatError);
-            setBudgetSummary({ budgetedIncome, budgetedExpenses: 0 });
-            setLoadingBudgets(false);
-            return;
-          }
-
-          const expenseIds = expenseCatIds?.map(cat => cat.id) || [];
-
-          // Sum budgeted expenses
           let budgetedExpenses = 0;
-          if (expenseIds.length > 0) {
-            const { data: expenseBudgets, error: expenseBudgetError } = await supabase
+          if (expenseCat?.id) {
+            const { data: expenseBudget, error: expenseBudgetError } = await supabase
               .from('budgets')
               .select('budgeted_amount')
               .eq('user_id', profile.id)
+              .eq('category_id', expenseCat.id)
               .eq('year', currentYear)
               .eq('month', currentMonthNum)
-              .in('category_id', expenseIds);
+              .single();
             
             if (expenseBudgetError) {
-              console.error('Error fetching expense budgets:', expenseBudgetError);
+              console.error('Error fetching expense budget:', expenseBudgetError);
             } else {
-              budgetedExpenses = expenseBudgets?.reduce((sum, b) => sum + (b.budgeted_amount || 0), 0) || 0;
+              budgetedExpenses = expenseBudget?.budgeted_amount || 0;
             }
           }
 
           setBudgetSummary({ budgetedIncome, budgetedExpenses });
         } catch (err: any) {
           console.error('Failed to load budgets:', err);
-          // Gracefully set to 0 on any error, let UI prompt user to set budgets
           setBudgetSummary({ budgetedIncome: 0, budgetedExpenses: 0 });
         } finally {
           setLoadingBudgets(false);
