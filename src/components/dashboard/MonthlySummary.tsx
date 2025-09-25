@@ -18,6 +18,7 @@ interface MonthlySummaryProps {
   currentYear: number;
   currentMonthNum: number;
   profile: any; // Profile from context
+  categoryIdForBudget: string | null;  // null for overall budget
   onBudgetUpdate: (newExpenses: number) => Promise<void>; // Async for refetch
 }
 
@@ -35,6 +36,7 @@ export const MonthlySummary = ({
   currentYear,
   currentMonthNum,
   profile,
+  categoryIdForBudget = null,  // Default null for overall
   onBudgetUpdate
 }: MonthlySummaryProps) => {
   const netSavings = totalIncome - totalExpenses;
@@ -45,50 +47,13 @@ export const MonthlySummary = ({
   const [refreshing, setRefreshing] = useState(false);
 
   // Suggestion for expenses budget (based on actuals + buffer)
-  const suggestedExpenses = totalExpenses > 0 ? Math.round(totalExpenses * 1.2) : 50000; // 20% buffer over actual or default
+  const suggestedExpenses = totalExpenses > 0 ? Math.round(totalExpenses * 1.2) : 50000; // 20% buffer or default
 
-  // Re-fetch budget on mount to ensure latest from DB (prevents reset on refresh)
+  // Sync with prop on mount (prevents reset)
   useEffect(() => {
-    if (profile?.id) {
-      const refetchBudget = async () => {
-        try {
-          console.log('MonthlySummary: Refetching budget for user', profile.id, 'year', currentYear, 'month', currentMonthNum);
-          const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
-          console.log('MonthlySummary: Found TOTAL_EXPENSE category ID:', totalExpenseCategoryId);
-          
-          const { data: budgetData, error } = await supabase
-            .from('budgets')
-            .select('budgeted_amount')
-            .eq('user_id', profile.id)
-            .eq('category_id', totalExpenseCategoryId)
-            .eq('year', currentYear)
-            .eq('month', currentMonthNum)
-            .single();
-
-          if (error) {
-            if (error.code === 'PGRST116') { // No rows
-              console.log('MonthlySummary: No budget found, setting to 0');
-              setCurrentBudget(0);
-              setTempExpenses('0');
-            } else {
-              console.error('MonthlySummary: Fetch error:', error);
-              showError('Failed to fetch budget. Using cached value.');
-            }
-          } else {
-            const fetchedBudget = budgetData?.budgeted_amount || 0;
-            console.log('MonthlySummary: Fetched budget:', fetchedBudget);
-            setCurrentBudget(fetchedBudget);
-            setTempExpenses(fetchedBudget.toString());
-            await onBudgetUpdate(fetchedBudget); // Sync parent
-          }
-        } catch (err: any) {
-          console.error('MonthlySummary: Refetch error:', err);
-          showError('Could not sync budget. Please refresh.');
-        }
-      };
-      refetchBudget();
-    }
-  }, [profile, currentYear, currentMonthNum, onBudgetUpdate]);
+    setCurrentBudget(budgetedExpenses || 0);
+    setTempExpenses((budgetedExpenses || 0).toString());
+  }, [budgetedExpenses]);
 
   const handleSaveBudget = async () => {
     const expenses = parseFloat(tempExpenses) || 0;
@@ -107,30 +72,26 @@ export const MonthlySummary = ({
     setSaving(true);
 
     try {
-      console.log('MonthlySummary: Saving budget', expenses, 'for user', profile.id);
+      console.log('MonthlySummary: Saving overall budget', expenses, 'for user', profile.id, 'year', currentYear, 'month', currentMonthNum);
       
-      // Get/create TOTAL_EXPENSE category ID
-      const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
-      console.log('MonthlySummary: Using category ID for save:', totalExpenseCategoryId);
-
-      // Delete any existing budget for this month (ensures single row)
+      // Delete any existing overall budget for this month (ensures single row)
       const { error: deleteError } = await supabase
         .from('budgets')
         .delete()
         .eq('user_id', profile.id)
-        .eq('category_id', totalExpenseCategoryId)
+        .is('category_id', null)  // Overall: No category
         .eq('year', currentYear)
         .eq('month', currentMonthNum);
 
-      if (deleteError && deleteError.code !== 'PGRST116') { // Ignore "no rows" error
+      if (deleteError && deleteError.code !== 'PGRST116') { // Ignore "no rows"
         console.error('MonthlySummary: Delete error:', deleteError);
         throw new Error(`Failed to clear old budget: ${deleteError.message}`);
       }
 
-      // Insert new budget
+      // Insert new overall budget (category_id null)
       const { error: insertError } = await supabase.from('budgets').insert({
         user_id: profile.id,
-        category_id: totalExpenseCategoryId,
+        category_id: null,  // Overall budget: No specific category
         year: currentYear,
         month: currentMonthNum,
         budgeted_amount: expenses,
@@ -141,13 +102,12 @@ export const MonthlySummary = ({
         throw new Error(`Failed to save budget: ${insertError.message}`);
       }
 
-      // Verify insert by re-fetching immediately
-      const verified = await getTotalExpenseCategoryId(profile.id); // Reuse to get ID
+      // Verify by re-fetching immediately
       const { data: verifyData, error: verifyError } = await supabase
         .from('budgets')
         .select('budgeted_amount')
         .eq('user_id', profile.id)
-        .eq('category_id', verified)
+        .is('category_id', null)
         .eq('year', currentYear)
         .eq('month', currentMonthNum)
         .single();
@@ -155,12 +115,12 @@ export const MonthlySummary = ({
       if (verifyError || verifyData?.budgeted_amount !== expenses) {
         console.error('MonthlySummary: Verification failed:', verifyError, verifyData);
         showError('Budget saved but could not verify. Please refresh.');
-        await onBudgetUpdate(0); // Trigger full refetch
+        await onBudgetUpdate(0); // Trigger refetch
       } else {
         console.log('MonthlySummary: Budget verified successfully:', expenses);
         setCurrentBudget(expenses);
-        await onBudgetUpdate(expenses); // Sync parent and prevent reset
         setTempExpenses(expenses.toString());
+        await onBudgetUpdate(expenses); // Sync parent
         showSuccess(`Overall budget of ${formatCurrency(expenses)} set for ${month}.`);
       }
     } catch (err: any) {
@@ -176,12 +136,12 @@ export const MonthlySummary = ({
     setRefreshing(true);
     try {
       console.log('MonthlySummary: Manual refresh triggered');
-      const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
+      
       const { data: budgetData, error } = await supabase
         .from('budgets')
         .select('budgeted_amount')
         .eq('user_id', profile.id)
-        .eq('category_id', totalExpenseCategoryId)
+        .is('category_id', null)  // Overall budget
         .eq('year', currentYear)
         .eq('month', currentMonthNum)
         .single();
@@ -201,44 +161,6 @@ export const MonthlySummary = ({
       showError('Refresh failed. Please try again.');
     } finally {
       setRefreshing(false);
-    }
-  };
-
-  // Helper to get/create TOTAL_EXPENSE category ID
-  const getTotalExpenseCategoryId = async (userId: string): Promise<string> => {
-    try {
-      const { data: existing, error: existingError } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('name', 'TOTAL_EXPENSE')
-        .eq('type', 'expense')
-        .single();
-
-      if (existingError && existingError.code !== 'PGRST116') {
-        throw existingError;
-      }
-
-      if (existing) {
-        return existing.id;
-      }
-
-      // Create if missing
-      const { data: inserted, error: insertError } = await supabase
-        .from('categories')
-        .insert({ name: 'TOTAL_EXPENSE', user_id: userId, type: 'expense' })
-        .select('id')
-        .single();
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      console.log('MonthlySummary: Created new TOTAL_EXPENSE category ID:', inserted.id);
-      return inserted.id;
-    } catch (err: any) {
-      console.error('MonthlySummary: Category error:', err);
-      throw new Error(`Failed to get/create category: ${err.message}`);
     }
   };
 
@@ -320,7 +242,7 @@ export const MonthlySummary = ({
     </div>
   );
 
-  // Unified form: Always show, prefilled with current (0 if none), label adapts
+  // Form title adapts based on current budget
   const formTitle = currentBudget > 0 ? `Update Overall Budget for ${month}` : `Set Overall Budget for ${month}`;
   const buttonText = saving ? 'Saving...' : (currentBudget > 0 ? 'Update Budget' : 'Set Budget');
   const placeholder = currentBudget > 0 ? formatCurrency(currentBudget) : formatCurrency(suggestedExpenses);
@@ -351,7 +273,7 @@ export const MonthlySummary = ({
           <div className="flex gap-2">
             <Button
               onClick={handleSaveBudget}
-              disabled={saving || parseFloat(tempExpenses || '0') === 0}
+              disabled={saving || parseFloat(tempExpenses || '0') === 0 || parseFloat(tempExpenses || '0') < 0}
               className="flex-1"
               size="sm"
             >

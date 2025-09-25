@@ -82,7 +82,7 @@ const Dashboard = () => {
     }
   }, [profile, profileLoading]);
 
-  // Fetch the single overall expense budget (TOTAL_EXPENSE) for this month
+  // Simplified: Fetch overall budget directly (category_id IS NULL for overall; no category needed)
   const fetchExpenseBudget = useCallback(async () => {
     if (!profile) {
       console.log('Dashboard: No profile, setting budget to 0');
@@ -90,22 +90,20 @@ const Dashboard = () => {
       return;
     }
     try {
-      console.log('Dashboard: Fetching budget for', profile.id, currentYear, currentMonthNum);
-      const totalExpenseCategoryId = await getTotalExpenseCategoryId(profile.id);
-      console.log('Dashboard: Category ID:', totalExpenseCategoryId);
+      console.log('Dashboard: Fetching overall budget for', profile.id, currentYear, currentMonthNum);
       
       const { data: budgetData, error } = await supabase
         .from('budgets')
         .select('budgeted_amount')
         .eq('user_id', profile.id)
-        .eq('category_id', totalExpenseCategoryId)
+        .is('category_id', null)  // Overall budget: No specific category
         .eq('year', currentYear)
         .eq('month', currentMonthNum)
         .single();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          console.log('Dashboard: No budget row found');
+        if (error.code === 'PGRST116') {  // No rows
+          console.log('Dashboard: No overall budget row found (normal for first time)');
           setBudgetedExpenses(0);
         } else {
           console.error('Dashboard: Budget fetch error:', error);
@@ -114,60 +112,23 @@ const Dashboard = () => {
         }
       } else {
         const overallBudget = budgetData?.budgeted_amount || 0;
-        console.log('Dashboard: Budget fetched:', overallBudget);
+        console.log('Dashboard: Overall budget fetched:', overallBudget);
         setBudgetedExpenses(overallBudget);
       }
     } catch (err: any) {
       console.error('Dashboard: Budget fetch exception:', err);
       setBudgetedExpenses(0);
+      showError('Could not load budget.');
     }
   }, [profile, currentYear, currentMonthNum]);
 
-  // Helper to get TOTAL_EXPENSE category ID (create if missing)
-  const getTotalExpenseCategoryId = async (userId: string): Promise<string> => {
-    try {
-      const { data: existing, error: existingError } = await supabase
-        .from('categories')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('name', 'TOTAL_EXPENSE')
-        .eq('type', 'expense')
-        .single();
-
-      if (existingError && existingError.code !== 'PGRST116') {
-        throw existingError;
-      }
-
-      if (existing) {
-        return existing.id;
-      }
-
-      // Create if missing
-      const { data: inserted, error: insertError } = await supabase
-        .from('categories')
-        .insert({ name: 'TOTAL_EXPENSE', user_id: userId, type: 'expense' })
-        .select('id')
-        .single();
-
-      if (insertError) {
-        throw insertError;
-      }
-
-      console.log('Dashboard: Created TOTAL_EXPENSE category:', inserted.id);
-      return inserted.id;
-    } catch (err: any) {
-      console.error('Dashboard: Category error:', err);
-      throw new Error(`Category setup failed: ${err.message}`);
-    }
-  };
-
-  // Callback for after budget save: Only update if verified successful
+  // Callback for after budget save: Update state and re-fetch to confirm
   const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
     console.log('Dashboard: Budget update callback:', newExpenses);
     if (newExpenses >= 0) {
       setBudgetedExpenses(newExpenses);
     }
-    // Re-fetch to confirm persistence (prevents reset)
+    // Re-fetch to confirm persistence
     await fetchExpenseBudget();
   }, [fetchExpenseBudget]);
 
@@ -226,6 +187,7 @@ const Dashboard = () => {
           currentYear={currentYear}
           currentMonthNum={currentMonthNum}
           profile={profile}
+          categoryIdForBudget={null}  // Pass null for overall budget (no category needed)
           onBudgetUpdate={handleBudgetUpdate}
         />
       )}
