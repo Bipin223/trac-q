@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Edit3, Save, AlertCircle, Calendar } from "lucide-react";
+import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Save, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Link } from "react-router-dom";
-import { useProfile } from "@/contexts/ProfileContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showSuccess, showError } from "@/utils/toast";
@@ -20,8 +17,7 @@ interface MonthlySummaryProps {
   currentYear: number;
   currentMonthNum: number;
   profile: any; // Profile from context
-  onBudgetUpdate: (newExpenses: number) => Promise<void>; // Now async for refetch
-  onEditClick?: () => void; // For edit buttons
+  onBudgetUpdate: (newExpenses: number) => Promise<void>; // Async for refetch
 }
 
 const formatCurrency = (amount: number) => {
@@ -38,8 +34,7 @@ export const MonthlySummary = ({
   currentYear,
   currentMonthNum,
   profile,
-  onBudgetUpdate,
-  onEditClick
+  onBudgetUpdate
 }: MonthlySummaryProps) => {
   const netSavings = totalIncome - totalExpenses;
   const expensesVsBudget = budgetedExpenses > 0 ? ((totalExpenses / budgetedExpenses) * 100) : 0;
@@ -67,9 +62,10 @@ export const MonthlySummary = ({
     setSaving(true);
 
     try {
-      console.log(`Saving overall budget for user ${profile.id}: NPR ${expenses} for ${month} (year ${currentYear}, month ${currentMonthNum}) - this will combine into the total sum`);
+      console.log(`Saving overall budget for user ${profile.id}: NPR ${expenses} for ${month} (year ${currentYear}, month ${currentMonthNum})`);
       
-      // Find/create TOTAL_EXPENSE category (this will be included in the dynamic sum from Supabase)
+      // Get TOTAL_EXPENSE category ID (create if missing)
+      let totalExpenseCategoryId: string;
       const { data: existing, error: existingError } = await supabase
         .from('categories')
         .select('id')
@@ -79,12 +75,11 @@ export const MonthlySummary = ({
         .single();
 
       if (existingError && existingError.code !== 'PGRST116') {
-        console.error('Error checking existing TOTAL_EXPENSE:', existingError);
+        console.error('Error checking TOTAL_EXPENSE:', existingError);
         showError('Failed to check budget setup. See console.');
         return;
       }
 
-      let totalExpenseCategoryId: string | null = null;
       if (!existing) {
         const { data: inserted, error: insertError } = await supabase
           .from('categories')
@@ -103,12 +98,7 @@ export const MonthlySummary = ({
         console.log('Using existing TOTAL_EXPENSE category ID:', totalExpenseCategoryId);
       }
 
-      if (!totalExpenseCategoryId) {
-        showError('Failed to set up budget category.');
-        return;
-      }
-
-      // Delete existing TOTAL_EXPENSE budget for this month (to avoid duplicates)
+      // Delete existing overall budget for this month (to update)
       const { error: deleteError } = await supabase
         .from('budgets')
         .delete()
@@ -117,11 +107,11 @@ export const MonthlySummary = ({
         .eq('year', currentYear)
         .eq('month', currentMonthNum);
       if (deleteError) {
-        console.error('Error deleting existing TOTAL_EXPENSE budget:', deleteError);
+        console.error('Error deleting existing budget:', deleteError);
         // Don't fail on delete—proceed to insert
       }
 
-      // Insert/update the TOTAL_EXPENSE budget (persistent in Supabase, included in sum)
+      // Insert the overall budget (persistent in Supabase)
       const { error: insertError } = await supabase.from('budgets').insert({
         user_id: profile.id,
         category_id: totalExpenseCategoryId,
@@ -136,14 +126,14 @@ export const MonthlySummary = ({
         return;
       }
 
-      console.log('Overall budget saved successfully to Supabase - now refetching to update combined tile total');
-      // Trigger refetch in parent (Dashboard) to sync tile with DB sum (ensures persistence visible immediately, combined with other categories)
+      console.log('Overall budget saved successfully to Supabase - refetching to update tile');
+      // Trigger refetch in parent to sync tile with DB
       await onBudgetUpdate(expenses);
       setTempExpenses('');
-      showSuccess(`Overall budget of ${formatCurrency(expenses)} set for ${month}! Combined total now updated in the Budget tile below (persists across logouts/logins).`);
+      showSuccess(`Overall budget of ${formatCurrency(expenses)} set for ${month}! It persists across logouts/logins.`);
     } catch (err: any) {
-      console.error('Unexpected error in handleInlineSave:', err);
-      showError(`Failed to save overall budget to Supabase: ${err.message || 'Unknown error. It may not persist.'}`);
+      console.error('Unexpected error saving budget:', err);
+      showError(`Failed to save budget to Supabase: ${err.message || 'Unknown error. It may not persist.'}`);
     } finally {
       setSaving(false);
     }
@@ -167,7 +157,7 @@ export const MonthlySummary = ({
             <CardTitle className="text-sm font-medium">Actual Income</CardTitle>
             <CardDescription className="text-xs">for {month}</CardDescription>
           </div>
-          <TrendingUp className="h-4 w-4 text-green-500" />
+          <DollarSign className="h-4 w-4 text-green-500" />
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncome)}</div>
@@ -177,22 +167,10 @@ export const MonthlySummary = ({
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div>
-            <CardTitle className="text-sm font-medium">Budget for {month}</CardTitle>
-            <CardDescription className="text-xs">Combined sum of all expense categories (persistent in Supabase)</CardDescription>
+            <CardTitle className="text-sm font-medium">Overall Budget for {month}</CardTitle>
+            <CardDescription className="text-xs">Your single monthly spending limit (persistent in Supabase)</CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-muted-foreground" />
-            {onEditClick && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={onEditClick}
-                className="h-6 w-6 p-0"
-              >
-                <Edit3 className="h-3 w-3" />
-              </Button>
-            )}
-          </div>
+          <Target className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="text-2xl font-bold">{formatCurrency(budgetedExpenses)}</div>
@@ -202,7 +180,6 @@ export const MonthlySummary = ({
               <p className="text-xs text-muted-foreground">{getProgressStatus(expensesVsBudget)} ({formatPercentage(expensesVsBudget)})</p>
             </div>
           )}
-          {/* Removed placeholder text - now clean NPR 0.00 when no budget set; inline form guides user */}
         </CardContent>
       </Card>
 
@@ -235,16 +212,6 @@ export const MonthlySummary = ({
             {formatCurrency(netSavings)}
           </div>
           <p className="text-xs text-muted-foreground">Your balance for {month}</p>
-          {onEditClick && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onEditClick}
-              className="mt-2 w-full"
-            >
-              Manage Budgets
-            </Button>
-          )}
         </CardContent>
       </Card>
     </div>
@@ -256,7 +223,7 @@ export const MonthlySummary = ({
         <Card>
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-bold">{month} {currentYear}</CardTitle>
-            <CardDescription>Set your overall monthly spending limit (saved to Supabase as TOTAL_EXPENSE and combined into the Budget tile sum below. Persists across logouts/logins).</CardDescription>
+            <CardDescription>Set your overall monthly spending limit (saved to Supabase, persists across logouts/logins for the entire month).</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -273,7 +240,6 @@ export const MonthlySummary = ({
               {suggestedExpenses > 0 && (
                 <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)} (based on your expenses + 20% buffer)</p>
               )}
-              <p className="text-xs text-muted-foreground">Tip: For detailed category budgets, visit the Budgets page. This overall amount will combine with categories in the tile below.</p>
             </div>
             <Button
               onClick={handleInlineSave}
@@ -282,7 +248,7 @@ export const MonthlySummary = ({
               size="sm"
             >
               <Save className="h-4 w-4 mr-2" />
-              {saving ? 'Saving to Supabase...' : `Set Overall Budget for ${month} (Combines into Tile Total)`}
+              {saving ? 'Saving to Supabase...' : `Set Overall Budget for ${month} (Persists)`}
             </Button>
           </CardContent>
         </Card>
@@ -291,10 +257,40 @@ export const MonthlySummary = ({
     );
   }
 
-  // Normal summary when budget exists (sum > 0, fetched from Supabase)
+  // Normal summary when budget exists (fetched from Supabase)
   return (
     <div className="space-y-4">
       {renderSummaryTiles()}
+      {/* Show update form if budget exists but user might want to change it */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-bold">Update Overall Budget for {month}</CardTitle>
+          <CardDescription>Change your monthly spending limit (updates the tile above and persists).</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">New Overall Budget (NPR)</Label>
+            <Input
+              type="number"
+              value={tempExpenses}
+              onChange={(e) => setTempExpenses(e.target.value)}
+              placeholder={formatCurrency(budgetedExpenses)} // Pre-fill current
+              min="0"
+              step="0.01"
+              className="text-right font-mono"
+            />
+          </div>
+          <Button
+            onClick={handleInlineSave}
+            disabled={saving || tempExpenses === ''}
+            className="w-full"
+            size="sm"
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? 'Updating...' : 'Update Overall Budget'}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 };

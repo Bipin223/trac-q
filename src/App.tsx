@@ -5,7 +5,6 @@ import Sidebar, { SidebarContent } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Incomes from './pages/Incomes';
 import Expenses from './pages/Expenses';
-import Budgets from './pages/Budgets';
 import Profile from './pages/Profile';
 import ExchangeRatesPage from './pages/ExchangeRates';
 import Accounts from './pages/Accounts';
@@ -74,7 +73,6 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/accounts" element={<Accounts />} />
-              <Route path="/budgets" element={<Budgets />} />
               <Route path="/incomes" element={<Incomes />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
