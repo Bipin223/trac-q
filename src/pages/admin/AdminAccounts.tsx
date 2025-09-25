@@ -34,32 +34,32 @@ const AdminPage = () => {
         return;
       }
 
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single();
 
-      if (profileData?.role !== 'admin') {
+      if (profileError || profileData?.role !== 'admin') {
         showError("Access Denied. You are not an admin.");
         navigate('/');
         return;
       }
       setIsAdmin(true);
 
-      const { data: accountsData, error } = await supabase
+      const { data: accountsData, error: accountsError } = await supabase
         .from('accounts')
         .select('id, name, type, balance, profiles(username)');
       
-      if (error) {
+      if (accountsError) {
+        console.error('AdminPage: Error fetching accounts:', accountsError);
         showError('Failed to fetch accounts.');
       } else if (accountsData) {
-        // The Supabase join returns `profiles` as an array. We convert it to an object or null.
-        const correctlyTypedAccounts = accountsData.map((account: any) => ({
+        const transformedData = accountsData.map(account => ({
           ...account,
-          profiles: account.profiles?.[0] || null,
+          profiles: Array.isArray(account.profiles) ? account.profiles[0] : account.profiles,
         }));
-        setAccounts(correctlyTypedAccounts);
+        setAccounts(transformedData as Account[]);
       }
       setLoading(false);
     };

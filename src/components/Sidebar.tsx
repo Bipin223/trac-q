@@ -1,4 +1,4 @@
-import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield } from 'lucide-react';
+import { Home, BarChart2, Tag, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
@@ -14,6 +14,11 @@ const navItems = [
   { to: '/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
   { to: '/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },
   { to: '/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
+];
+
+const adminNavItems = [
+    { to: '/admin/accounts', icon: <Shield className="h-5 w-5" />, label: 'Accounts (Admin)' },
+    { to: '/admin/users', icon: <Users className="h-5 w-5" />, label: 'Users (Admin)' },
 ];
 
 interface SidebarContentProps {
@@ -44,15 +49,10 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
         {navItems.map((item) => (
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
         ))}
-        {isAdmin && (
-          <SidebarLink 
-            to="/admin" 
-            icon={<Shield className="h-5 w-5" />} 
-            label="Admin" 
-            isSidebarOpen={isSidebarOpen} 
-            onClick={onLinkClick} 
-          />
-        )}
+        {isAdmin && <div className="pt-2 mt-2 border-t"></div>}
+        {isAdmin && adminNavItems.map((item) => (
+          <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
+        ))}
       </nav>
       <div className="px-2 py-4 mt-auto border-t dark:border-gray-700">
         {isSidebarOpen ? (
