@@ -222,7 +222,7 @@ const Login = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel>Remembered Users (Click to login)</DropdownMenuLabel>
+              <DropdownMenuLabel>Remembered Users</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {rememberedUsers.map((user) => (
                 <DropdownMenuItem 
