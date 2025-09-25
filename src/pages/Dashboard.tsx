@@ -15,9 +15,6 @@ interface ChartData {
   day: string;
   income: number;
   expenses: number;
-  cumulativeIncome: number;
-  cumulativeExpenses: number;
-  cumulativeBudget?: number;
 }
 
 const formatCurrency = (amount: number) => {
@@ -60,10 +57,7 @@ const Dashboard = () => {
           const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
             day: (i + 1).toString().padStart(2, '0'), 
             income: 0, 
-            expenses: 0,
-            cumulativeIncome: 0,
-            cumulativeExpenses: 0,
-            cumulativeBudget: undefined
+            expenses: 0
           }));
           
           incomes?.forEach(i => { 
@@ -206,7 +200,6 @@ const Dashboard = () => {
         <FinancialChart 
           data={financials.chartData} 
           month={currentMonth} 
-          budgetedExpenses={budgetedExpenses}  // New: Pass budget for line integration
         />
       )}
 

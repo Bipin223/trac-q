@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
@@ -13,43 +13,15 @@ interface ChartData {
   day: string;
   income: number;
   expenses: number;
-  cumulativeIncome: number;
-  cumulativeExpenses: number;
-  cumulativeBudget?: number;  // Optional: Only if budget set
 }
 
 interface FinancialChartProps {
   data: ChartData[];
   month: string;
-  budgetedExpenses?: number;  // New: Pass from Dashboard
 }
 
-export const FinancialChart = ({ data, month, budgetedExpenses = 0 }: FinancialChartProps) => {
-  // Compute cumulative values (running totals) for better budget visualization
-  const processedData = data.map((item, index) => {
-    const cumulativeIncome = data
-      .slice(0, index + 1)
-      .reduce((sum, d) => sum + d.income, 0);
-    const cumulativeExpenses = data
-      .slice(0, index + 1)
-      .reduce((sum, d) => sum + d.expenses, 0);
-    
-    // Cumulative budget: Linear projection (e.g., 50% by mid-month)
-    const daysInMonth = data.length;
-    const cumulativeBudget = budgetedExpenses > 0 
-      ? Math.round((budgetedExpenses / daysInMonth) * (index + 1))
-      : 0;
-
-    return {
-      ...item,
-      cumulativeIncome,
-      cumulativeExpenses,
-      cumulativeBudget: cumulativeBudget > 0 ? cumulativeBudget : undefined,
-    };
-  });
-
-  const hasBudget = budgetedExpenses > 0;
-  const hasData = processedData.some(d => d.cumulativeIncome > 0 || d.cumulativeExpenses > 0);
+export const FinancialChart = ({ data, month }: FinancialChartProps) => {
+  const hasData = data.some(d => d.income > 0 || d.expenses > 0);
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat("en-NP", {
@@ -81,7 +53,7 @@ export const FinancialChart = ({ data, month, budgetedExpenses = 0 }: FinancialC
           <CardDescription>Your income and expenses for {month}.</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center h-[300px] text-muted-foreground">
-          <p>No financial activity yet. Add incomes or expenses to see your progress!</p>
+          <p>No financial activity yet. Add incomes or expenses to see your daily progress!</p>
         </CardContent>
       </Card>
     );
@@ -90,14 +62,12 @@ export const FinancialChart = ({ data, month, budgetedExpenses = 0 }: FinancialC
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Financial Overview</CardTitle>
-        <CardDescription>
-          Cumulative progress for {month}.{hasBudget && ` Stay below the blue budget line to stay on track!`}
-        </CardDescription>
+        <CardTitle>Daily Financial Overview</CardTitle>
+        <CardDescription>Your income and expenses by day for {month}.</CardDescription>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={300}>
-          <LineChart data={processedData}>
+          <BarChart data={data}>
             <XAxis 
               dataKey="day" 
               tickFormatter={(value) => `#${value}`}  // e.g., "#15" for day 15
@@ -110,38 +80,22 @@ export const FinancialChart = ({ data, month, budgetedExpenses = 0 }: FinancialC
             <Tooltip content={<CustomTooltip />} />
             <Legend />
             
-            {/* Cumulative Income (Green) */}
-            <Line 
-              type="monotone" 
-              dataKey="cumulativeIncome" 
-              stroke="#22c55e" 
-              name="Cumulative Income"
-              activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2 }}
-              strokeWidth={2}
+            {/* Daily Income (Green Bar) */}
+            <Bar 
+              dataKey="income" 
+              fill="#22c55e" 
+              name="Daily Income"
+              radius={[4, 4, 0, 0]}  // Rounded top corners for clean look
             />
             
-            {/* Cumulative Expenses (Red) */}
-            <Line 
-              type="monotone" 
-              dataKey="cumulativeExpenses" 
-              stroke="#ef4444" 
-              name="Cumulative Expenses"
-              strokeWidth={2}
+            {/* Daily Expenses (Red Bar) */}
+            <Bar 
+              dataKey="expenses" 
+              fill="#ef4444" 
+              name="Daily Expenses"
+              radius={[4, 4, 0, 0]}
             />
-            
-            {/* Cumulative Budget (Blue Dashed - Only if Set) */}
-            {hasBudget && (
-              <Line 
-                type="monotone" 
-                dataKey="cumulativeBudget" 
-                stroke="#3b82f6" 
-                name="Budget Projection"
-                strokeDasharray="5 5"  // Dashed line for projection
-                strokeWidth={2}
-                connectNulls={false}  // Don't connect if undefined
-              />
-            )}
-          </LineChart>
+          </BarChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>
