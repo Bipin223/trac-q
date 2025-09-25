@@ -264,28 +264,15 @@ export const MonthlySummary = ({
                 <p className="text-xs text-muted-foreground">Suggested: {formatCurrency(suggestedExpenses)}</p>
               )}
             </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button
-                onClick={handleInlineSave}
-                disabled={saving || tempExpenses === ''}
-                className="flex-1"
-                size="sm"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {saving ? 'Saving...' : `Set Budget for ${month}`}
-              </Button>
-              <Button
-                variant="outline"
-                asChild
-                className="flex-1"
-                size="sm"
-              >
-                <Link to="/budgets">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Update Later
-                </Link>
-              </Button>
-            </div>
+            <Button
+              onClick={handleInlineSave}
+              disabled={saving || tempExpenses === ''}
+              className="w-full"
+              size="sm"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Saving...' : `Set Budget for ${month}`}
+            </Button>
           </CardContent>
         </Card>
         {renderSummaryTiles()}
