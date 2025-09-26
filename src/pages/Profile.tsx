@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, Mail, Save, Upload, XCircle } from 'lucide-react';
+import { Loader2, User, Mail, Save, Upload, XCircle, FolderOpen, Image as ImageIcon } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const formSchema = z.object({
@@ -36,6 +36,9 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [showFileManager, setShowFileManager] = useState(false);
+  const [files, setFiles] = useState<any[]>([]);
+  const [loadingFiles, setLoadingFiles] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -59,6 +62,65 @@ export default function Profile() {
     }
   }, [profile, form]);
 
+  const fetchFiles = async () => {
+    if (!user) return;
+    
+    setLoadingFiles(true);
+    try {
+      const { data, error } = await supabase.storage
+        .from('avatars')
+        .list(user.id, {
+          limit: 20,
+          offset: 0,
+        });
+
+      if (error) throw error;
+      
+      setFiles(data || []);
+    } catch (error: any) {
+      console.error('Error fetching files:', error);
+      showError('Failed to load files.');
+    } finally {
+      setLoadingFiles(false);
+    }
+  };
+
+  const handleFileManagerClick = async () => {
+    if (!user) return;
+    
+    setShowFileManager(true);
+    await fetchFiles();
+  };
+
+  const handleFileSelect = async (fileName: string) => {
+    if (!user) return;
+    
+    try {
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(`${user.id}/${fileName}`);
+
+      const { data: updatedProfileData, error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+
+      if (updatedProfileData) {
+        setProfile(updatedProfileData);
+        setAvatarPreview(publicUrl);
+        setShowFileManager(false);
+        showSuccess('Profile picture updated successfully!');
+      }
+    } catch (error: any) {
+      console.error('Error selecting file:', error);
+      showError('Failed to select file.');
+    }
+  };
+
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!user || !event.target.files?.[0]) return;
 
@@ -74,7 +136,7 @@ export default function Profile() {
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+    const filePath = `${user.id}/${fileName}`;
 
     setUploading(true);
     setUploadError(null);
@@ -107,7 +169,8 @@ export default function Profile() {
         setProfile(updatedProfileData);
       }
 
-      showSuccess('Profile picture updated successfully!');
+      showSuccess('Profile picture uploaded successfully!');
+      await fetchFiles(); // Refresh file list
     } catch (error: any) {
       console.error('Avatar upload error:', error);
       setUploadError(error.message || 'Failed to upload profile picture. Please try again.');
@@ -210,21 +273,32 @@ export default function Profile() {
               </div>
             )}
             <div className="space-y-2">
-              <label htmlFor="avatar-upload" className="cursor-pointer">
-                <Button type="button" variant="outline" disabled={uploading}>
-                  {uploading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload New Picture
-                    </>
-                  )}
+              <div className="flex gap-2">
+                <label htmlFor="avatar-upload" className="cursor-pointer">
+                  <Button type="button" variant="outline" disabled={uploading}>
+                    {uploading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Uploading...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload New Picture
+                      </>
+                    )}
+                  </Button>
+                </label>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={handleFileManagerClick}
+                  disabled={uploading}
+                >
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  File Manager
                 </Button>
-              </label>
+              </div>
               <Input
                 id="avatar-upload"
                 type="file"
@@ -240,6 +314,45 @@ export default function Profile() {
           </div>
         </CardContent>
       </Card>
+
+      {/* File Manager Modal */}
+      {showFileManager && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">File Manager</h3>
+              <Button variant="ghost" onClick={() => setShowFileManager(false)}>
+                <XCircle className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {loadingFiles ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : files.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                {files.map((file) => (
+                  <div 
+                    key={file.name}
+                    className="border rounded-lg p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    onClick={() => handleFileSelect(file.name)}
+                  >
+                    <div className="flex flex-col items-center">
+                      <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-center truncate w-full">{file.name}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No files found. Upload some images first!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
