@@ -234,7 +234,7 @@ export default function Profile() {
                 disabled={uploading}
               />
               <p className="text-sm text-muted-foreground text-center">
-                Choose a square image (PNG/JPG, <5MB). Current: {avatarPreview ? 'Custom' : 'Zoro (One Piece) Default'}
+                Choose a square image (PNG/JPG, {'<'}5MB). Current: {avatarPreview ? 'Custom' : 'Zoro (One Piece) Default'}
               </p>
             </div>
           </div>
