@@ -40,10 +40,10 @@ export default function Profile() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      first_name: profile?.first_name || '',
-      last_name: profile?.last_name || '',
-      username: profile?.username || '',
-      email: profile?.email || '',
+      first_name: '',
+      last_name: '',
+      username: '',
+      email: '',
     },
   });
 
@@ -84,11 +84,11 @@ export default function Profile() {
       reader.onload = (e) => setAvatarPreview(e.target?.result as string);
       reader.readAsDataURL(file);
 
-      const { data, error } = await supabase.storage
+      const { data, error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
-      if (error) throw error;
+      if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
@@ -103,7 +103,9 @@ export default function Profile() {
 
       if (updateError) throw updateError;
 
-      if (updatedProfileData) setProfile(updatedProfileData);
+      if (updatedProfileData) {
+        setProfile(updatedProfileData);
+      }
 
       showSuccess('Profile picture updated successfully!');
     } catch (error: any) {
@@ -155,7 +157,9 @@ export default function Profile() {
       }
 
       await supabase.auth.refreshSession();
-      if (updatedProfile) setProfile(updatedProfile);
+      if (updatedProfile) {
+        setProfile(updatedProfile);
+      }
 
       showSuccess('Profile updated successfully!');
     } catch (error: any) {
@@ -175,7 +179,11 @@ export default function Profile() {
   }
 
   if (!user || !profile) {
-    return <div className="text-center text-muted-foreground">Loading profile...</div>;
+    return (
+      <div className="text-center text-muted-foreground">
+        Loading profile...
+      </div>
+    );
   }
 
   const initials = `${profile.first_name?.charAt(0) || ''}${profile.last_name?.charAt(0) || ''}`.toUpperCase();
@@ -205,11 +213,16 @@ export default function Profile() {
               <label htmlFor="avatar-upload" className="cursor-pointer">
                 <Button type="button" variant="outline" disabled={uploading}>
                   {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Uploading...
+                    </>
                   ) : (
-                    <Upload className="h-4 w-4 mr-2" />
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload New Picture
+                    </>
                   )}
-                  {uploading ? 'Uploading...' : 'Upload New Picture'}
                 </Button>
               </label>
               <Input
