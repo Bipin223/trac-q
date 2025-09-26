@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -39,6 +39,10 @@ export default function Profile() {
   const [showFileManager, setShowFileManager] = useState(false);
   const [files, setFiles] = useState<any[]>([]);
   const [loadingFiles, setLoadingFiles] = useState(false);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
+  const [resizeMode, setResizeMode] = useState<'crop' | 'fit'>('crop');
+  const [resizeSize, setResizeSize] = useState(300); // Target size for square avatar
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -121,7 +125,7 @@ export default function Profile() {
     }
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!user || !event.target.files?.[0]) return;
 
     const file = event.target.files[0];
@@ -134,51 +138,93 @@ export default function Profile() {
       return;
     }
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}.${fileExt}`;
-    const filePath = `${user.id}/${fileName}`;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        setImageDimensions({ width: img.width, height: img.height });
+        setAvatarPreview(e.target?.result as string);
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
 
-    setUploading(true);
-    setUploadError(null);
+  const resizeAndUploadImage = async () => {
+    if (!avatarPreview || !user || !canvasRef.current) return;
 
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => setAvatarPreview(e.target?.result as string);
-      reader.readAsDataURL(file);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-      const { data, error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, { upsert: true });
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = resizeSize;
+      canvas.height = resizeSize;
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
-
-      const { data: updatedProfileData, error: updateError } = await supabase
-        .from('profiles')
-        .update({ avatar_url: publicUrl })
-        .eq('id', user.id)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-
-      if (updatedProfileData) {
-        setProfile(updatedProfileData);
+      if (resizeMode === 'crop') {
+        // Crop to square from center
+        const size = Math.min(img.width, img.height);
+        const x = (img.width - size) / 2;
+        const y = (img.height - size) / 2;
+        ctx.drawImage(img, x, y, size, size, 0, 0, resizeSize, resizeSize);
+      } else {
+        // Fit to square with letterboxing
+        const scale = Math.min(resizeSize / img.width, resizeSize / img.height);
+        const width = img.width * scale;
+        const height = img.height * scale;
+        const x = (resizeSize - width) / 2;
+        const y = (resizeSize - height) / 2;
+        ctx.fillStyle = '#f3f4f6'; // Light gray background
+        ctx.fillRect(0, 0, resizeSize, resizeSize);
+        ctx.drawImage(img, x, y, width, height);
       }
 
-      showSuccess('Profile picture uploaded successfully!');
-      await fetchFiles(); // Refresh file list
-    } catch (error: any) {
-      console.error('Avatar upload error:', error);
-      setUploadError(error.message || 'Failed to upload profile picture. Please try again.');
-      setAvatarPreview(profile?.avatar_url || 'https://i.imgur.com/abc123zoro.png');
-    } finally {
-      setUploading(false);
-      event.target.value = '';
-    }
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+
+        setUploading(true);
+        setUploadError(null);
+
+        try {
+          const fileExt = 'png'; // Always save as PNG for quality
+          const fileName = `${user.id}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
+
+          const { data, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, blob, { upsert: true });
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+
+          const { data: updatedProfileData, error: updateError } = await supabase
+            .from('profiles')
+            .update({ avatar_url: publicUrl })
+            .eq('id', user.id)
+            .select()
+            .single();
+
+          if (updateError) throw updateError;
+
+          if (updatedProfileData) {
+            setProfile(updatedProfileData);
+            setAvatarPreview(publicUrl);
+            showSuccess('Profile picture uploaded successfully!');
+            await fetchFiles();
+          }
+        } catch (error: any) {
+          console.error('Avatar upload error:', error);
+          setUploadError(error.message || 'Failed to upload profile picture. Please try again.');
+        } finally {
+          setUploading(false);
+        }
+      }, 'image/png');
+    };
+    img.src = avatarPreview;
   };
 
   const onSubmit = async (values: FormData) => {
@@ -272,43 +318,93 @@ export default function Profile() {
                 {uploadError}
               </div>
             )}
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <label htmlFor="avatar-upload" className="cursor-pointer">
-                  <Button type="button" variant="outline" disabled={uploading}>
-                    {uploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Uploading...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Upload New Picture
-                      </>
-                    )}
-                  </Button>
-                </label>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handleFileManagerClick}
-                  disabled={uploading}
-                >
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  File Manager
+            
+            {/* Image Upload Section */}
+            <div className="space-y-4 w-full max-w-md">
+              <label htmlFor="avatar-upload" className="cursor-pointer">
+                <Button type="button" variant="outline" className="w-full">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose Image from Computer
                 </Button>
-              </div>
+              </label>
               <Input
                 id="avatar-upload"
                 type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
+                accept="image/jpeg,image/jpg,image/png"
+                onChange={handleImageUpload}
                 className="hidden"
-                disabled={uploading}
               />
+              
+              {/* Image Preview and Resize Controls */}
+              {avatarPreview && avatarPreview !== defaultAvatar && (
+                <div className="space-y-4 border rounded-lg p-4 bg-muted/50">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Original: {imageDimensions.width} × {imageDimensions.height}px
+                    </p>
+                    <div className="relative mx-auto" style={{ maxWidth: '200px' }}>
+                      <img 
+                        src={avatarPreview} 
+                        alt="Preview" 
+                        className="max-w-full h-auto rounded border"
+                        style={{ maxHeight: '150px' }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium">Resize Mode</label>
+                      <div className="flex gap-2 mt-1">
+                        <Button
+                          variant={resizeMode === 'crop' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setResizeMode('crop')}
+                        >
+                          Crop to Square
+                        </Button>
+                        <Button
+                          variant={resizeMode === 'fit' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setResizeMode('fit')}
+                        >
+                          Fit to Square
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="text-sm font-medium">Size: {resizeSize}px</label>
+                      <Input
+                        type="range"
+                        min="100"
+                        max="500"
+                        value={resizeSize}
+                        onChange={(e) => setResizeSize(parseInt(e.target.value))}
+                        className="mt-1"
+                      />
+                    </div>
+                    
+                    <Button
+                      onClick={resizeAndUploadImage}
+                      disabled={uploading}
+                      className="w-full"
+                    >
+                      {uploading ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Processing & Uploading...
+                        </>
+                      ) : (
+                        'Upload Resized Image'
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              
               <p className="text-sm text-muted-foreground text-center">
-                Choose a square image (PNG/JPG, {'<'}5MB). Current: {avatarPreview ? 'Custom' : 'Zoro (One Piece) Default'}
+                Supports JPEG, JPG, PNG (max 5MB). Images will be resized to {resizeSize}px square.
               </p>
             </div>
           </div>
@@ -443,6 +539,9 @@ export default function Profile() {
           </Button>
         </form>
       </Form>
+      
+      {/* Hidden canvas for image processing */}
+      <canvas ref={canvasRef} className="hidden" />
     </div>
   );
 }
