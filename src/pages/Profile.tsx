@@ -56,7 +56,7 @@ export default function Profile() {
         email: profile.email || '',
       });
       // Default to Zoro avatar if no custom
-      setAvatarPreview(profile.avatar_url || 'https://i.imgur.com/abc123zoro.png');  // Replace with actual Zoro URL
+      setAvatarPreview(profile.avatar_url || 'https://i.imgur.com/abc123zoro.png');
     }
   }, [profile, form]);
 
@@ -104,7 +104,7 @@ export default function Profile() {
         .from('profiles')
         .update({ avatar_url: publicUrl })
         .eq('id', user.id)
-        .select()  // Select to get updated row
+        .select()
         .single();
 
       if (updateError) throw updateError;
@@ -192,7 +192,7 @@ export default function Profile() {
   }
 
   const initials = `${profile.first_name?.charAt(0) || ''}${profile.last_name?.charAt(0) || ''}`.toUpperCase();
-  const defaultAvatar = 'https://i.imgur.com/abc123zoro.png';  // Zoro default
+  const defaultAvatar = 'https://i.imgur.com/abc123zoro.png';
 
   return (
     <div className="space-y-6">
