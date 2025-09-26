@@ -55,7 +55,6 @@ export default function Profile() {
         username: profile.username || '',
         email: profile.email || '',
       });
-      // Default to Zoro avatar if no custom
       setAvatarPreview(profile.avatar_url || 'https://i.imgur.com/abc123zoro.png');
     }
   }, [profile, form]);
@@ -64,7 +63,6 @@ export default function Profile() {
     if (!user || !event.target.files?.[0]) return;
 
     const file = event.target.files[0];
-    // Validation: File type and size (<5MB)
     if (!file.type.startsWith('image/')) {
       setUploadError('Please select an image file (PNG, JPG, etc.).');
       return;
@@ -82,24 +80,20 @@ export default function Profile() {
     setUploadError(null);
 
     try {
-      // Preview locally first
       const reader = new FileReader();
       reader.onload = (e) => setAvatarPreview(e.target?.result as string);
       reader.readAsDataURL(file);
 
-      // Upload to Supabase Storage
       const { data, error } = await supabase.storage
         .from('avatars')
         .upload(filePath, file, { upsert: true });
 
       if (error) throw error;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('avatars')
         .getPublicUrl(filePath);
 
-      // Update profiles table and get updated profile
       const { data: updatedProfileData, error: updateError } = await supabase
         .from('profiles')
         .update({ avatar_url: publicUrl })
@@ -109,18 +103,15 @@ export default function Profile() {
 
       if (updateError) throw updateError;
 
-      // Refresh profile in context (no full reload)
       if (updatedProfileData) setProfile(updatedProfileData);
 
       showSuccess('Profile picture updated successfully!');
     } catch (error: any) {
       console.error('Avatar upload error:', error);
       setUploadError(error.message || 'Failed to upload profile picture. Please try again.');
-      // Revert preview on error
       setAvatarPreview(profile?.avatar_url || 'https://i.imgur.com/abc123zoro.png');
     } finally {
       setUploading(false);
-      // Reset file input
       event.target.value = '';
     }
   };
@@ -132,7 +123,6 @@ export default function Profile() {
     setUploadError(null);
 
     try {
-      // Check username uniqueness (exclude current user)
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('id')
@@ -145,7 +135,6 @@ export default function Profile() {
         return;
       }
 
-      // Update profiles table
       const { data: updatedProfile, error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -160,13 +149,11 @@ export default function Profile() {
 
       if (profileError) throw profileError;
 
-      // Update email in auth.users if changed
       if (values.email !== user.email) {
         const { error: authError } = await supabase.auth.updateUser({ email: values.email });
         if (authError) throw authError;
       }
 
-      // Refresh session and profile
       await supabase.auth.refreshSession();
       if (updatedProfile) setProfile(updatedProfile);
 
