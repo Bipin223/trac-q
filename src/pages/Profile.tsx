@@ -1,12 +1,10 @@
-"use client";
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@supabase/auth-helpers-react';
-import { useProfile, ProfileProvider } from '@/contexts/ProfileContext';
+import { useProfile } from '@/contexts/ProfileContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -19,7 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, User, Mail, Edit3, Save, Upload, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, User, Mail, Save, Upload, XCircle } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const formSchema = z.object({
@@ -33,7 +31,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function Profile() {
   const user = useUser();
-  const { profile, loading, setProfile } = useProfile();  // Assume setProfile is exposed or use refresh
+  const { profile, loading, setProfile } = useProfile();
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
