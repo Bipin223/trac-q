@@ -43,6 +43,7 @@ export default function Profile() {
   const [resizeMode, setResizeMode] = useState<'crop' | 'fit'>('crop');
   const [resizeSize, setResizeSize] = useState(300); // Target size for square avatar
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -148,6 +149,12 @@ export default function Profile() {
       img.src = e.target?.result as string;
     };
     reader.readAsDataURL(file);
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   const resizeAndUploadImage = async () => {
@@ -321,13 +328,18 @@ export default function Profile() {
             
             {/* Image Upload Section */}
             <div className="space-y-4 w-full max-w-md">
-              <label htmlFor="avatar-upload" className="cursor-pointer">
-                <Button type="button" variant="outline" className="w-full">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose Image from Computer
-                </Button>
-              </label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full"
+                onClick={triggerFileInput}
+                disabled={uploading}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Choose Image from Computer
+              </Button>
               <Input
+                ref={fileInputRef}
                 id="avatar-upload"
                 type="file"
                 accept="image/jpeg,image/jpg,image/png"
