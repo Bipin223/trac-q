@@ -1,10 +1,13 @@
-import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users } from 'lucide-react';
+import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users, Mail } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Badge } from './ui/badge';
+import { useProfile } from '@/contexts/ProfileContext';
 
 const navItems = [
   { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
@@ -28,6 +31,7 @@ interface SidebarContentProps {
 export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarContentProps) => {
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
+  const { profile } = useProfile();
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
@@ -35,14 +39,36 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
     navigate('/login');
   };
 
+  const initials = profile ? `${profile.first_name?.charAt(0) || ''}${profile.last_name?.charAt(0) || profile.username?.charAt(0) || ''}`.toUpperCase() : '';
+
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800">
-      <div className="flex items-center h-20 border-b dark:border-gray-700 px-4 shrink-0">
+      {/* Header with Profile */}
+      <div className="flex flex-col h-32 border-b dark:border-gray-700 px-4 shrink-0 space-y-2">
+        {/* Logo */}
         <Link to="/" onClick={onLinkClick} className={cn("flex items-center w-full", !isSidebarOpen && "justify-center")}>
           <img src="https://i.imgur.com/MX9Vsqz.png" alt="Logo" className="h-10 w-10 shrink-0" />
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
         </Link>
+        
+        {/* Profile Section */}
+        {profile && (
+          <div className={cn("flex items-center space-x-3", !isSidebarOpen && "justify-center space-x-0")}>
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={profile.avatar_url} alt="Profile picture" />
+              <AvatarFallback className="h-8 w-8 text-xs">{initials}</AvatarFallback>
+            </Avatar>
+            {isSidebarOpen && (
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{profile.username}</p>
+                <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
+                {isAdmin && <Badge variant="secondary" className="mt-1 text-xs">Admin</Badge>}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+      
       <nav className="flex-1 px-2 py-4 space-y-1">
         {navItems.map((item) => (
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />

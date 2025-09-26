@@ -6,6 +6,10 @@ interface Profile {
   id: string;
   username: string;
   role: 'admin' | 'user';
+  first_name?: string;
+  last_name?: string;
+  avatar_url?: string;
+  email?: string;
 }
 
 interface ProfileContextType {
@@ -27,7 +31,7 @@ export const ProfileProvider = ({ children }: { children: ReactNode }) => {
         console.log("ProfileContext: User found, fetching profile for ID:", user.id);
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, username, role')
+          .select('id, username, role, first_name, last_name, avatar_url, email')
           .eq('id', user.id)
           .single();
 
