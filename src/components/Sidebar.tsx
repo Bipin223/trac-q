@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Badge } from './ui/badge';
 import { useProfile } from '@/contexts/ProfileContext';
 
@@ -39,11 +38,9 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
     navigate('/login');
   };
 
-  const initials = profile ? `${profile.first_name?.charAt(0) || ''}${profile.last_name?.charAt(0) || profile.username?.charAt(0) || ''}`.toUpperCase() : '';
-
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800">
-      {/* Header with Profile */}
+      {/* Header with Logo */}
       <div className="flex flex-col h-32 border-b dark:border-gray-700 px-4 shrink-0 space-y-2">
         {/* Logo */}
         <Link to="/" onClick={onLinkClick} className={cn("flex items-center w-full", !isSidebarOpen && "justify-center")}>
@@ -51,20 +48,11 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
         </Link>
         
-        {/* Profile Section */}
-        {profile && (
-          <div className={cn("flex items-center space-x-3", !isSidebarOpen && "justify-center space-x-0")}>
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={profile.avatar_url} alt="Profile picture" />
-              <AvatarFallback className="h-8 w-8 text-xs">{initials}</AvatarFallback>
-            </Avatar>
-            {isSidebarOpen && (
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium truncate">{profile.username}</p>
-                <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
-                {isAdmin && <Badge variant="secondary" className="mt-1 text-xs">Admin</Badge>}
-              </div>
-            )}
+        {/* Profile Section - Only username and admin badge, no avatar or email */}
+        {profile && isSidebarOpen && (
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-sm font-medium truncate">{profile.username}</p>
+            {isAdmin && <Badge variant="secondary" className="text-xs">Admin</Badge>}
           </div>
         )}
       </div>
