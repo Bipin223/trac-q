@@ -1,10 +1,12 @@
-import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users } from 'lucide-react';
+import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users, Mail } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Badge } from './ui/badge';
+import { useProfile } from '@/contexts/ProfileContext';
 
 const navItems = [
   { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
@@ -28,6 +30,7 @@ interface SidebarContentProps {
 export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarContentProps) => {
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
+  const { profile } = useProfile();
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
@@ -37,12 +40,15 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800">
-      <div className="flex items-center h-20 border-b dark:border-gray-700 px-4 shrink-0">
-        <Link to="/" onClick={onLinkClick} className={cn("flex items-center w-full", !isSidebarOpen && "justify-center")}>
-          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Logo" className="h-10 w-10 shrink-0" />
+      {/* Header with Logo Only */}
+      <div className="flex flex-col h-24 border-b dark:border-gray-700 px-4 shrink-0 justify-center">
+        {/* Logo - Enlarged and centered */}
+        <Link to="/" onClick={onLinkClick} className={cn("flex items-center justify-center w-full", !isSidebarOpen && "justify-center")}>
+          <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 shrink-0" />
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
         </Link>
       </div>
+      
       <nav className="flex-1 px-2 py-4 space-y-1">
         {navItems.map((item) => (
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />

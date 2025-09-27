@@ -259,7 +259,7 @@ const Login = () => {
       <div className="w-full max-w-4xl grid md:grid-cols-2 rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-8 space-y-6 bg-white/80 dark:bg-card/80 backdrop-blur-sm">
           <div className="space-y-2 text-center">
-            <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
+            <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
             <h1 className="text-3xl font-bold">Trac-Q</h1>
             <p className="text-muted-foreground">A Modern Finance app to 'Track You' :)</p>
           </div>
