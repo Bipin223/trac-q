@@ -39,6 +39,9 @@ function App() {
 
   const initials = profile ? `${profile.first_name?.charAt(0) || ''}${profile.last_name?.charAt(0) || profile.username?.charAt(0) || ''}`.toUpperCase() : '';
 
+  // Truncate email for display if too long
+  const displayEmail = profile?.email ? (profile.email.length > 25 ? `${profile.email.substring(0, 25)}...` : profile.email) : '';
+
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-background">
       <Sidebar isOpen={isSidebarOpen} isAdmin={isAdmin} />
@@ -66,6 +69,13 @@ function App() {
               <Menu className="h-6 w-6" />
               <span className="sr-only">Toggle Sidebar</span>
             </Button>
+
+            {/* User Email Display - Hidden on mobile for space */}
+            {displayEmail && (
+              <p className="hidden md:block text-sm text-muted-foreground truncate max-w-xs">
+                {displayEmail}
+              </p>
+            )}
           </div>
           <div className="flex items-center space-x-2">
             <Link to="/profile">
