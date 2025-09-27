@@ -44,7 +44,7 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
       <div className="flex flex-col h-24 border-b dark:border-gray-700 px-4 shrink-0 justify-center">
         {/* Logo - Enlarged and centered */}
         <Link to="/" onClick={onLinkClick} className={cn("flex items-center justify-center w-full", !isSidebarOpen && "justify-center")}>
-          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Logo" className="h-12 w-12 shrink-0" />
+          <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 shrink-0" />
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
         </Link>
       </div>

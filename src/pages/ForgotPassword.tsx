@@ -76,7 +76,7 @@ const ForgotPasswordPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="space-y-2 text-center">
-          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
+          <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
           <h1 className="text-3xl font-bold">Forgot Password</h1>
           <p className="text-muted-foreground">
             {step === 1 ? "Enter your username or email to find your account." : "Confirm your email to receive a reset link."}

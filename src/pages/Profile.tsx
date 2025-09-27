@@ -63,7 +63,7 @@ export default function Profile() {
         username: profile.username || '',
         email: profile.email || '',
       });
-      setAvatarPreview(profile.avatar_url || 'https://i.imgur.com/abc123zoro.png');
+      setAvatarPreview(profile.avatar_url || '/logo.png');
     }
   }, [profile, form]);
 
@@ -303,7 +303,7 @@ export default function Profile() {
   }
 
   const initials = `${profile.first_name?.charAt(0) || ''}${profile.last_name?.charAt(0) || ''}`.toUpperCase();
-  const defaultAvatar = 'https://i.imgur.com/abc123zoro.png';
+  const defaultAvatar = '/logo.png';
 
   return (
     <div className="space-y-6">
