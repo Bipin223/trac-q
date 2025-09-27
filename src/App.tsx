@@ -45,13 +45,6 @@ function App() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="flex items-center justify-between h-20 px-4 sm:px-6 bg-white dark:bg-card border-b dark:border-border shrink-0">
           <div className="flex items-center space-x-3">
-            {/* Trac-Q Logo */}
-            <img 
-              src="https://i.imgur.com/MX9Vsqz.png" 
-              alt="Trac-Q Logo" 
-              className="h-8 w-8 flex-shrink-0" 
-            />
-            
             <Sheet open={isMobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
