@@ -40,21 +40,13 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-gray-800">
-      {/* Header with Logo */}
-      <div className="flex flex-col h-32 border-b dark:border-gray-700 px-4 shrink-0 space-y-2">
-        {/* Logo */}
-        <Link to="/" onClick={onLinkClick} className={cn("flex items-center w-full", !isSidebarOpen && "justify-center")}>
-          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Logo" className="h-10 w-10 shrink-0" />
+      {/* Header with Logo Only */}
+      <div className="flex flex-col h-24 border-b dark:border-gray-700 px-4 shrink-0 justify-center">
+        {/* Logo - Enlarged and centered */}
+        <Link to="/" onClick={onLinkClick} className={cn("flex items-center justify-center w-full", !isSidebarOpen && "justify-center")}>
+          <img src="https://i.imgur.com/MX9Vsqz.png" alt="Logo" className="h-12 w-12 shrink-0" />
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
         </Link>
-        
-        {/* Profile Section - Only username and admin badge, no avatar or email */}
-        {profile && isSidebarOpen && (
-          <div className="min-w-0 flex-1 space-y-1">
-            <p className="text-sm font-medium truncate">{profile.username}</p>
-            {isAdmin && <Badge variant="secondary" className="text-xs">Admin</Badge>}
-          </div>
-        )}
       </div>
       
       <nav className="flex-1 px-2 py-4 space-y-1">
