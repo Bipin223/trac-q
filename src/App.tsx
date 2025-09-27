@@ -12,6 +12,7 @@ import { Button } from './components/ui/button';
 import { Menu, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { ThemeToggle } from './components/theme-toggle';
+import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import AdminAccountsPage from './pages/admin/AdminAccounts';
 import AdminUsersPage from './pages/admin/AdminUsers';
 import { useProfile } from './contexts/ProfileContext';
@@ -35,6 +36,8 @@ function App() {
   }
 
   const isAdmin = profile?.role === 'admin';
+
+  const initials = profile ? `${profile.first_name?.charAt(0) || ''}${profile.last_name?.charAt(0) || profile.username?.charAt(0) || ''}`.toUpperCase() : '';
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-background">
@@ -72,6 +75,12 @@ function App() {
             </Button>
           </div>
           <div className="flex items-center space-x-2">
+            <Link to="/profile">
+              <Avatar className="h-10 w-10">
+                <AvatarImage src={profile?.avatar_url} alt="User avatar" />
+                <AvatarFallback className="h-10 w-10 text-sm">{initials}</AvatarFallback>
+              </Avatar>
+            </Link>
             <ThemeToggle />
           </div>
         </header>
