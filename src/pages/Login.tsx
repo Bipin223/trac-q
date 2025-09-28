@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { supabase } from '@/integrations/supabase/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -211,9 +212,12 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-white dark:from-gray-900 dark:via-purple-900/80 dark:to-blue-900/80 p-4 relative">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
       {/* Floating Quick Login Button - Only for sign-in mode with remembered users */}
       {hasRememberedUsers && (
-        <div className="fixed top-4 right-4 z-50">
+        <div className="fixed top-16 right-4 z-50">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="flex items-center gap-2" disabled={loading}>
@@ -258,10 +262,12 @@ const Login = () => {
 
       <div className="w-full max-w-4xl grid md:grid-cols-2 rounded-2xl shadow-2xl overflow-hidden">
         <div className="p-8 space-y-6 bg-white/80 dark:bg-card/80 backdrop-blur-sm">
-          <div className="space-y-2 text-center">
-            <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 mx-auto" />
-            <h1 className="text-3xl font-bold">Trac-Q</h1>
-            <p className="text-muted-foreground">A Modern Finance app to 'Track You' :)</p>
+          <div className="flex flex-col items-center">
+            <div className="flex items-center justify-center ~gap-4 w-full">
+              <img src="/logo.png" alt="Trac-Q Logo" className="h-20 w-20 -ml-12" />
+              <h1 className="text-3xl font-bold -ml-">Trac-Q</h1>
+            </div>
+            <p className="text-muted-foreground text-center mt-2">A Modern Finance app to 'Track You'</p>
           </div>
           
           <div className="space-y-2 text-center">
