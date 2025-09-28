@@ -265,7 +265,7 @@ const Login = () => {
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center ~gap-4 w-full">
               <img src="/logo.png" alt="Trac-Q Logo" className="h-20 w-20 -ml-12" />
-              <h1 className="text-3xl font-bold -ml-">Trac-Q</h1>
+              <h1 className="text-3xl font-bold -ml-4">Trac-Q</h1>
             </div>
             <p className="text-muted-foreground text-center mt-2">A Modern Finance app to 'Track You'</p>
           </div>
