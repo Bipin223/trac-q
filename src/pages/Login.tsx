@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { supabase } from '@/integrations/supabase/client';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,7 +27,8 @@ const MAX_REMEMBERED_USERS = 5;
 
 const Login = () => {
   const navigate = useNavigate();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const location = useLocation();
+  const [isSignUp, setIsSignUp] = useState(location.state?.signUp || false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -45,7 +46,7 @@ const Login = () => {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate('/');
+        navigate('/dashboard');
       }
     };
     checkSession();
@@ -135,7 +136,7 @@ const Login = () => {
     } else {
       // Success - setup session based on rememberMe (default to true for quick login)
       setupTemporarySession(); // Or make persistent by default for quick logins
-      navigate('/');
+      navigate('/dashboard');
     }
     setLoading(false);
   };
@@ -198,7 +199,7 @@ const Login = () => {
         } else {
           setupTemporarySession();
         }
-        navigate('/');
+        navigate('/dashboard');
       }
     }
 
@@ -212,6 +213,16 @@ const Login = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-white dark:from-gray-900 dark:via-purple-900/80 dark:to-blue-900/80 p-4 relative">
+      <div className="absolute top-4 left-4 z-10">
+        <Link to="/">
+          <Button variant="outline" size="sm" className="flex items-center gap-2">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Home
+          </Button>
+        </Link>
+      </div>
       <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
       </div>
@@ -264,7 +275,7 @@ const Login = () => {
         <div className="p-8 space-y-6 bg-white/80 dark:bg-card/80 backdrop-blur-sm">
           <div className="flex flex-col items-center">
             <div className="flex items-center justify-center ~gap-4 w-full">
-              <img src="/logo.png" alt="Trac-Q Logo" className="h-20 w-20 -ml-12" />
+              <img src="/logo.png" alt="Trac-Q Logo" className="h-24 w-24 -ml-12" />
               <h1 className="text-3xl font-bold -ml-4">Trac-Q</h1>
             </div>
             <p className="text-muted-foreground text-center mt-2">A Modern Finance app to 'Track You'</p>
@@ -418,7 +429,7 @@ const Login = () => {
               </div>
             )}
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+              {loading ? 'Logging in...' : (isSignUp ? 'Create Account' : 'Sign In')}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">

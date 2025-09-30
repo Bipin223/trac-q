@@ -9,16 +9,16 @@ import { Badge } from './ui/badge';
 import { useProfile } from '@/contexts/ProfileContext';
 
 const navItems = [
-  { to: '/', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
-  { to: '/incomes', icon: <DollarSign className="h-5 w-5" />, label: 'Incomes' },
-  { to: '/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
-  { to: '/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },
-  { to: '/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
+  { to: '/dashboard', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
+  { to: '/dashboard/incomes', icon: <DollarSign className="h-5 w-5" />, label: 'Incomes' },
+  { to: '/dashboard/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
+  { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },
+  { to: '/dashboard/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
 ];
 
 const adminNavItems = [
-    { to: '/admin/accounts', icon: <Shield className="h-5 w-5" />, label: 'Accounts (Admin)' },
-    { to: '/admin/users', icon: <Users className="h-5 w-5" />, label: 'Users (Admin)' },
+    { to: '/dashboard/admin/accounts', icon: <Shield className="h-5 w-5" />, label: 'Accounts (Admin)' },
+    { to: '/dashboard/admin/users', icon: <Users className="h-5 w-5" />, label: 'Users (Admin)' },
 ];
 
 interface SidebarContentProps {
@@ -43,8 +43,8 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
       {/* Header with Logo Only */}
       <div className="flex flex-col h-24 border-b dark:border-gray-700 px-4 shrink-0 justify-center">
         {/* Logo - Enlarged and centered */}
-        <Link to="/" onClick={onLinkClick} className={cn("flex items-center justify-center w-full", !isSidebarOpen && "justify-center")}>
-          <img src="/logo.png" alt="Trac-Q Logo" className="h-12 w-12 shrink-0" />
+        <Link to="/dashboard" onClick={onLinkClick} className={cn("flex items-center justify-center w-full", !isSidebarOpen && "justify-center")}>
+          <img src="/logo.png" alt="Trac-Q Logo" className="h-16 w-16 shrink-0" />
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
         </Link>
       </div>

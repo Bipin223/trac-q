@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, ArrowRightLeft } from "lucide-react";
+import { Info, ArrowRightLeft, RefreshCw, TrendingUp } from "lucide-react";
 
 interface ExchangeRatesData {
   amount: number;
@@ -23,28 +23,62 @@ const TARGET_CURRENCIES = {
   CNY: { name: 'Chinese Yuan', flag: '🇨🇳' },
 };
 
-const staticRatesData: ExchangeRatesData = {
-  amount: 1,
-  base: 'NPR',
-  date: new Date().toISOString().split('T')[0],
-  rates: {
-    USD: 0.0075,
-    EUR: 0.0070,
-    GBP: 0.0060,
-    JPY: 1.17,
-    CNY: 0.055,
-    NPR: 1,
-  },
-};
-
 const ExchangeRatesPage = () => {
-  const [ratesData] = useState<ExchangeRatesData>(staticRatesData);
+  const [ratesData, setRatesData] = useState<ExchangeRatesData | null>(null);
   const [amount, setAmount] = useState<string>('100');
   const [fromCurrency, setFromCurrency] = useState('USD');
   const [toCurrency, setToCurrency] = useState('NPR');
   const [convertedAmount, setConvertedAmount] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
   const numericAmount = parseFloat(amount);
+
+  // Fetch live exchange rates
+  const fetchRates = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Using exchangerate-api.com (free, no API key needed for basic usage)
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      const data = await response.json();
+      
+      setRatesData({
+        amount: 1,
+        base: 'USD',
+        date: data.date,
+        rates: data.rates,
+      });
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error('Error fetching exchange rates:', err);
+      setError('Failed to fetch live rates. Please try again.');
+      // Fallback to static data
+      setRatesData({
+        amount: 1,
+        base: 'USD',
+        date: new Date().toISOString().split('T')[0],
+        rates: {
+          USD: 1,
+          EUR: 0.92,
+          GBP: 0.79,
+          JPY: 149.50,
+          CNY: 7.24,
+          NPR: 133.25,
+        },
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch rates on mount and every 5 minutes
+  useEffect(() => {
+    fetchRates();
+    const interval = setInterval(fetchRates, 5 * 60 * 1000); // Update every 5 minutes
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (ratesData && ratesData.rates && !isNaN(numericAmount) && numericAmount >= 0) {
@@ -66,13 +100,25 @@ const ExchangeRatesPage = () => {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Exchange Rates</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Exchange Rates</h1>
+        <Button 
+          onClick={fetchRates} 
+          disabled={loading}
+          variant="outline"
+          size="sm"
+          className="hover:scale-105 transition-all"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh Rates
+        </Button>
+      </div>
       
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Static Data</AlertTitle>
-        <AlertDescription>
-          The exchange rates shown are for demonstration purposes and are not live.
+      <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+        <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+        <AlertTitle className="text-green-700 dark:text-green-300">Live Exchange Rates</AlertTitle>
+        <AlertDescription className="text-green-600 dark:text-green-400">
+          {loading ? 'Fetching latest rates...' : error ? error : `Real-time rates • Last updated: ${lastUpdated} • Auto-refreshes every 5 minutes`}
         </AlertDescription>
       </Alert>
 

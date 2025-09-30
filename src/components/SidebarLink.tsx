@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
-import { cn } from '@/lib/utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 interface SidebarLinkProps {
   to: string;
@@ -14,43 +14,32 @@ const SidebarLink = ({ to, icon, label, isSidebarOpen, onClick }: SidebarLinkPro
   const location = useLocation();
   const isActive = location.pathname === to;
 
-  const linkClasses = cn(
-    "flex items-center p-3 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors",
-    isActive && "bg-primary text-primary-foreground hover:bg-primary/90",
-    !isSidebarOpen && "justify-center"
-  );
-
-  if (!isSidebarOpen) {
-    return (
-      <TooltipProvider delayDuration={0}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              to={to}
-              onClick={onClick}
-              className={linkClasses}
-            >
-              {icon}
-              <span className="sr-only">{label}</span>
-            </Link>
-          </TooltipTrigger>
+  return (
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            to={to}
+            onClick={onClick}
+            className={cn(
+              "flex items-center p-3 rounded-lg transition-all duration-200 ease-in-out",
+              isActive
+                ? "bg-purple-600 text-white shadow-lg scale-105"
+                : "text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400 hover:scale-105 hover:shadow-md",
+              !isSidebarOpen && "justify-center"
+            )}
+          >
+            {icon}
+            {isSidebarOpen && <span className="ml-4 font-medium">{label}</span>}
+          </Link>
+        </TooltipTrigger>
+        {!isSidebarOpen && (
           <TooltipContent side="right">
             <p>{label}</p>
           </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={linkClasses}
-    >
-      {icon}
-      <span className="ml-4 font-medium">{label}</span>
-    </Link>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

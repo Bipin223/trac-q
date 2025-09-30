@@ -5,7 +5,7 @@ import Sidebar, { SidebarContent } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Incomes from './pages/Incomes';
 import Expenses from './pages/Expenses';
-import Profile from './pages/Profile';
+import ProfileEnhanced from './pages/ProfileEnhanced';
 import ExchangeRatesPage from './pages/ExchangeRates';
 import Accounts from './pages/Accounts';
 import { Button } from './components/ui/button';
@@ -23,14 +23,18 @@ function App() {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  if (!session) {
-    return <Navigate to="/login" />;
-  }
-
   if (loading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
       </div>
     );
   }
@@ -78,10 +82,10 @@ function App() {
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <Link to="/profile">
-              <Avatar className="h-10 w-10">
+            <Link to="/dashboard/profile" className="transition-transform hover:scale-110">
+              <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-transparent hover:ring-purple-500 transition-all">
                 <AvatarImage src={profile?.avatar_url} alt="User avatar" />
-                <AvatarFallback className="h-10 w-10 text-sm">{initials}</AvatarFallback>
+                <AvatarFallback className="h-10 w-10 text-sm bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300">{initials}</AvatarFallback>
               </Avatar>
             </Link>
             <ThemeToggle />
@@ -95,9 +99,10 @@ function App() {
               <Route path="/incomes" element={<Incomes />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
-              <Route path="/profile" element={<Profile />} />
+              <Route path="/profile" element={<ProfileEnhanced />} />
               {isAdmin && <Route path="/admin/accounts" element={<AdminAccountsPage />} />}
               {isAdmin && <Route path="/admin/users" element={<AdminUsersPage />} />}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>
         </main>

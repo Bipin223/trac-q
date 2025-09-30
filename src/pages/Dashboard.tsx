@@ -173,35 +173,164 @@ const Dashboard = () => {
 
   const displayName = profile.username || "Valued User";
   const dashboardItems = [
-    { to: '/incomes', icon: <DollarSign className="h-6 w-6" />, title: 'Incomes', description: 'Log your earnings and manage income sources.' },
-    { to: '/expenses', icon: <BarChart2 className="h-6 w-6" />, title: 'Expenses', description: 'Record your spending and analyze your habits.' },
-    { to: '/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' }
+    { to: '/dashboard/incomes', icon: <DollarSign className="h-6 w-6" />, title: 'Incomes', description: 'Log your earnings and manage income sources.' },
+    { to: '/dashboard/expenses', icon: <BarChart2 className="h-6 w-6" />, title: 'Expenses', description: 'Record your spending and analyze your habits.' },
+    { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' }
   ];
 
   const actualIncome = financials?.totalIncome || 0;
   const actualExpenses = financials?.totalExpenses || 0;
   const netSavings = actualIncome - actualExpenses;
 
+  const savingsRate = actualIncome > 0 ? ((netSavings / actualIncome) * 100).toFixed(1) : 0;
+  const budgetUtilization = budgetedExpenses > 0 ? ((actualExpenses / budgetedExpenses) * 100).toFixed(1) : 0;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Greeting Section */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{getGreeting()}, {profile.role === "admin" ? `Admin - ${displayName}` : displayName}!</h1>
         <p className="text-muted-foreground">Here's your financial summary for {currentMonth}.</p>
       </div>
+
+      {/* Budget Update Section - Minimalistic */}
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-purple-700 dark:text-purple-300 mb-1">
+              Update Monthly Budget for {currentMonth}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Current budget: NPR {budgetedExpenses.toLocaleString()}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <input
+              type="number"
+              placeholder="Enter budget amount"
+              className="px-4 py-2 border border-purple-300 dark:border-purple-700 rounded-lg bg-white dark:bg-gray-800 text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent w-full md:w-64"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const input = e.target as HTMLInputElement;
+                  const value = parseFloat(input.value);
+                  if (value > 0) {
+                    handleBudgetUpdate(value);
+                    input.value = '';
+                  }
+                }
+              }}
+            />
+            <button
+              onClick={(e) => {
+                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                const value = parseFloat(input.value);
+                if (value > 0) {
+                  handleBudgetUpdate(value);
+                  input.value = '';
+                }
+              }}
+              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-all hover:scale-105 hover:shadow-md whitespace-nowrap"
+            >
+              Update Budget
+            </button>
+          </div>
+        </div>
+      </div>
       
-      {financials && (
-        <MonthlySummary 
-          totalIncome={actualIncome} 
-          totalExpenses={actualExpenses} 
-          budgetedExpenses={budgetedExpenses}
-          month={currentMonth}
-          currentYear={currentYear}
-          currentMonthNum={currentMonthNum}
-          profile={profile}
-          categoryIdForBudget={null}  // Pass null for overall budget (no category needed)
-          onBudgetUpdate={handleBudgetUpdate}
-        />
-      )}
+      {/* Financial Overview Cards with Progress Bars */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Actual Income Card */}
+        <div className="p-6 rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 border border-blue-200 dark:border-blue-800 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Actual Income</p>
+              <p className="text-xs text-muted-foreground">for {currentMonth}</p>
+            </div>
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+              <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3">NPR {actualIncome.toLocaleString()}</p>
+          <div className="w-full bg-blue-200 dark:bg-blue-900/40 rounded-full h-2">
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+          </div>
+        </div>
+
+        {/* Overall Budget Card */}
+        <div className="p-6 rounded-xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-purple-600 dark:text-purple-400">Overall Budget for {currentMonth}</p>
+              <p className="text-xs text-muted-foreground">Your monthly spending limit</p>
+            </div>
+            <div className="p-2 bg-purple-100 dark:bg-purple-900/40 rounded-lg">
+              <svg className="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-purple-700 dark:text-purple-300 mb-1">NPR {budgetedExpenses.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            {budgetedExpenses > 0 ? `Under budget (${budgetUtilization}%)` : 'No budget set'}
+          </p>
+          <div className="w-full bg-purple-200 dark:bg-purple-900/40 rounded-full h-2">
+            <div className="bg-gradient-to-r from-purple-500 to-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
+          </div>
+        </div>
+
+        {/* Actual Expenses Card */}
+        <div className="p-6 rounded-xl bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 border border-red-200 dark:border-red-800 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-red-600 dark:text-red-400">Actual Expenses</p>
+              <p className="text-xs text-muted-foreground">for {currentMonth}</p>
+            </div>
+            <div className="p-2 bg-red-100 dark:bg-red-900/40 rounded-lg">
+              <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-red-700 dark:text-red-300 mb-1">NPR {actualExpenses.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground mb-2">
+            {budgetedExpenses > 0 ? `${budgetUtilization}% of budget` : 'No budget set'}
+          </p>
+          <div className="w-full bg-red-200 dark:bg-red-900/40 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full ${Number(budgetUtilization) > 100 ? 'bg-gradient-to-r from-red-600 to-red-700' : 'bg-gradient-to-r from-purple-500 to-green-500'}`}
+              style={{ width: `${Math.min(Number(budgetUtilization), 100)}%` }}
+            ></div>
+          </div>
+          {budgetedExpenses > 0 && (
+            <p className="text-xs mt-1 text-muted-foreground">
+              {Number(budgetUtilization) > 100 ? '⚠️ Over budget' : '✓ Under budget'}
+            </p>
+          )}
+        </div>
+
+        {/* Net Savings Card */}
+        <div className="p-6 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-sm font-medium text-green-600 dark:text-green-400">Net Savings</p>
+              <p className="text-xs text-muted-foreground">Your balance for {currentMonth}</p>
+            </div>
+            <div className="p-2 bg-green-100 dark:bg-green-900/40 rounded-lg">
+              <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-green-700 dark:text-green-300 mb-3">NPR {netSavings.toLocaleString()}</p>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Savings rate</span>
+            <span className="font-semibold text-green-600 dark:text-green-400">{savingsRate}%</span>
+          </div>
+        </div>
+      </div>
+
       {financials && (
         <FinancialChart 
           data={financials.chartData}  // Now compatible with dayNum
