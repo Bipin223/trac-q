@@ -95,3 +95,82 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  /* Seamless animations throughout the app */
+  * {
+    @apply transition-colors duration-300 ease-in-out;
+  }
+
+  /* Enhanced hover effects for buttons and interactive elements */
+  button:not(:disabled) {
+    @apply transition-all duration-300 ease-in-out;
+  }
+  
+  button:not(:disabled):hover {
+    @apply scale-105 shadow-lg;
+  }
+  
+  button:not(:disabled):active {
+    @apply scale-95;
+  }
+
+  /* Card hover effects with smooth transitions */
+  [class*="Card"],
+  .card {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  [class*="Card"]:hover,
+  .card:hover {
+    @apply shadow-xl scale-[1.02] transition-all duration-300;
+  }
+
+  /* Input focus effects */
+  input,
+  textarea,
+  select {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply ring-2 ring-purple-500 ring-offset-2 scale-[1.01];
+  }
+
+  /* Link hover effects */
+  a:not(.no-hover) {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  a:not(.no-hover):hover {
+    @apply scale-105;
+  }
+
+  /* Table row hover */
+  tr {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  tr:hover {
+    @apply bg-muted/50 scale-[1.01];
+  }
+
+  /* Smooth page transitions */
+  [class*="page"],
+  [class*="container"] {
+    @apply transition-all duration-500 ease-in-out;
+  }
+
+  /* Dialog/Modal animations */
+  [role="dialog"] {
+    @apply animate-in fade-in-0 zoom-in-95 duration-300;
+  }
+
+  /* Dropdown animations */
+  [role="menu"],
+  [role="listbox"] {
+    @apply animate-in fade-in-0 slide-in-from-top-2 duration-200;
+  }
+}
