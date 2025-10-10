@@ -17,7 +17,7 @@ const navItems = [
 ];
 
 const adminNavItems = [
-    { to: '/dashboard/admin/accounts', icon: <Shield className="h-5 w-5" />, label: 'Accounts (Admin)' },
+    //{ to: '/dashboard/admin/accounts', icon: <Shield className="h-5 w-5" />, label: 'Accounts (Admin)' },
     { to: '/dashboard/admin/users', icon: <Users className="h-5 w-5" />, label: 'Users (Admin)' },
 ];
 

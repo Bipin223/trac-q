@@ -50,7 +50,7 @@ interface AddTransactionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  defaultCategoryId?: string;
+  defaultCategoryId?: string | null;
 }
 
 interface Category { id: string; name: string; }
