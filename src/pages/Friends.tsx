@@ -85,6 +85,7 @@ export default function Friends() {
       fetchFriendRequests();
       fetchInvitations();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   const fetchFriends = async () => {

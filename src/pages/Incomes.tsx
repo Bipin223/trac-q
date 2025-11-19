@@ -279,6 +279,7 @@ export default function Incomes() {
       ensureAndFetchAllCategories();
       fetchIncomes();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   const handleSuccess = () => {

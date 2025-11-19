@@ -20,6 +20,7 @@ export default function AcceptInvite() {
     if (token && profile) {
       checkInvitation();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, profile]);
 
   const checkInvitation = async () => {

@@ -284,6 +284,7 @@ export default function Expenses() {
       ensureAndFetchAllCategories();
       fetchExpenses();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   const handleSuccess = () => {

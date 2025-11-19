@@ -82,6 +82,7 @@ export default function PendingTransactions() {
       fetchPendingTransactions();
       fetchFriends();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
   const fetchFriends = async () => {
