@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { supabase } from "@/integrations/supabase/client";
+import { useProfile } from "@/contexts/ProfileContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -52,6 +54,7 @@ interface AddLendBorrowDialogProps {
 
 export function AddLendBorrowDialog({ open, onOpenChange, onSuccess }: AddLendBorrowDialogProps) {
   const [loading, setLoading] = useState(false);
+  const { profile } = useProfile();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -66,11 +69,30 @@ export function AddLendBorrowDialog({ open, onOpenChange, onSuccess }: AddLendBo
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (!profile) {
+      showError('User not authenticated');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Placeholder: In a real app, you would insert this data into your Supabase table.
-      console.log("Lend/Borrow data to be saved:", values);
-      showSuccess(`Successfully recorded ${values.type} transaction with ${values.contactName}. (Database integration pending)`);
+      const { error } = await supabase
+        .from('lend_borrow')
+        .insert({
+          user_id: profile.id,
+          type: values.type,
+          amount: values.amount,
+          description: values.description || null,
+          contact_name: values.contactName,
+          transaction_date: values.date.toISOString().split('T')[0],
+          due_date: values.dueDate ? values.dueDate.toISOString().split('T')[0] : null,
+          status: 'pending',
+          repaid_amount: 0,
+        });
+
+      if (error) throw error;
+
+      showSuccess(`Successfully recorded ${values.type} transaction with ${values.contactName}`);
       onSuccess();
       form.reset({
         type: "lend",
@@ -80,9 +102,9 @@ export function AddLendBorrowDialog({ open, onOpenChange, onSuccess }: AddLendBo
         date: new Date(),
         dueDate: undefined,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding lend/borrow transaction:', error);
-      showError('Failed to add transaction. (Database integration pending)');
+      showError('Failed to add transaction. Please try again.');
     } finally {
       setLoading(false);
     }

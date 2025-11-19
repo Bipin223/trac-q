@@ -21,22 +21,24 @@ interface LendBorrowEntry {
   type: "lend" | "borrow";
   amount: number;
   description?: string;
-  contactName: string;
-  date: string;
-  dueDate?: string;
-  status: "pending" | "repaid";
+  contact_name: string;
+  transaction_date: string;
+  due_date?: string;
+  status: "pending" | "repaid" | "partial";
+  repaid_amount?: number;
 }
 
 interface LendBorrowDataTableProps {
   data: LendBorrowEntry[];
+  onRefresh?: () => void;
 }
 
-export function LendBorrowDataTable({ data }: LendBorrowDataTableProps) {
+export function LendBorrowDataTable({ data, onRefresh }: LendBorrowDataTableProps) {
   if (data.length === 0) {
     return (
       <div className="text-center text-muted-foreground py-12">
-        <p>No lend/borrow entries yet.</p>
-        <p className="text-sm">Click the "Add" button to get started.</p>
+        <p>No {data.length === 0 ? 'entries' : ''} yet.</p>
+        <p className="text-sm">Click the "Add New Entry" button to get started.</p>
       </div>
     );
   }
@@ -64,10 +66,10 @@ export function LendBorrowDataTable({ data }: LendBorrowDataTableProps) {
                     {entry.type.charAt(0).toUpperCase() + entry.type.slice(1)}
                   </Badge>
                 </TableCell>
-                <TableCell className="font-medium">{entry.contactName}</TableCell>
+                <TableCell className="font-medium">{entry.contact_name}</TableCell>
                 <TableCell>{entry.description || '-'}</TableCell>
-                <TableCell>{format(new Date(entry.date), 'PPP')}</TableCell>
-                <TableCell>{entry.dueDate ? format(new Date(entry.dueDate), 'PPP') : '-'}</TableCell>
+                <TableCell>{format(new Date(entry.transaction_date), 'PPP')}</TableCell>
+                <TableCell>{entry.due_date ? format(new Date(entry.due_date), 'PPP') : '-'}</TableCell>
                 <TableCell>
                   <Badge variant={entry.status === "repaid" ? "outline" : "destructive"}>
                     {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
