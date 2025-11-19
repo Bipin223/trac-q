@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile } from "../contexts/ProfileContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 interface ChartData {
   day: string;
@@ -133,15 +133,40 @@ const Dashboard = () => {
     }
   }, [profile, currentYear, currentMonthNum]);
 
-  // Callback for after budget save: Update state and re-fetch to confirm
+  // Callback for after budget save: Save to database and update UI
   const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
-    console.log('Dashboard: Budget update callback:', newExpenses);
-    if (newExpenses >= 0) {
-      setBudgetedExpenses(newExpenses);
+    if (!profile || newExpenses < 0) return;
+    
+    try {
+      console.log('Dashboard: Saving budget:', newExpenses);
+      
+      // Upsert budget (insert or update)
+      const { error } = await supabase
+        .from('budgets')
+        .upsert({
+          user_id: profile.id,
+          category_id: null, // Overall budget
+          year: currentYear,
+          month: currentMonthNum,
+          budgeted_amount: newExpenses,
+        }, {
+          onConflict: 'user_id,year,month,category_id',
+        });
+
+      if (error) {
+        console.error('Dashboard: Budget save error:', error);
+        showError('Failed to save budget.');
+      } else {
+        console.log('Dashboard: Budget saved successfully');
+        // Update UI immediately
+        setBudgetedExpenses(newExpenses);
+        showSuccess(`Budget updated to NPR ${newExpenses.toLocaleString()}`);
+      }
+    } catch (err: any) {
+      console.error('Dashboard: Budget save exception:', err);
+      showError('Could not save budget.');
     }
-    // Re-fetch to confirm persistence
-    await fetchExpenseBudget();
-  }, [fetchExpenseBudget]);
+  }, [profile, currentYear, currentMonthNum]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
