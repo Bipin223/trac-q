@@ -53,7 +53,7 @@ export function DeleteAccountSection() {
       setTimeout(() => {
         navigate('/login');
       }, 500);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting account:', error);
       showError('Failed to delete account. Please contact support.');
     } finally {
