@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Info, ArrowRightLeft, RefreshCw, TrendingUp } from "lucide-react";
+import { Info, ArrowRightLeft, RefreshCw, TrendingUp, ChevronDown } from "lucide-react";
 
 interface ExchangeRatesData {
   amount: number;
@@ -14,24 +14,41 @@ interface ExchangeRatesData {
   rates: { [key: string]: number };
 }
 
-const TARGET_CURRENCIES = {
-  NPR: { name: 'Nepalese Rupee', flag: '🇳🇵' },
+const ALL_CURRENCIES = {
   USD: { name: 'United States Dollar', flag: '🇺🇸' },
+  INR: { name: 'Indian Rupee', flag: '🇮🇳' },
+  CNY: { name: 'Chinese Yuan', flag: '🇨🇳' },
   EUR: { name: 'Euro', flag: '🇪🇺' },
   JPY: { name: 'Japanese Yen', flag: '🇯🇵' },
   GBP: { name: 'British Pound', flag: '🇬🇧' },
-  CNY: { name: 'Chinese Yuan', flag: '🇨🇳' },
+  AUD: { name: 'Australian Dollar', flag: '🇦🇺' },
+  CAD: { name: 'Canadian Dollar', flag: '🇨🇦' },
+  CHF: { name: 'Swiss Franc', flag: '🇨🇭' },
+  KRW: { name: 'South Korean Won', flag: '🇰🇷' },
+  SGD: { name: 'Singapore Dollar', flag: '🇸🇬' },
+  HKD: { name: 'Hong Kong Dollar', flag: '🇭🇰' },
+  SEK: { name: 'Swedish Krona', flag: '🇸🇪' },
+  NOK: { name: 'Norwegian Krone', flag: '🇳🇴' },
+  MXN: { name: 'Mexican Peso', flag: '🇲🇽' },
+  BRL: { name: 'Brazilian Real', flag: '🇧🇷' },
+  ZAR: { name: 'South African Rand', flag: '🇿🇦' },
+  THB: { name: 'Thai Baht', flag: '🇹🇭' },
+  MYR: { name: 'Malaysian Ringgit', flag: '🇲🇾' },
+  PHP: { name: 'Philippine Peso', flag: '🇵🇭' },
 };
+
+const DEFAULT_CURRENCIES = ['USD', 'INR', 'CNY'];
 
 const ExchangeRatesPage = () => {
   const [ratesData, setRatesData] = useState<ExchangeRatesData | null>(null);
-  const [amount, setAmount] = useState<string>('100');
-  const [fromCurrency, setFromCurrency] = useState('USD');
-  const [toCurrency, setToCurrency] = useState('NPR');
+  const [amount, setAmount] = useState<string>('');
+  const [fromCurrency, setFromCurrency] = useState('NPR');
+  const [toCurrency, setToCurrency] = useState('USD');
   const [convertedAmount, setConvertedAmount] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [showAllRates, setShowAllRates] = useState(false);
 
   const numericAmount = parseFloat(amount);
 
@@ -40,13 +57,13 @@ const ExchangeRatesPage = () => {
     setLoading(true);
     setError(null);
     try {
-      // Using exchangerate-api.com (free, no API key needed for basic usage)
-      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+      // Fetch NPR as base currency to get correct NPR exchange rates
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/NPR');
       const data = await response.json();
       
       setRatesData({
         amount: 1,
-        base: 'USD',
+        base: 'NPR',
         date: data.date,
         rates: data.rates,
       });
@@ -54,18 +71,33 @@ const ExchangeRatesPage = () => {
     } catch (err) {
       console.error('Error fetching exchange rates:', err);
       setError('Failed to fetch live rates. Please try again.');
-      // Fallback to static data
+      // Fallback to static data (1 NPR = ...)
       setRatesData({
         amount: 1,
-        base: 'USD',
+        base: 'NPR',
         date: new Date().toISOString().split('T')[0],
         rates: {
-          USD: 1,
-          EUR: 0.92,
-          GBP: 0.79,
-          JPY: 149.50,
-          CNY: 7.24,
-          NPR: 133.25,
+          NPR: 1,
+          USD: 0.0075,
+          INR: 0.625,
+          CNY: 0.054,
+          EUR: 0.0069,
+          GBP: 0.0059,
+          JPY: 1.16,
+          AUD: 0.0115,
+          CAD: 0.0105,
+          CHF: 0.0066,
+          KRW: 10.45,
+          SGD: 0.010,
+          HKD: 0.058,
+          SEK: 0.082,
+          NOK: 0.083,
+          MXN: 0.152,
+          BRL: 0.043,
+          ZAR: 0.136,
+          THB: 0.256,
+          MYR: 0.033,
+          PHP: 0.442,
         },
       });
     } finally {
@@ -125,8 +157,8 @@ const ExchangeRatesPage = () => {
       <div className="grid gap-8 lg:grid-cols-5">
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Major Currency Rates vs. NPR</CardTitle>
-            <CardDescription>Static rates for 1 Nepalese Rupee (NPR).</CardDescription>
+            <CardTitle>NPR Exchange Rates</CardTitle>
+            <CardDescription>Value of 1 Nepalese Rupee (NPR) in other currencies.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -137,22 +169,55 @@ const ExchangeRatesPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.entries(TARGET_CURRENCIES).filter(([code]) => code !== 'NPR').map(([code, { name, flag }]) => (
-                  <TableRow key={code}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <span className="text-2xl">{flag}</span>
-                        <div>
-                          <p className="font-medium">{code}</p>
-                          <p className="text-sm text-muted-foreground">{name}</p>
+                {(showAllRates 
+                  ? Object.entries(ALL_CURRENCIES)
+                  : Object.entries(ALL_CURRENCIES).filter(([code]) => DEFAULT_CURRENCIES.includes(code))
+                ).map(([code, { name, flag }]) => {
+                  const rate = ratesData?.rates[code];
+                  return (
+                    <TableRow key={code}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{flag}</span>
+                          <div>
+                            <p className="font-medium">{code}</p>
+                            <p className="text-sm text-muted-foreground">{name}</p>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">{ratesData?.rates[code]?.toFixed(6) || 'N/A'}</TableCell>
-                  </TableRow>
-                ))}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {rate ? rate.toFixed(code === 'JPY' || code === 'KRW' ? 2 : 4) : 'N/A'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
+            
+            {!showAllRates && (
+              <div className="mt-4 text-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowAllRates(true)}
+                  className="w-full"
+                >
+                  <ChevronDown className="h-4 w-4 mr-2" />
+                  See More Currencies
+                </Button>
+              </div>
+            )}
+            
+            {showAllRates && (
+              <div className="mt-4 text-center">
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setShowAllRates(false)}
+                  className="w-full"
+                >
+                  Show Less
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -170,7 +235,7 @@ const ExchangeRatesPage = () => {
                 value={amount} 
                 onChange={(e) => setAmount(e.target.value)}
                 min="0"
-                placeholder="100.00"
+                placeholder="Enter amount (e.g., 1)"
               />
             </div>
             
@@ -180,7 +245,8 @@ const ExchangeRatesPage = () => {
                 <Select value={fromCurrency} onValueChange={setFromCurrency}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                    <SelectItem value="NPR">NPR</SelectItem>
+                    {Object.keys(ALL_CURRENCIES).sort().map(currency => (
                       <SelectItem key={currency} value={currency}>{currency}</SelectItem>
                     ))}
                   </SelectContent>
@@ -201,7 +267,8 @@ const ExchangeRatesPage = () => {
                 <Select value={toCurrency} onValueChange={setToCurrency}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {Object.keys(TARGET_CURRENCIES).sort().map(currency => (
+                    <SelectItem value="NPR">NPR</SelectItem>
+                    {Object.keys(ALL_CURRENCIES).sort().map(currency => (
                       <SelectItem key={currency} value={currency}>{currency}</SelectItem>
                     ))}
                   </SelectContent>

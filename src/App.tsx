@@ -8,12 +8,13 @@ import Expenses from './pages/Expenses';
 import ProfileEnhanced from './pages/ProfileEnhanced';
 import ExchangeRatesPage from './pages/ExchangeRates';
 import Accounts from './pages/Accounts';
+import LendBorrowPage from './pages/LendBorrow'; // Import the new page
 import { Button } from './components/ui/button';
 import { Menu, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { ThemeToggle } from './components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
-import AdminAccountsPage from './pages/admin/AdminAccounts';
+//import AdminAccountsPage from './pages/admin/AdminAccounts';
 import AdminUsersPage from './pages/admin/AdminUsers';
 import { useProfile } from './contexts/ProfileContext';
 
@@ -100,7 +101,8 @@ function App() {
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
               <Route path="/profile" element={<ProfileEnhanced />} />
-              {isAdmin && <Route path="/admin/accounts" element={<AdminAccountsPage />} />}
+              <Route path="/lend-borrow" element={<LendBorrowPage />} /> {/* New Lend/Borrow Route */}
+              {/*isAdmin && <Route path="/admin/accounts" element={<AdminAccountsPage />} />*/}
               {isAdmin && <Route path="/admin/users" element={<AdminUsersPage />} />}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
