@@ -19,8 +19,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
@@ -41,6 +43,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   date: z.date(),
   categoryId: z.string({ required_error: "Please select or create a category." }),
+  is_recurring: z.boolean().default(false),
 });
 
 type TransactionType = "income" | "expense";
@@ -66,6 +69,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
       date: new Date(),
       description: "",
       categoryId: defaultCategoryId || "",
+      is_recurring: false,
     },
   });
 
@@ -129,6 +133,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
         amount: values.amount,
         description: values.description,
         category_id: values.categoryId,
+        is_recurring: values.is_recurring,
         [type === 'income' ? 'income_date' : 'expense_date']: format(values.date, 'yyyy-MM-dd'),
       };
 
@@ -139,7 +144,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
       } else {
         showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount} added successfully.`);
         onSuccess();
-        form.reset({ date: new Date(), description: "", categoryId: defaultCategoryId || "" });
+        form.reset({ date: new Date(), description: "", categoryId: defaultCategoryId || "", is_recurring: false });
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -287,6 +292,28 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                     </PopoverContent>
                   </Popover>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="is_recurring"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Recurring {type === 'income' ? 'Income' : 'Expense'}
+                    </FormLabel>
+                    <FormDescription>
+                      Mark this as a recurring transaction (e.g., monthly salary, rent)
+                    </FormDescription>
+                  </div>
                 </FormItem>
               )}
             />

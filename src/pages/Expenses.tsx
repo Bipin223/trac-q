@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/contexts/ProfileContext';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AddTransactionDialog } from '@/components/transactions/AddTransactionDialog';
 import { TransactionsDataTable } from '@/components/transactions/TransactionsDataTable';
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSuccess, showError } from '@/utils/toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import {
   ShoppingCart, // Food & groceries
   Home, // Rent/Housing
@@ -29,6 +30,9 @@ import {
   PlusCircle,
   Wallet, // Generic for custom
   Trash2,
+  Star,
+  Repeat,
+  DollarSign,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -68,6 +72,7 @@ interface QuickExpense {
   categoryId: string;
   icon: React.ReactNode;
   isPredefined: boolean;
+  is_favorite: boolean;
 }
 
 export default function Expenses() {
@@ -78,6 +83,7 @@ export default function Expenses() {
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [quickExpenses, setQuickExpenses] = useState<QuickExpense[]>([]);
   const [selectedQuickCategory, setSelectedQuickCategory] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'recurring'>('all');
 
   const fetchExpenses = async () => {
     if (!profile) return;
@@ -90,9 +96,66 @@ export default function Expenses() {
     
     if (data) {
       const formattedData = data.map(d => ({ ...d, date: d.expense_date }));
+      // Sort: favorites first, then by date
+      formattedData.sort((a, b) => {
+        if (a.is_favorite && !b.is_favorite) return -1;
+        if (!a.is_favorite && b.is_favorite) return 1;
+        return new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime();
+      });
       setExpenses(formattedData);
     }
     setLoading(false);
+  };
+
+  const toggleFavorite = async (id: string, currentStatus: boolean) => {
+    if (!profile) return;
+    
+    const { error } = await supabase
+      .from('expenses')
+      .update({ is_favorite: !currentStatus })
+      .eq('id', id)
+      .eq('user_id', profile.id);
+
+    if (error) {
+      showError('Failed to update favorite status');
+    } else {
+      showSuccess(currentStatus ? 'Removed from favorites' : 'Added to favorites');
+      fetchExpenses();
+    }
+  };
+
+  const toggleCategoryFavorite = async (categoryId: string, currentStatus: boolean, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    if (!profile) return;
+    
+    // Add animation class to the card
+    const cardElement = (e.currentTarget as HTMLElement).closest('.category-card');
+    if (cardElement) {
+      cardElement.classList.add('favoriting-animation');
+    }
+    
+    const { error } = await supabase
+      .from('categories')
+      .update({ is_favorite: !currentStatus })
+      .eq('id', categoryId)
+      .eq('user_id', profile.id);
+
+    if (error) {
+      showError('Failed to update category favorite status');
+      if (cardElement) {
+        cardElement.classList.remove('favoriting-animation');
+      }
+    } else {
+      showSuccess(currentStatus ? '⭐ Removed from favorites' : '⭐ Added to favorites!');
+      
+      // Remove animation after a brief delay, then refresh
+      setTimeout(() => {
+        if (cardElement) {
+          cardElement.classList.remove('favoriting-animation');
+        }
+        ensureAndFetchAllCategories();
+      }, 300);
+    }
   };
 
   const ensureAndFetchAllCategories = async () => {
@@ -100,7 +163,7 @@ export default function Expenses() {
 
     const { data: existingCategories, error: fetchError } = await supabase
       .from('categories')
-      .select('id, name, type')
+      .select('*')
       .eq('user_id', profile.id)
       .eq('type', 'expense');
 
@@ -135,11 +198,13 @@ export default function Expenses() {
     PREDEFINED_EXPENSE_CATEGORIES.forEach(source => {
       const categoryId = existingCategoryMap.get(source.name.toLowerCase());
       if (categoryId) {
+        const category = existingCategories?.find(c => c.id === categoryId);
         allQuickExpenses.push({
           name: source.name,
           categoryId: categoryId,
           icon: source.icon,
           isPredefined: true,
+          is_favorite: category?.is_favorite || false,
         });
       }
     });
@@ -152,8 +217,16 @@ export default function Expenses() {
           categoryId: cat.id,
           icon: <Wallet className="h-5 w-5" />, // Generic icon for custom categories
           isPredefined: false,
+          is_favorite: cat.is_favorite || false,
         });
       }
+    });
+
+    // Sort: favorites first, then alphabetically
+    allQuickExpenses.sort((a, b) => {
+      if (a.is_favorite && !b.is_favorite) return -1;
+      if (!a.is_favorite && b.is_favorite) return 1;
+      return a.name.localeCompare(b.name);
     });
 
     setQuickExpenses(allQuickExpenses);
@@ -241,9 +314,26 @@ export default function Expenses() {
             {quickExpenses.map((qe) => (
               <Card
                 key={qe.categoryId}
-                className="relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-200 flex flex-col items-center justify-center text-center p-4"
+                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${
+                  qe.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
+                }`}
                 onClick={() => handleQuickExpenseClick(qe.categoryId)}
+                style={{ transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
               >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 left-1 h-7 w-7 z-10 transition-all hover:scale-110"
+                  onClick={(e) => toggleCategoryFavorite(qe.categoryId, qe.is_favorite, e)}
+                >
+                  <Star 
+                    className={`h-4 w-4 transition-all duration-200 ${
+                      qe.is_favorite 
+                        ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg' 
+                        : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
+                    }`} 
+                  />
+                </Button>
                 <CardContent className="p-0 flex flex-col items-center justify-center">
                   <div className="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-full text-purple-600 dark:text-purple-400 mb-2">
                     {qe.icon}
@@ -294,15 +384,45 @@ export default function Expenses() {
         defaultCategoryId={selectedQuickCategory}
       />
 
-      {loading ? (
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      ) : (
-        <TransactionsDataTable data={expenses} />
-      )}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'recurring')} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            All Expenses ({expenses.length})
+          </TabsTrigger>
+          <TabsTrigger value="recurring" className="flex items-center gap-2">
+            <Repeat className="h-4 w-4" />
+            Recurring ({expenses.filter(e => e.is_recurring).length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="all" className="mt-6">
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <TransactionsDataTable data={expenses} onToggleFavorite={toggleFavorite} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="recurring" className="mt-6">
+          {loading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <TransactionsDataTable 
+              data={expenses.filter(e => e.is_recurring)} 
+              onToggleFavorite={toggleFavorite}
+            />
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

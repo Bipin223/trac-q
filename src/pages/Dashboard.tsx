@@ -103,33 +103,30 @@ const Dashboard = () => {
     try {
       console.log('Dashboard: Fetching overall budget for', profile.id, currentYear, currentMonthNum);
       
+      // Query without maybeSingle to see all matching rows
       const { data: budgetData, error } = await supabase
         .from('budgets')
-        .select('budgeted_amount')
+        .select('budgeted_amount, category_id')
         .eq('user_id', profile.id)
-        .is('category_id', null)  // Overall budget: No specific category
         .eq('year', currentYear)
-        .eq('month', currentMonthNum)
-        .single();
+        .eq('month', currentMonthNum);
 
       if (error) {
-        if (error.code === 'PGRST116') {  // No rows
-          console.log('Dashboard: No overall budget row found (normal for first time)');
-          setBudgetedExpenses(0);
-        } else {
-          console.error('Dashboard: Budget fetch error:', error);
-          setBudgetedExpenses(0);
-          showError('Failed to load budget.');
-        }
+        console.error('Dashboard: Budget fetch error:', error);
+        setBudgetedExpenses(0);
+      } else if (budgetData && budgetData.length > 0) {
+        // Find the overall budget (where category_id is null)
+        const overallBudget = budgetData.find(b => b.category_id === null);
+        const amount = overallBudget?.budgeted_amount || 0;
+        console.log('Dashboard: Overall budget fetched:', amount, 'from', budgetData.length, 'budgets');
+        setBudgetedExpenses(amount);
       } else {
-        const overallBudget = budgetData?.budgeted_amount || 0;
-        console.log('Dashboard: Overall budget fetched:', overallBudget);
-        setBudgetedExpenses(overallBudget);
+        console.log('Dashboard: No budget found');
+        setBudgetedExpenses(0);
       }
     } catch (err: any) {
       console.error('Dashboard: Budget fetch exception:', err);
       setBudgetedExpenses(0);
-      showError('Could not load budget.');
     }
   }, [profile, currentYear, currentMonthNum]);
 
@@ -140,18 +137,39 @@ const Dashboard = () => {
     try {
       console.log('Dashboard: Saving budget:', newExpenses);
       
-      // Upsert budget (insert or update)
-      const { error } = await supabase
+      // Check if overall budget already exists (category_id = null)
+      const { data: existingBudgets } = await supabase
         .from('budgets')
-        .upsert({
-          user_id: profile.id,
-          category_id: null, // Overall budget
-          year: currentYear,
-          month: currentMonthNum,
-          budgeted_amount: newExpenses,
-        }, {
-          onConflict: 'user_id,year,month,category_id',
-        });
+        .select('id, category_id')
+        .eq('user_id', profile.id)
+        .eq('year', currentYear)
+        .eq('month', currentMonthNum);
+
+      const overallBudget = existingBudgets?.find(b => b.category_id === null);
+      let error;
+      
+      if (overallBudget) {
+        // Update existing overall budget
+        console.log('Dashboard: Updating existing budget ID:', overallBudget.id);
+        const result = await supabase
+          .from('budgets')
+          .update({ budgeted_amount: newExpenses })
+          .eq('id', overallBudget.id);
+        error = result.error;
+      } else {
+        // Insert new overall budget
+        console.log('Dashboard: Inserting new budget');
+        const result = await supabase
+          .from('budgets')
+          .insert({
+            user_id: profile.id,
+            category_id: null,
+            year: currentYear,
+            month: currentMonthNum,
+            budgeted_amount: newExpenses,
+          });
+        error = result.error;
+      }
 
       if (error) {
         console.error('Dashboard: Budget save error:', error);
