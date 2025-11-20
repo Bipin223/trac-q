@@ -8,6 +8,7 @@ import { useProfile } from '@/contexts/ProfileContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ImageEditor } from '@/components/ImageEditor';
+import { DeleteAccountSection } from '@/components/DeleteAccountSection';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Form,
@@ -20,8 +21,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, User, Mail, Save, Upload, TrendingUp, TrendingDown, DollarSign, Calendar } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Loader2, User, Mail, Save, Upload, TrendingUp, TrendingDown, DollarSign, Calendar, Trash2, AlertTriangle } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
+import { useNavigate } from 'react-router-dom';
 
 const formSchema = z.object({
   first_name: z.string().min(1, { message: 'First name is required.' }).max(50),
@@ -41,6 +44,7 @@ interface FinancialSummary {
 export default function ProfileEnhanced() {
   const user = useUser();
   const { profile, loading, setProfile } = useProfile();
+  const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -407,19 +411,21 @@ export default function ProfileEnhanced() {
                   </div>
                 </CardContent>
               </Card>
-              <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Changes
-                  </>
-                )}
-              </Button>
+              <div className="space-y-3">
+                <Button type="submit" className="w-full bg-purple-600 hover:bg-purple-700" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
             </form>
           </Form>
         </TabsContent>
@@ -540,6 +546,9 @@ export default function ProfileEnhanced() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Delete Account Section */}
+      <DeleteAccountSection />
 
       {/* Image Editor Dialog */}
       <Dialog open={showImageEditor} onOpenChange={setShowImageEditor}>
