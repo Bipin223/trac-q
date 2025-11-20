@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/contexts/ProfileContext';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,15 @@ import {
   Users, 
   UserPlus, 
   QrCode, 
-  Link as LinkIcon, 
   Check, 
   X, 
   UserMinus,
   Copy,
   Clock,
-  Mail
+  Mail,
+  Hash,
+  Camera,
+  Upload
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -38,6 +40,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import QRCode from 'qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 
 interface Friend {
   id: string;
@@ -60,33 +63,53 @@ interface FriendRequest {
   };
 }
 
-interface Invitation {
-  id: string;
-  token: string;
-  expires_at: string;
-  max_uses: number;
-  used_count: number;
-  created_at: string;
-}
-
 export default function Friends() {
   const { profile } = useProfile();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [showQrDialog, setShowQrDialog] = useState(false);
+  const [showScanDialog, setShowScanDialog] = useState(false);
   const [activeTab, setActiveTab] = useState('friends');
+  const [friendCodeInput, setFriendCodeInput] = useState('');
+  const [userFriendCode, setUserFriendCode] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState('');
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (profile) {
       fetchFriends();
       fetchFriendRequests();
-      fetchInvitations();
+      fetchUserFriendCode();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
+
+  useEffect(() => {
+    // Cleanup scanner on unmount
+    return () => {
+      if (scannerRef.current?.isScanning) {
+        scannerRef.current.stop().catch(console.error);
+      }
+    };
+  }, []);
+
+  const fetchUserFriendCode = async () => {
+    if (!profile) return;
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('friend_code')
+      .eq('id', profile.id)
+      .single();
+    
+    if (!error && data) {
+      setUserFriendCode(data.friend_code || '');
+    }
+  };
 
   const fetchFriends = async () => {
     if (!profile) return;
@@ -134,64 +157,15 @@ export default function Friends() {
     }
   };
 
-  const fetchInvitations = async () => {
-    if (!profile) return;
-
-    const { data, error } = await supabase
-      .from('friend_invitations')
-      .select('*')
-      .eq('inviter_id', profile.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching invitations:', error);
-    } else {
-      setInvitations(data || []);
-    }
-  };
-
-  const generateInvitationLink = async () => {
-    if (!profile) return;
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // Expires in 7 days
-
-    const { data: tokenData, error: tokenError } = await supabase
-      .rpc('generate_invitation_token');
-
-    if (tokenError) {
-      showError('Failed to generate invitation token');
+  const generateMyQrCode = async () => {
+    if (!userFriendCode) {
+      showError('Friend code not available');
       return;
     }
 
-    const { data, error } = await supabase
-      .from('friend_invitations')
-      .insert({
-        inviter_id: profile.id,
-        token: tokenData,
-        expires_at: expiresAt.toISOString(),
-        max_uses: 10,
-        used_count: 0,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      showError('Failed to create invitation');
-    } else {
-      showSuccess('Invitation link created!');
-      fetchInvitations();
-      const inviteUrl = `${window.location.origin}/accept-invite/${data.token}`;
-      await navigator.clipboard.writeText(inviteUrl);
-      showSuccess('Invitation link copied to clipboard!');
-    }
-  };
-
-  const generateQrCode = async (token: string) => {
-    const inviteUrl = `${window.location.origin}/accept-invite/${token}`;
     try {
-      const qrDataUrl = await QRCode.toDataURL(inviteUrl, {
-        width: 300,
+      const qrDataUrl = await QRCode.toDataURL(userFriendCode, {
+        width: 400,
         margin: 2,
         color: {
           dark: '#000000',
@@ -201,14 +175,84 @@ export default function Friends() {
       setQrCodeUrl(qrDataUrl);
       setShowQrDialog(true);
     } catch (error) {
+      console.error('QR generation error:', error);
       showError('Failed to generate QR code');
     }
   };
 
-  const copyInviteLink = async (token: string) => {
-    const inviteUrl = `${window.location.origin}/accept-invite/${token}`;
-    await navigator.clipboard.writeText(inviteUrl);
-    showSuccess('Invitation link copied to clipboard!');
+  const startScanning = async () => {
+    try {
+      setScanError('');
+      setIsScanning(true);
+
+      // Check if camera is available
+      const devices = await Html5Qrcode.getCameras();
+      if (!devices || devices.length === 0) {
+        setScanError('No camera found. Please upload a QR code image instead.');
+        setIsScanning(false);
+        return;
+      }
+
+      const scanner = new Html5Qrcode('qr-reader');
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        (decodedText) => {
+          // Successfully scanned
+          handleScannedCode(decodedText);
+          stopScanning();
+        },
+        (errorMessage) => {
+          // Scanning error (can be ignored as it happens frequently)
+          console.debug('Scan error:', errorMessage);
+        }
+      );
+    } catch (error) {
+      console.error('Scanner start error:', error);
+      setScanError('Failed to start camera. Please check permissions or upload an image instead.');
+      setIsScanning(false);
+    }
+  };
+
+  const stopScanning = async () => {
+    if (scannerRef.current?.isScanning) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+      } catch (error) {
+        console.error('Error stopping scanner:', error);
+      }
+    }
+    setIsScanning(false);
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const scanner = new Html5Qrcode('qr-reader-file');
+      const result = await scanner.scanFile(file, true);
+      handleScannedCode(result);
+    } catch (error) {
+      console.error('File scan error:', error);
+      showError('Failed to read QR code from image');
+    }
+  };
+
+  const handleScannedCode = (code: string) => {
+    // Close the scan dialog
+    setShowScanDialog(false);
+    stopScanning();
+
+    // Auto-fill the friend code input
+    setFriendCodeInput(code);
+    showSuccess('QR code scanned! Click "Send Request" to add friend.');
   };
 
   const acceptFriendRequest = async (requestId: string) => {
@@ -254,18 +298,94 @@ export default function Friends() {
     }
   };
 
-  const deleteInvitation = async (invitationId: string) => {
-    const { error } = await supabase
-      .from('friend_invitations')
-      .delete()
-      .eq('id', invitationId);
-
-    if (error) {
-      showError('Failed to delete invitation');
-    } else {
-      showSuccess('Invitation deleted');
-      fetchInvitations();
+  const addFriendByCode = async () => {
+    if (!profile || !friendCodeInput.trim()) {
+      showError('Please enter a friend code');
+      return;
     }
+
+    // Normalize the input (add #TRAC- if missing, convert to uppercase)
+    let normalizedCode = friendCodeInput.trim().toUpperCase();
+    
+    // Handle various input formats
+    if (!normalizedCode.startsWith('#')) {
+      // If input is just alphanumeric, add #TRAC-
+      if (!normalizedCode.startsWith('TRAC-')) {
+        normalizedCode = '#TRAC-' + normalizedCode;
+      } else {
+        // If starts with TRAC- but no #, add #
+        normalizedCode = '#' + normalizedCode;
+      }
+    } else if (normalizedCode === '#' || normalizedCode.length < 8) {
+      showError('Please enter a valid friend code');
+      return;
+    }
+
+    // Check if trying to add yourself
+    if (normalizedCode === userFriendCode) {
+      showError("You can't add yourself as a friend!");
+      return;
+    }
+
+    // Find user with this friend code
+    const { data: targetUser, error: findError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('friend_code', normalizedCode)
+      .single();
+
+    if (findError || !targetUser) {
+      showError('Friend code not found. Please check and try again.');
+      return;
+    }
+
+    // Check if already friends
+    const { data: existingFriend } = await supabase
+      .from('friends')
+      .select('id, status')
+      .or(`and(user_id.eq.${profile.id},friend_id.eq.${targetUser.id}),and(user_id.eq.${targetUser.id},friend_id.eq.${profile.id})`)
+      .single();
+
+    if (existingFriend) {
+      if (existingFriend.status === 'accepted') {
+        showError('You are already friends with this user!');
+      } else {
+        showError('Friend request already pending!');
+      }
+      return;
+    }
+
+    // Create friend request
+    const { error: insertError } = await supabase
+      .from('friends')
+      .insert({
+        user_id: targetUser.id,
+        friend_id: profile.id,
+        status: 'pending',
+        requested_by: profile.id,
+        method: 'friend_code'
+      });
+
+    if (insertError) {
+      showError('Failed to send friend request');
+    } else {
+      showSuccess(`Friend request sent to ${targetUser.full_name}!`);
+      setFriendCodeInput('');
+      fetchFriends();
+    }
+  };
+
+  const copyFriendCode = async () => {
+    if (userFriendCode) {
+      await navigator.clipboard.writeText(userFriendCode);
+      showSuccess('Your friend code copied to clipboard!');
+    }
+  };
+
+  const handleCloseScanDialog = () => {
+    stopScanning();
+    setShowScanDialog(false);
+    setScanError('');
   };
 
   return (
@@ -275,14 +395,102 @@ export default function Friends() {
           <h1 className="text-3xl font-bold tracking-tight">Friends</h1>
           <p className="text-muted-foreground">Manage your friends and send/receive transactions</p>
         </div>
-        <Button onClick={generateInvitationLink} className="flex items-center gap-2">
-          <UserPlus className="h-4 w-4" />
-          Create Invite Link
-        </Button>
       </div>
 
+      {/* Your Friend Code Card */}
+      <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Hash className="h-5 w-5" />
+            Your Friend Code
+          </CardTitle>
+          <CardDescription>Share this code with friends to connect</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-1 bg-background rounded-lg p-4 border-2 border-dashed border-primary/30">
+              <p className="text-2xl font-bold text-center tracking-wider font-mono text-primary">
+                {userFriendCode || 'Loading...'}
+              </p>
+            </div>
+            <Button
+              onClick={copyFriendCode}
+              variant="outline"
+              size="icon"
+              className="h-12 w-12"
+              disabled={!userFriendCode}
+            >
+              <Copy className="h-5 w-5" />
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground text-center">
+            Friends can use this code to send you a friend request (e.g., #TRAC-A1B2C3D4)
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* QR Code Section - Generate or Scan */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <QrCode className="h-5 w-5" />
+            QR Code
+          </CardTitle>
+          <CardDescription>Generate your QR code or scan a friend's code</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <Button 
+              onClick={generateMyQrCode} 
+              disabled={!userFriendCode}
+              className="w-full"
+              variant="default"
+            >
+              <QrCode className="h-4 w-4 mr-2" />
+              Generate QR
+            </Button>
+            <Button 
+              onClick={() => setShowScanDialog(true)}
+              className="w-full"
+              variant="outline"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Scan QR
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add Friend by Code Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Add Friend by Code
+          </CardTitle>
+          <CardDescription>Enter a friend's code to send them a request</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <Input
+                placeholder="Enter friend code (e.g., #TRAC-A1B2C3D4 or A1B2C3D4)"
+                value={friendCodeInput}
+                onChange={(e) => setFriendCodeInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addFriendByCode()}
+                className="font-mono"
+              />
+            </div>
+            <Button onClick={addFriendByCode} disabled={!friendCodeInput.trim()}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Send Request
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="friends" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Friends ({friends.length})
@@ -290,10 +498,6 @@ export default function Friends() {
           <TabsTrigger value="requests" className="flex items-center gap-2">
             <Clock className="h-4 w-4" />
             Requests ({friendRequests.length})
-          </TabsTrigger>
-          <TabsTrigger value="invitations" className="flex items-center gap-2">
-            <LinkIcon className="h-4 w-4" />
-            Invitations ({invitations.length})
           </TabsTrigger>
         </TabsList>
 
@@ -303,10 +507,7 @@ export default function Friends() {
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Users className="h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">No friends yet</p>
-                <Button onClick={generateInvitationLink}>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Invite Friends
-                </Button>
+                <p className="text-sm text-muted-foreground">Share your friend code or scan a QR code to connect</p>
               </CardContent>
             </Card>
           ) : (
@@ -404,123 +605,94 @@ export default function Friends() {
             </div>
           )}
         </TabsContent>
-
-        <TabsContent value="invitations" className="mt-6">
-          {invitations.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <LinkIcon className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-4">No active invitations</p>
-                <Button onClick={generateInvitationLink}>
-                  Create Invitation Link
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {invitations.map((invitation) => {
-                const expiresAt = new Date(invitation.expires_at);
-                const isExpired = expiresAt < new Date();
-                const inviteUrl = `${window.location.origin}/accept-invite/${invitation.token}`;
-
-                return (
-                  <Card key={invitation.id}>
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">Invitation Link</CardTitle>
-                          <CardDescription className="mt-2">
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs">Used: {invitation.used_count}/{invitation.max_uses}</span>
-                                <span className="text-xs">•</span>
-                                <span className={`text-xs ${isExpired ? 'text-destructive' : ''}`}>
-                                  {isExpired ? 'Expired' : `Expires ${expiresAt.toLocaleDateString()}`}
-                                </span>
-                              </div>
-                            </div>
-                          </CardDescription>
-                        </div>
-                        {isExpired ? (
-                          <Badge variant="destructive">Expired</Badge>
-                        ) : (
-                          <Badge variant="secondary">Active</Badge>
-                        )}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex gap-2">
-                          <Input value={inviteUrl} readOnly className="text-sm" />
-                          <Button 
-                            onClick={() => copyInviteLink(invitation.token)}
-                            size="icon"
-                            variant="outline"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            onClick={() => generateQrCode(invitation.token)}
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                          >
-                            <QrCode className="h-4 w-4 mr-2" />
-                            Show QR Code
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="destructive" size="sm">
-                                <X className="h-4 w-4 mr-2" />
-                                Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Invitation?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This will permanently delete this invitation link. Anyone with this link will no longer be able to use it.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteInvitation(invitation.id)}>
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
 
+      {/* QR Code Display Dialog */}
       <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invitation QR Code</DialogTitle>
+            <DialogTitle>Your Friend Code QR</DialogTitle>
             <DialogDescription>
-              Share this QR code with friends to add them instantly
+              Share this QR code with friends to add you instantly
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center justify-center py-6">
             {qrCodeUrl && (
-              <img 
-                src={qrCodeUrl} 
-                alt="Invitation QR Code" 
-                className="border-4 border-white shadow-lg rounded-lg"
-              />
+              <div className="bg-white p-4 rounded-lg">
+                <img 
+                  src={qrCodeUrl} 
+                  alt="Friend Code QR" 
+                  className="w-full max-w-sm"
+                />
+              </div>
             )}
-            <p className="text-sm text-muted-foreground mt-4 text-center">
-              Scan this QR code with a phone camera to accept the invitation
+            <div className="mt-4 text-center space-y-2">
+              <p className="text-lg font-mono font-bold text-primary">{userFriendCode}</p>
+              <p className="text-sm text-muted-foreground">
+                Scan this QR code with the Trac-Q app to add me as a friend
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* QR Scanner Dialog */}
+      <Dialog open={showScanDialog} onOpenChange={handleCloseScanDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Scan Friend Code QR</DialogTitle>
+            <DialogDescription>
+              Use your camera to scan a friend's QR code or upload an image
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!isScanning && (
+              <div className="flex gap-2">
+                <Button onClick={startScanning} className="flex-1">
+                  <Camera className="h-4 w-4 mr-2" />
+                  Start Camera
+                </Button>
+                <Button 
+                  onClick={() => fileInputRef.current?.click()} 
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Image
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
+            )}
+
+            {scanError && (
+              <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
+                {scanError}
+              </div>
+            )}
+
+            <div className="relative">
+              {isScanning && (
+                <div className="absolute top-2 right-2 z-10">
+                  <Button onClick={stopScanning} variant="destructive" size="sm">
+                    Stop Camera
+                  </Button>
+                </div>
+              )}
+              <div 
+                id="qr-reader" 
+                className="w-full rounded-lg overflow-hidden bg-black"
+              />
+              <div id="qr-reader-file" className="hidden" />
+            </div>
+
+            <p className="text-xs text-muted-foreground text-center">
+              Position the QR code within the frame to scan automatically
             </p>
           </div>
         </DialogContent>

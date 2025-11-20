@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { DollarSign, BarChart2, ArrowRightLeft } from 'lucide-react';
+import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,6 +10,8 @@ import { useProfile } from "../contexts/ProfileContext";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface ChartData {
   day: string;
@@ -31,6 +33,8 @@ const Dashboard = () => {
   const [budgetedExpenses, setBudgetedExpenses] = useState(0);
   const [loadingFinancials, setLoadingFinancials] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingTransactionsCount, setPendingTransactionsCount] = useState(0);
+  const [pendingFriendRequestsCount, setPendingFriendRequestsCount] = useState(0);
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
   const currentYear = new Date().getFullYear();
@@ -87,6 +91,7 @@ const Dashboard = () => {
       };
       fetchDashboardData();
       fetchExpenseBudget(); // Initial budget fetch
+      fetchNotifications(); // Fetch pending transactions and friend requests
     } else if (!profileLoading) {
       setLoadingFinancials(false);
       setBudgetedExpenses(0);
@@ -129,6 +134,37 @@ const Dashboard = () => {
       setBudgetedExpenses(0);
     }
   }, [profile, currentYear, currentMonthNum]);
+
+  // Fetch notifications for pending transactions and friend requests
+  const fetchNotifications = useCallback(async () => {
+    if (!profile) return;
+
+    try {
+      // Fetch pending transactions where current user is receiver
+      const { data: pendingTxns, error: txnError } = await supabase
+        .from('pending_transactions')
+        .select('id')
+        .eq('to_user_id', profile.id)
+        .in('status', ['pending', 'pending_receiver']);
+
+      if (!txnError && pendingTxns) {
+        setPendingTransactionsCount(pendingTxns.length);
+      }
+
+      // Fetch pending friend requests where current user is the friend
+      const { data: friendReqs, error: friendError } = await supabase
+        .from('friends')
+        .select('id')
+        .eq('friend_id', profile.id)
+        .eq('status', 'pending');
+
+      if (!friendError && friendReqs) {
+        setPendingFriendRequestsCount(friendReqs.length);
+      }
+    } catch (err) {
+      console.error('Dashboard: Error fetching notifications:', err);
+    }
+  }, [profile]);
 
   // Callback for after budget save: Save to database and update UI
   const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
@@ -230,6 +266,44 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Notification Banner */}
+      {(pendingTransactionsCount > 0 || pendingFriendRequestsCount > 0) && (
+        <Alert className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-amber-200 dark:border-amber-800">
+          <Bell className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="text-amber-900 dark:text-amber-100 font-semibold">
+            You have pending notifications!
+          </AlertTitle>
+          <AlertDescription className="flex flex-col gap-3 mt-2">
+            <div className="flex flex-wrap gap-3">
+              {pendingTransactionsCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard/pending-transactions')}
+                  className="bg-white dark:bg-gray-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-300 dark:border-amber-700"
+                >
+                  <TransactionIcon className="h-4 w-4 mr-2" />
+                  {pendingTransactionsCount} Pending Transaction{pendingTransactionsCount > 1 ? 's' : ''}
+                  <Badge className="ml-2 bg-amber-500 text-white">{pendingTransactionsCount}</Badge>
+                </Button>
+              )}
+              {pendingFriendRequestsCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard/friends')}
+                  className="bg-white dark:bg-gray-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-300 dark:border-amber-700"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {pendingFriendRequestsCount} Friend Request{pendingFriendRequestsCount > 1 ? 's' : ''}
+                  <Badge className="ml-2 bg-amber-500 text-white">{pendingFriendRequestsCount}</Badge>
+                </Button>
+              )}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Greeting Section */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{getGreeting()}, {profile.role === "admin" ? `Admin - ${displayName}` : displayName}!</h1>

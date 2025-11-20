@@ -10,7 +10,6 @@ import ExchangeRatesPage from './pages/ExchangeRates';
 import Accounts from './pages/Accounts';
 import LendBorrowPage from './pages/LendBorrow';
 import Friends from './pages/Friends';
-import AcceptInvite from './pages/AcceptInvite';
 import PendingTransactions from './pages/PendingTransactions';
 import { Button } from './components/ui/button';
 import { Menu, Loader2 } from 'lucide-react';
@@ -106,7 +105,6 @@ function App() {
               <Route path="/profile" element={<ProfileEnhanced />} />
               <Route path="/lend-borrow" element={<LendBorrowPage />} />
               <Route path="/friends" element={<Friends />} />
-              <Route path="/accept-invite/:token" element={<AcceptInvite />} />
               <Route path="/pending-transactions" element={<PendingTransactions />} />
               {/*isAdmin && <Route path="/admin/accounts" element={<AdminAccountsPage />} />*/}
               {isAdmin && <Route path="/admin/users" element={<AdminUsersPage />} />}
