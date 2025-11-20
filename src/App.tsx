@@ -11,6 +11,11 @@ import Accounts from './pages/Accounts';
 import LendBorrowPage from './pages/LendBorrow';
 import Friends from './pages/Friends';
 import PendingTransactions from './pages/PendingTransactions';
+import TaxCalculator from './pages/TaxCalculator';
+import DiscountCalculator from './pages/DiscountCalculator';
+import SavingsInvestment from './pages/SavingsInvestment';
+import LoanCalculator from './pages/LoanCalculator';
+import CalculatorHub from './pages/CalculatorHub';
 import { Button } from './components/ui/button';
 import { Menu, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
@@ -102,6 +107,11 @@ function App() {
               <Route path="/incomes" element={<Incomes />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
+              <Route path="/calculators" element={<CalculatorHub />} />
+              <Route path="/tax-calculator" element={<TaxCalculator />} />
+              <Route path="/discount-calculator" element={<DiscountCalculator />} />
+              <Route path="/savings-investment" element={<SavingsInvestment />} />
+              <Route path="/loan-calculator" element={<LoanCalculator />} />
               <Route path="/profile" element={<ProfileEnhanced />} />
               <Route path="/lend-borrow" element={<LendBorrowPage />} />
               <Route path="/friends" element={<Friends />} />
