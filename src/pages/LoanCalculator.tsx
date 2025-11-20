@@ -5,7 +5,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { CreditCard, Home, Car, GraduationCap, Calculator, TrendingDown } from 'lucide-react';
+import { CreditCard, Home, Car, GraduationCap, Calculator, TrendingDown, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function LoanCalculator() {
   // Loan Calculator
@@ -13,6 +24,8 @@ export default function LoanCalculator() {
   const [interestRate, setInterestRate] = useState<string>('');
   const [loanTerm, setLoanTerm] = useState<string>('');
   const [loanType, setLoanType] = useState<string>('personal');
+  const [showLoanInfo, setShowLoanInfo] = useState(false);
+  const [isLoanInfoDialogOpen, setIsLoanInfoDialogOpen] = useState(false);
   
   // Debt Payoff Calculator
   const [totalDebt, setTotalDebt] = useState<string>('');
@@ -104,6 +117,152 @@ export default function LoanCalculator() {
         </div>
       </div>
       
+      <Alert className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+        <Info className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+        <AlertTitle className="text-purple-700 dark:text-purple-300 flex items-center justify-between">
+          Loan & Interest Rate Information
+          <div className="flex items-center gap-2">
+            <Dialog open={isLoanInfoDialogOpen} onOpenChange={setIsLoanInfoDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200"
+                >
+                  Read More
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Loan Types & Interest Rates in Nepal</DialogTitle>
+                  <DialogDescription>
+                    Common loan types and typical interest rates from Nepali banks
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Common Loan Types</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Loan Type</TableHead>
+                          <TableHead>Typical Interest Rate</TableHead>
+                          <TableHead>Max Term</TableHead>
+                          <TableHead>Purpose</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell><strong>Personal Loan</strong></TableCell>
+                          <TableCell>13% - 16%</TableCell>
+                          <TableCell>5 years</TableCell>
+                          <TableCell>General purpose, emergencies, consumer goods</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Home Loan</strong></TableCell>
+                          <TableCell>10% - 12%</TableCell>
+                          <TableCell>20-30 years</TableCell>
+                          <TableCell>Property purchase, construction, renovation</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Car Loan</strong></TableCell>
+                          <TableCell>12% - 14%</TableCell>
+                          <TableCell>5-7 years</TableCell>
+                          <TableCell>Vehicle purchase (new or used)</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Education Loan</strong></TableCell>
+                          <TableCell>9% - 11%</TableCell>
+                          <TableCell>7-10 years</TableCell>
+                          <TableCell>Higher education, professional courses</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Business Loan</strong></TableCell>
+                          <TableCell>11% - 14%</TableCell>
+                          <TableCell>5-10 years</TableCell>
+                          <TableCell>Working capital, business expansion</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Key Loan Terms</h3>
+                    <div className="space-y-3">
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Principal</p>
+                        <p className="text-xs text-muted-foreground">The original loan amount borrowed</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Interest Rate</p>
+                        <p className="text-xs text-muted-foreground">The percentage charged on the loan amount (annual)</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">EMI (Equated Monthly Installment)</p>
+                        <p className="text-xs text-muted-foreground">Fixed monthly payment including principal and interest</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Loan Term</p>
+                        <p className="text-xs text-muted-foreground">The duration over which the loan must be repaid</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Processing Fee</p>
+                        <p className="text-xs text-muted-foreground">One-time fee (typically 1-2% of loan amount)</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Loan Calculation Formula</h3>
+                    <div className="bg-muted p-4 rounded-lg space-y-2 text-sm">
+                      <p><strong>EMI Formula:</strong></p>
+                      <p className="font-mono">EMI = P × r × (1+r)^n / [(1+r)^n-1]</p>
+                      <p className="text-xs text-muted-foreground mt-2">Where:</p>
+                      <ul className="space-y-1 ml-4 list-disc text-xs text-muted-foreground">
+                        <li>P = Principal loan amount</li>
+                        <li>r = Monthly interest rate (annual rate / 12 / 100)</li>
+                        <li>n = Total number of monthly payments (years × 12)</li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    <p><strong>Note:</strong> Interest rates vary by bank, borrower credit score, and loan type. The rates shown are approximate ranges as of 2024. Always check with your bank for current rates and terms.</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowLoanInfo(!showLoanInfo)}
+              className="h-auto p-0 text-purple-600 dark:text-purple-400"
+            >
+              {showLoanInfo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </AlertTitle>
+        <AlertDescription className="text-purple-600 dark:text-purple-400">
+          {showLoanInfo ? (
+            <div className="mt-2 space-y-1 text-sm">
+              <p>Common interest rates in Nepal:</p>
+              <ul className="ml-4 space-y-0.5">
+                <li>• Personal Loan: 13-16%</li>
+                <li>• Home Loan: 10-12%</li>
+                <li>• Car Loan: 12-14%</li>
+                <li>• Education Loan: 9-11%</li>
+              </ul>
+            </div>
+          ) : (
+            <p>Interest rates: Personal (13-16%), Home (10-12%), Car (12-14%), Education (9-11%)</p>
+          )}
+        </AlertDescription>
+      </Alert>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Loan Payment Calculator */}
         <Card>

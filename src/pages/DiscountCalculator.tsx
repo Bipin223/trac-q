@@ -5,8 +5,18 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Percent, Plus, Trash2, Tag, ShoppingCart, TrendingUp } from 'lucide-react';
+import { Percent, Plus, Trash2, Tag, ShoppingCart, TrendingUp, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { showSuccess } from '@/utils/toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface Discount {
   id: number;
@@ -31,6 +41,10 @@ export default function DiscountCalculator() {
   const [bulkQuantity, setBulkQuantity] = useState<string>('');
   const [bulkUnitPrice, setBulkUnitPrice] = useState<string>('');
   const [bulkDiscount, setBulkDiscount] = useState<string>('');
+  
+  // Dialog state
+  const [showDiscountInfo, setShowDiscountInfo] = useState(false);
+  const [isDiscountInfoDialogOpen, setIsDiscountInfoDialogOpen] = useState(false);
   
   // Simple Discount Calculations
   const origPrice = parseFloat(originalPrice) || 0;
@@ -101,6 +115,181 @@ export default function DiscountCalculator() {
           <p className="text-muted-foreground">Calculate discounts, pricing, and profit margins</p>
         </div>
       </div>
+      
+      <Alert className="bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800">
+        <Info className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+        <AlertTitle className="text-orange-700 dark:text-orange-300 flex items-center justify-between">
+          Discount & Pricing Information
+          <div className="flex items-center gap-2">
+            <Dialog open={isDiscountInfoDialogOpen} onOpenChange={setIsDiscountInfoDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
+                >
+                  Read More
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Discount Types & Pricing Strategies</DialogTitle>
+                  <DialogDescription>
+                    Understanding different discount methods and profit calculations
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Common Discount Types</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Discount Type</TableHead>
+                          <TableHead>Example</TableHead>
+                          <TableHead>Best Used For</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell><strong>Percentage Discount</strong></TableCell>
+                          <TableCell>20% off</TableCell>
+                          <TableCell>Sales, promotions, clearance</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Fixed Amount Discount</strong></TableCell>
+                          <TableCell>₹500 off</TableCell>
+                          <TableCell>Minimum purchase offers</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Buy One Get One (BOGO)</strong></TableCell>
+                          <TableCell>Buy 1 Get 1 Free</TableCell>
+                          <TableCell>Inventory clearance, new products</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Volume/Bulk Discount</strong></TableCell>
+                          <TableCell>10% off on 5+ items</TableCell>
+                          <TableCell>B2B sales, wholesale</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Seasonal Discount</strong></TableCell>
+                          <TableCell>Dashain/Tihar Sale</TableCell>
+                          <TableCell>Festival periods, seasonal items</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Early Bird Discount</strong></TableCell>
+                          <TableCell>15% off first 100 buyers</TableCell>
+                          <TableCell>Product launches, events</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Discount Calculation Formulas</h3>
+                    <div className="space-y-3">
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Single Discount:</p>
+                        <p className="font-mono text-sm mt-1">Final Price = Original Price × (1 - Discount%/100)</p>
+                        <p className="text-xs text-muted-foreground mt-1">Example: ₹1000 × (1 - 20/100) = ₹800</p>
+                      </div>
+                      
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Multiple (Sequential) Discounts:</p>
+                        <p className="font-mono text-sm mt-1">Apply each discount to the result of the previous</p>
+                        <p className="text-xs text-muted-foreground mt-1">Example: ₹1000 → 20% off = ₹800 → 10% off = ₹720</p>
+                        <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">Note: 20% + 10% ≠ 30% discount!</p>
+                      </div>
+                      
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Profit Margin:</p>
+                        <p className="font-mono text-sm mt-1">Margin% = [(Selling Price - Cost Price) / Selling Price] × 100</p>
+                        <p className="text-xs text-muted-foreground mt-1">Example: [(₹1000 - ₹700) / ₹1000] × 100 = 30%</p>
+                      </div>
+                      
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Markup:</p>
+                        <p className="font-mono text-sm mt-1">Markup% = [(Selling Price - Cost Price) / Cost Price] × 100</p>
+                        <p className="text-xs text-muted-foreground mt-1">Example: [(₹1000 - ₹700) / ₹700] × 100 = 42.86%</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Pricing Strategy Tips</h3>
+                    <div className="space-y-2">
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Psychological Pricing</p>
+                        <p className="text-xs text-muted-foreground">Use ₹999 instead of ₹1000 - appears significantly cheaper</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Premium Pricing</p>
+                        <p className="text-xs text-muted-foreground">Higher prices can signal quality and exclusivity</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Penetration Pricing</p>
+                        <p className="text-xs text-muted-foreground">Start low to gain market share, then gradually increase</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Bundle Pricing</p>
+                        <p className="text-xs text-muted-foreground">Sell multiple products together at a discount</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Example: Festival Sale Calculation</h3>
+                    <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
+                      <p><strong>Product:</strong> Smartphone originally priced at ₹50,000</p>
+                      <p><strong>Dashain Offer:</strong> 15% discount</p>
+                      <p><strong>Extra Discount:</strong> 5% on online payment</p>
+                      <Separator />
+                      <div className="space-y-1">
+                        <p>Step 1: Apply 15% discount</p>
+                        <p className="ml-4 text-xs text-muted-foreground">₹50,000 × (1 - 0.15) = ₹42,500</p>
+                        
+                        <p className="mt-2">Step 2: Apply 5% online payment discount</p>
+                        <p className="ml-4 text-xs text-muted-foreground">₹42,500 × (1 - 0.05) = ₹40,375</p>
+                        
+                        <p className="mt-2 font-semibold">Final Price: ₹40,375</p>
+                        <p className="text-xs text-muted-foreground">Total savings: ₹9,625 (19.25% effective discount)</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    <p><strong>Note:</strong> Always consider your cost price and desired profit margin when offering discounts. Ensure discounts are sustainable for your business.</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDiscountInfo(!showDiscountInfo)}
+              className="h-auto p-0 text-orange-600 dark:text-orange-400"
+            >
+              {showDiscountInfo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </AlertTitle>
+        <AlertDescription className="text-orange-600 dark:text-orange-400">
+          {showDiscountInfo ? (
+            <div className="mt-2 space-y-1 text-sm">
+              <p>Key concept: Multiple discounts are sequential, not additive</p>
+              <p className="text-xs">Example: 20% + 10% discount = 28% total (not 30%)</p>
+              <p className="mt-1">Profit margin = (Selling Price - Cost) / Selling Price × 100</p>
+            </div>
+          ) : (
+            <p>Multiple discounts are sequential. Use profit margin calculator for pricing strategies</p>
+          )}
+        </AlertDescription>
+      </Alert>
       
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Simple Discount Calculator */}

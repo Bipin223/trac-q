@@ -6,8 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, FileText, Info, TrendingDown, DollarSign } from 'lucide-react';
+import { Calculator, FileText, Info, TrendingDown, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Nepal Tax Brackets for FY 2023/24 (Individual)
 const NEPAL_TAX_BRACKETS = [
@@ -35,6 +44,8 @@ export default function TaxCalculator() {
   const [maritalStatus, setMaritalStatus] = useState<'single' | 'married'>('single');
   const [calculated, setCalculated] = useState(false);
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown[]>([]);
+  const [showTaxInfo, setShowTaxInfo] = useState(false);
+  const [isTaxInfoDialogOpen, setIsTaxInfoDialogOpen] = useState(false);
   
   const calculateTax = () => {
     const gross = parseFloat(grossIncome) || 0;
@@ -120,9 +131,158 @@ export default function TaxCalculator() {
       
       <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-        <AlertTitle className="text-blue-700 dark:text-blue-300">Nepal Tax System</AlertTitle>
+        <AlertTitle className="text-blue-700 dark:text-blue-300 flex items-center justify-between">
+          Nepal Tax System
+          <div className="flex items-center gap-2">
+            <Dialog open={isTaxInfoDialogOpen} onOpenChange={setIsTaxInfoDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                >
+                  Read More
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Nepal Tax System - Detailed Information</DialogTitle>
+                  <DialogDescription>
+                    Progressive tax system for individuals (FY 2023/24)
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Tax Brackets</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Income Range (NPR)</TableHead>
+                          <TableHead>Tax Rate</TableHead>
+                          <TableHead>Description</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell>0 - 500,000</TableCell>
+                          <TableCell>1%</TableCell>
+                          <TableCell>First NPR 500,000</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>500,001 - 700,000</TableCell>
+                          <TableCell>10%</TableCell>
+                          <TableCell>Next NPR 200,000</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>700,001 - 1,000,000</TableCell>
+                          <TableCell>20%</TableCell>
+                          <TableCell>Next NPR 300,000</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>1,000,001 - 2,000,000</TableCell>
+                          <TableCell>30%</TableCell>
+                          <TableCell>Next NPR 1,000,000</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>Above 2,000,000</TableCell>
+                          <TableCell>36%</TableCell>
+                          <TableCell>Amount above NPR 2,000,000</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Allowable Deductions</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Deduction Type</TableHead>
+                          <TableHead>Maximum Amount (NPR)</TableHead>
+                          <TableHead>Notes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell>Retirement Contribution Fund</TableCell>
+                          <TableCell>300,000</TableCell>
+                          <TableCell>Provident Fund, CIT, SSF contributions</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>Life Insurance Premium</TableCell>
+                          <TableCell>25,000</TableCell>
+                          <TableCell>Premium paid for life insurance</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>Medical Insurance</TableCell>
+                          <TableCell>20,000</TableCell>
+                          <TableCell>Health insurance premium</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>Remote Area Allowance</TableCell>
+                          <TableCell>50,000</TableCell>
+                          <TableCell>For employees working in remote areas</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell>Spouse Allowance</TableCell>
+                          <TableCell>200,000</TableCell>
+                          <TableCell>For married individuals</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Tax Calculation Example</h3>
+                    <div className="bg-muted p-4 rounded-lg space-y-2 text-sm">
+                      <p><strong>Example:</strong> Annual Income of NPR 1,500,000 (Single)</p>
+                      <ul className="space-y-1 ml-4 list-disc">
+                        <li>First 500,000 @ 1% = NPR 5,000</li>
+                        <li>Next 200,000 @ 10% = NPR 20,000</li>
+                        <li>Next 300,000 @ 20% = NPR 60,000</li>
+                        <li>Next 500,000 @ 30% = NPR 150,000</li>
+                        <li><strong>Total Tax: NPR 235,000</strong></li>
+                        <li><strong>Effective Tax Rate: 15.67%</strong></li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    <p><strong>Source:</strong> Income Tax Act, 2058 (Nepal)</p>
+                    <p><strong>Fiscal Year:</strong> 2023/24 (2080/81 BS)</p>
+                    <p><strong>Note:</strong> Tax rates and regulations are subject to change. Please consult with a tax professional or the Inland Revenue Department for official guidance.</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowTaxInfo(!showTaxInfo)}
+              className="h-auto p-0 text-blue-600 dark:text-blue-400"
+            >
+              {showTaxInfo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </AlertTitle>
         <AlertDescription className="text-blue-600 dark:text-blue-400">
-          This calculator uses the progressive tax system of Nepal. Tax rates: 1% (0-5L), 10% (5-7L), 20% (7-10L), 30% (10-20L), 36% (20L+)
+          {showTaxInfo ? (
+            <div className="mt-2 space-y-1 text-sm">
+              <p>This calculator uses the progressive tax system of Nepal.</p>
+              <p><strong>Tax Rates:</strong></p>
+              <ul className="ml-4 space-y-0.5">
+                <li>• 1% (0-5L)</li>
+                <li>• 10% (5-7L)</li>
+                <li>• 20% (7-10L)</li>
+                <li>• 30% (10-20L)</li>
+                <li>• 36% (20L+)</li>
+              </ul>
+            </div>
+          ) : null}
         </AlertDescription>
       </Alert>
       
@@ -178,7 +338,6 @@ export default function TaxCalculator() {
                   min="0"
                   max="300000"
                 />
-                <p className="text-xs text-muted-foreground">Maximum deduction: NPR 300,000</p>
               </div>
               
               <div className="space-y-2">
@@ -192,7 +351,6 @@ export default function TaxCalculator() {
                   min="0"
                   max="25000"
                 />
-                <p className="text-xs text-muted-foreground">Maximum deduction: NPR 25,000</p>
               </div>
               
               <div className="space-y-2">
@@ -206,7 +364,6 @@ export default function TaxCalculator() {
                   min="0"
                   max="20000"
                 />
-                <p className="text-xs text-muted-foreground">Maximum deduction: NPR 20,000</p>
               </div>
               
               <div className="space-y-2">
@@ -220,7 +377,6 @@ export default function TaxCalculator() {
                   min="0"
                   max="50000"
                 />
-                <p className="text-xs text-muted-foreground">Maximum deduction: NPR 50,000</p>
               </div>
               
               <div className="space-y-2">

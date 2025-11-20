@@ -5,8 +5,19 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { PiggyBank, TrendingUp, Target } from 'lucide-react';
+import { PiggyBank, TrendingUp, Target, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export default function SavingsInvestment() {
   // Savings Goal Tracker
@@ -14,6 +25,10 @@ export default function SavingsInvestment() {
   const [targetAmount, setTargetAmount] = useState<string>('');
   const [currentSavings, setCurrentSavings] = useState<string>('');
   const [monthlyContribution, setMonthlyContribution] = useState<string>('');
+  
+  // Dialog state
+  const [showSavingsInfo, setShowSavingsInfo] = useState(false);
+  const [isSavingsInfoDialogOpen, setIsSavingsInfoDialogOpen] = useState(false);
   
   // Compound Interest Calculator
   const [principal, setPrincipal] = useState<string>('');
@@ -69,6 +84,168 @@ export default function SavingsInvestment() {
         </div>
       </div>
       
+      <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+        <Info className="h-4 w-4 text-green-600 dark:text-green-400" />
+        <AlertTitle className="text-green-700 dark:text-green-300 flex items-center justify-between">
+          Savings & Investment Information
+          <div className="flex items-center gap-2">
+            <Dialog open={isSavingsInfoDialogOpen} onOpenChange={setIsSavingsInfoDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200"
+                >
+                  Read More
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Savings & Investment Guide for Nepal</DialogTitle>
+                  <DialogDescription>
+                    Understanding interest rates, compound growth, and savings options
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 mt-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Savings Account Interest Rates</h3>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Account Type</TableHead>
+                          <TableHead>Interest Rate</TableHead>
+                          <TableHead>Best For</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell><strong>Savings Account</strong></TableCell>
+                          <TableCell>3% - 5%</TableCell>
+                          <TableCell>Daily expenses, emergency fund</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Fixed Deposit (1 year)</strong></TableCell>
+                          <TableCell>8% - 10%</TableCell>
+                          <TableCell>Short-term goals, guaranteed returns</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Fixed Deposit (3-5 years)</strong></TableCell>
+                          <TableCell>9% - 11%</TableCell>
+                          <TableCell>Medium-term goals, higher returns</TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell><strong>Recurring Deposit</strong></TableCell>
+                          <TableCell>7% - 9%</TableCell>
+                          <TableCell>Regular monthly savings</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Compound Interest Formula</h3>
+                    <div className="bg-muted p-4 rounded-lg space-y-3">
+                      <div>
+                        <p className="font-semibold text-sm">Basic Compound Interest:</p>
+                        <p className="font-mono text-sm mt-1">A = P(1 + r/n)^(nt)</p>
+                        <ul className="space-y-1 ml-4 list-disc text-xs text-muted-foreground mt-2">
+                          <li>A = Final amount</li>
+                          <li>P = Principal (initial investment)</li>
+                          <li>r = Annual interest rate (decimal)</li>
+                          <li>n = Number of times interest compounds per year</li>
+                          <li>t = Time in years</li>
+                        </ul>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div>
+                        <p className="font-semibold text-sm">With Regular Monthly Deposits:</p>
+                        <p className="font-mono text-sm mt-1">FV = PMT × [((1 + r/n)^(nt) - 1) / (r/n)]</p>
+                        <ul className="space-y-1 ml-4 list-disc text-xs text-muted-foreground mt-2">
+                          <li>FV = Future value</li>
+                          <li>PMT = Monthly payment/deposit</li>
+                          <li>r = Annual interest rate (decimal)</li>
+                          <li>n = Compounding frequency (12 for monthly)</li>
+                          <li>t = Time in years</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Example Calculation</h3>
+                    <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
+                      <p><strong>Scenario:</strong> रु 50,000 invested for 5 years at 9% annual interest, compounded monthly</p>
+                      <div className="mt-2 space-y-1">
+                        <p>• Principal: रु 50,000</p>
+                        <p>• Rate: 9% = 0.09</p>
+                        <p>• Time: 5 years</p>
+                        <p>• Compounding: 12 times/year (monthly)</p>
+                      </div>
+                      <Separator />
+                      <p className="font-semibold">Result: रु 78,454.48</p>
+                      <p className="text-xs text-muted-foreground">Interest earned: रु 28,454.48</p>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">Emergency Fund Guidelines</h3>
+                    <div className="space-y-2">
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Recommended: 3-6 months of expenses</p>
+                        <p className="text-xs text-muted-foreground mt-1">Keep in easily accessible savings account</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Single Income Family: 6-9 months</p>
+                        <p className="text-xs text-muted-foreground mt-1">Higher buffer for income stability</p>
+                      </div>
+                      <div className="bg-muted p-3 rounded-lg">
+                        <p className="font-semibold text-sm">Self-Employed: 9-12 months</p>
+                        <p className="text-xs text-muted-foreground mt-1">Account for irregular income</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-xs text-muted-foreground">
+                    <p><strong>Note:</strong> Interest rates vary by bank and are subject to Nepal Rastra Bank regulations. Rates shown are approximate as of 2024. Check with your bank for current rates.</p>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSavingsInfo(!showSavingsInfo)}
+              className="h-auto p-0 text-green-600 dark:text-green-400"
+            >
+              {showSavingsInfo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </div>
+        </AlertTitle>
+        <AlertDescription className="text-green-600 dark:text-green-400">
+          {showSavingsInfo ? (
+            <div className="mt-2 space-y-1 text-sm">
+              <p>Interest rates in Nepal:</p>
+              <ul className="ml-4 space-y-0.5">
+                <li>• Savings: 3-5%</li>
+                <li>• Fixed Deposit (1yr): 8-10%</li>
+                <li>• Fixed Deposit (3-5yr): 9-11%</li>
+              </ul>
+              <p className="mt-2">Emergency fund: Save 3-6 months of expenses</p>
+            </div>
+          ) : (
+            <p>Fixed deposits offer 8-11% returns. Emergency fund: 3-6 months expenses recommended</p>
+          )}
+        </AlertDescription>
+      </Alert>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Savings Goal Tracker */}
         <Card>
