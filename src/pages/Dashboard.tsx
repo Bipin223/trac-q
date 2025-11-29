@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon } from 'lucide-react';
+import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +12,9 @@ import { AlertCircle } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { RecurringNotifications } from "@/components/RecurringNotifications";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 interface ChartData {
   day: string;
@@ -29,12 +32,15 @@ const formatCurrency = (amount: number) => {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { profile, loading: profileLoading } = useProfile();
+  const { refreshNotifications } = useNotifications();
   const [financials, setFinancials] = useState<{ totalIncome: number; totalExpenses: number; chartData: ChartData[] } | null>(null);
   const [budgetedExpenses, setBudgetedExpenses] = useState(0);
   const [loadingFinancials, setLoadingFinancials] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingTransactionsCount, setPendingTransactionsCount] = useState(0);
   const [pendingFriendRequestsCount, setPendingFriendRequestsCount] = useState(0);
+  const [recurringExpenses, setRecurringExpenses] = useState<any[]>([]);
+  const [upcomingRecurring, setUpcomingRecurring] = useState<any[]>([]);
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
   const currentYear = new Date().getFullYear();
@@ -91,6 +97,7 @@ const Dashboard = () => {
       };
       fetchDashboardData();
       fetchExpenseBudget(); // Initial budget fetch
+      fetchRecurringTransactions(); // Fetch recurring expenses
       fetchNotifications(); // Fetch pending transactions and friend requests
     } else if (!profileLoading) {
       setLoadingFinancials(false);
@@ -135,6 +142,39 @@ const Dashboard = () => {
     }
   }, [profile, currentYear, currentMonthNum]);
 
+  // Fetch recurring transactions
+  const fetchRecurringTransactions = useCallback(async () => {
+    if (!profile) return;
+
+    try {
+      const today = new Date();
+      const fiveDaysLater = new Date(today);
+      fiveDaysLater.setDate(today.getDate() + 5);
+
+      // Fetch recurring expenses
+      const { data: expenses, error: expError } = await supabase
+        .from('expenses')
+        .select('*, category:categories(name)')
+        .eq('user_id', profile.id)
+        .eq('is_recurring', true)
+        .order('expense_date', { ascending: true });
+
+      if (!expError && expenses) {
+        setRecurringExpenses(expenses);
+
+        // Filter upcoming (within 5 days)
+        const upcoming = expenses.filter(exp => {
+          const expDate = new Date(exp.expense_date);
+          return expDate >= today && expDate <= fiveDaysLater;
+        }).slice(0, 3); // Limit to 3 items
+
+        setUpcomingRecurring(upcoming);
+      }
+    } catch (err) {
+      console.error('Dashboard: Error fetching recurring transactions:', err);
+    }
+  }, [profile]);
+
   // Fetch notifications for pending transactions and friend requests
   const fetchNotifications = useCallback(async () => {
     if (!profile) return;
@@ -151,11 +191,11 @@ const Dashboard = () => {
         setPendingTransactionsCount(pendingTxns.length);
       }
 
-      // Fetch pending friend requests where current user is the friend
+      // Fetch pending friend requests where current user is the recipient
       const { data: friendReqs, error: friendError } = await supabase
         .from('friends')
         .select('id')
-        .eq('friend_id', profile.id)
+        .eq('user_id', profile.id)
         .eq('status', 'pending');
 
       if (!friendError && friendReqs) {
@@ -254,7 +294,12 @@ const Dashboard = () => {
   const dashboardItems = [
     { to: '/dashboard/incomes', icon: <DollarSign className="h-6 w-6" />, title: 'Incomes', description: 'Log your earnings and manage income sources.' },
     { to: '/dashboard/expenses', icon: <BarChart2 className="h-6 w-6" />, title: 'Expenses', description: 'Record your spending and analyze your habits.' },
-    { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' }
+    { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' },
+    { to: '/dashboard/calculators', icon: <Calculator className="h-6 w-6" />, title: 'Calculators', description: 'Access tax, discount, savings, and loan calculators.' },
+    { to: '/dashboard/comparison', icon: <TrendingUp className="h-6 w-6" />, title: 'Comparison', description: 'Compare income and expenses across periods.' },
+    { to: '/dashboard/recurring', icon: <Repeat className="h-6 w-6" />, title: 'Recurring', description: 'Manage recurring transactions and subscriptions.' },
+    { to: '/dashboard/lend-borrow', icon: <Handshake className="h-6 w-6" />, title: 'Lend & Borrow', description: 'Track money you lend or borrow from others.' },
+    { to: '/dashboard/friends', icon: <UserPlus className="h-6 w-6" />, title: 'Friends', description: 'Connect with friends and share transactions.' }
   ];
 
   const actualIncome = financials?.totalIncome || 0;
@@ -266,6 +311,13 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Recurring Notifications System */}
+      <RecurringNotifications onNotificationUpdate={() => {
+        fetchRecurringTransactions();
+        fetchNotifications();
+        refreshNotifications();
+      }} />
+
       {/* Notification Banner */}
       {(pendingTransactionsCount > 0 || pendingFriendRequestsCount > 0) && (
         <Alert className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-amber-200 dark:border-amber-800">
@@ -453,6 +505,90 @@ const Dashboard = () => {
           data={financials.chartData}  // Now compatible with dayNum
           month={currentMonth}
         />
+      )}
+
+      {/* Recurring Expenses Overview */}
+      {recurringExpenses.length > 0 && (
+        <Card className="border-purple-200 dark:border-purple-800">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Repeat className="h-5 w-5 text-purple-600" />
+                  Recurring Expenses Overview
+                </CardTitle>
+                <CardDescription>Your recurring financial commitments</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/dashboard/recurring')}
+                className="text-purple-600 border-purple-300 hover:bg-purple-50"
+              >
+                View All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4 mb-4">
+              <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                <p className="text-sm text-muted-foreground mb-1">Monthly Recurring</p>
+                <p className="text-2xl font-bold text-purple-600">
+                  {formatCurrency(recurringExpenses.reduce((sum, exp) => sum + exp.amount, 0))}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{recurringExpenses.length} items</p>
+              </div>
+              
+              <div className="p-4 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                <p className="text-sm text-muted-foreground mb-1">Upcoming (5 days)</p>
+                <p className="text-2xl font-bold text-orange-600">
+                  {upcomingRecurring.length}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Transactions due soon</p>
+              </div>
+              
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-muted-foreground mb-1">Budget Impact</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {budgetedExpenses > 0 
+                    ? `${((recurringExpenses.reduce((sum, exp) => sum + exp.amount, 0) / budgetedExpenses) * 100).toFixed(0)}%`
+                    : 'N/A'
+                  }
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Of monthly budget</p>
+              </div>
+            </div>
+
+            {upcomingRecurring.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <h3 className="font-semibold text-sm">Upcoming This Week</h3>
+                </div>
+                {upcomingRecurring.map((transaction) => {
+                  const daysUntil = Math.ceil((new Date(transaction.expense_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                  return (
+                    <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800">
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-5 w-5 text-amber-600" />
+                        <div>
+                          <p className="font-medium text-sm">{transaction.description || transaction.category?.name}</p>
+                          <p className="text-xs text-muted-foreground">{transaction.category?.name}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold text-red-600">{formatCurrency(transaction.amount)}</p>
+                        <Badge variant="outline" className="text-xs border-amber-600 text-amber-600">
+                          {daysUntil === 0 ? 'Today' : daysUntil === 1 ? 'Tomorrow' : `In ${daysUntil} days`}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <div>

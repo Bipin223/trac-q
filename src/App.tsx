@@ -16,18 +16,29 @@ import DiscountCalculator from './pages/DiscountCalculator';
 import SavingsInvestment from './pages/SavingsInvestment';
 import LoanCalculator from './pages/LoanCalculator';
 import CalculatorHub from './pages/CalculatorHub';
+import Comparison from './pages/Comparison';
+import RecurringTransactions from './pages/RecurringTransactions';
 import { Button } from './components/ui/button';
-import { Menu, Loader2 } from 'lucide-react';
+import { Menu, Loader2, Bell } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { ThemeToggle } from './components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
+import { Badge } from './components/ui/badge';
 //import AdminAccountsPage from './pages/admin/AdminAccounts';
 import AdminUsersPage from './pages/admin/AdminUsers';
 import { useProfile } from './contexts/ProfileContext';
+import { useNotifications } from './contexts/NotificationContext';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './components/ui/tooltip';
 
 function App() {
   const session = useSession();
   const { profile, loading } = useProfile();
+  const { todayCount, upcomingCount } = useNotifications();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -90,6 +101,34 @@ function App() {
             )}
           </div>
           <div className="flex items-center space-x-2">
+            {/* Notification Bell */}
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link to="/dashboard">
+                    <Button variant="ghost" size="icon" className="relative">
+                      <Bell className="h-5 w-5" />
+                      {(todayCount + upcomingCount) > 0 && (
+                        <Badge 
+                          variant="destructive" 
+                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                        >
+                          {todayCount + upcomingCount}
+                        </Badge>
+                      )}
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <div className="text-sm">
+                    {todayCount > 0 && <p className="text-red-600 font-semibold">{todayCount} due today</p>}
+                    {upcomingCount > 0 && <p>{upcomingCount} upcoming</p>}
+                    {(todayCount + upcomingCount) === 0 && <p>No notifications</p>}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
             <Link to="/dashboard/profile" className="transition-transform hover:scale-110">
               <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-transparent hover:ring-purple-500 transition-all">
                 <AvatarImage src={profile?.avatar_url} alt="User avatar" />
@@ -112,6 +151,8 @@ function App() {
               <Route path="/discount-calculator" element={<DiscountCalculator />} />
               <Route path="/savings-investment" element={<SavingsInvestment />} />
               <Route path="/loan-calculator" element={<LoanCalculator />} />
+              <Route path="/comparison" element={<Comparison />} />
+              <Route path="/recurring" element={<RecurringTransactions />} />
               <Route path="/profile" element={<ProfileEnhanced />} />
               <Route path="/lend-borrow" element={<LendBorrowPage />} />
               <Route path="/friends" element={<Friends />} />

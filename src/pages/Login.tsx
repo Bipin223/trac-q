@@ -40,7 +40,6 @@ const Login = () => {
   const [showUserExistsOptions, setShowUserExistsOptions] = useState(false);
   const [rememberedUsers, setRememberedUsers] = useState<RememberedUser[]>([]);
   const [passwordInputRef, setPasswordInputRef] = useState<HTMLInputElement | null>(null);
-  const beforeUnloadHandlerRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -61,29 +60,7 @@ const Login = () => {
         localStorage.removeItem(REMEMBERED_USERS_KEY);
       }
     }
-
-    // Cleanup any existing beforeunload handler on unmount
-    return () => {
-      if (beforeUnloadHandlerRef.current) {
-        window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
-      }
-    };
   }, [navigate]);
-
-  const handleBeforeUnload = async () => {
-    await supabase.auth.signOut();
-  };
-
-  const setupTemporarySession = () => {
-    // Remove any existing handler to avoid duplicates
-    if (beforeUnloadHandlerRef.current) {
-      window.removeEventListener('beforeunload', beforeUnloadHandlerRef.current);
-    }
-
-    // Add new handler for temporary session
-    beforeUnloadHandlerRef.current = handleBeforeUnload;
-    window.addEventListener('beforeunload', beforeUnloadHandlerRef.current);
-  };
 
   const addToRememberedUsers = (newUser: RememberedUser) => {
     const existingIndex = rememberedUsers.findIndex(u => u.username === newUser.username);
@@ -134,8 +111,7 @@ const Login = () => {
       setError(`Login failed for ${selectedUser.username}: ${signInError.message}`);
       removeFromRememberedUsers(selectedUser.username); // Clear invalid entry
     } else {
-      // Success - setup session based on rememberMe (default to true for quick login)
-      setupTemporarySession(); // Or make persistent by default for quick logins
+      // Success - navigate to dashboard
       navigate('/dashboard');
     }
     setLoading(false);
@@ -193,12 +169,11 @@ const Login = () => {
       
       authError = signInError;
       if (!authError) {
-        // Handle remember me logic
+        // Handle remember me logic - save credentials if requested
         if (rememberMe) {
           addToRememberedUsers({ username: username.trim(), password });
-        } else {
-          setupTemporarySession();
         }
+        // Navigate to dashboard - session persists regardless of Remember Me
         navigate('/dashboard');
       }
     }
