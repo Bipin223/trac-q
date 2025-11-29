@@ -46,9 +46,10 @@ function App() {
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
+    // Supabase's signOut() handles its own session cleanup
+    // Don't clear localStorage/sessionStorage to preserve remembered users
+    // and avoid race conditions with auth state
     await supabase.auth.signOut();
-    localStorage.clear();
-    sessionStorage.clear();
     navigate('/');
   };
 

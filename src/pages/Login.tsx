@@ -87,30 +87,59 @@ const Login = () => {
     setUsername(selectedUser.username);
     setPassword(selectedUser.password);
 
-    // Perform sign-in
-    const { data: emailFromUsername, error: rpcError } = await supabase.rpc('get_email_from_username', {
-      p_username: selectedUser.username.trim(),
-    });
+    try {
+      // Perform sign-in with retry logic
+      let emailFromUsername: string | null = null;
+      let retryCount = 0;
+      const maxRetries = 2;
 
-    if (rpcError || !emailFromUsername) {
-      setError('Invalid credentials for remembered user.');
-      removeFromRememberedUsers(selectedUser.username); // Clear invalid entry
-      setLoading(false);
-      return;
+      while (retryCount <= maxRetries && !emailFromUsername) {
+        const { data, error: rpcError } = await supabase.rpc('get_email_from_username', {
+          p_username: selectedUser.username.trim(),
+        });
+
+        if (data) {
+          emailFromUsername = data;
+          break;
+        }
+
+        if (rpcError) {
+          console.error('Quick Login: Error fetching email:', rpcError);
+        }
+
+        if (retryCount < maxRetries) {
+          console.log('Quick Login: Retrying...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          retryCount++;
+        } else {
+          break;
+        }
+      }
+
+      if (!emailFromUsername) {
+        setError('Invalid credentials for remembered user.');
+        removeFromRememberedUsers(selectedUser.username);
+        setLoading(false);
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: emailFromUsername,
+        password: selectedUser.password,
+      });
+
+      if (signInError) {
+        setError(`Login failed for ${selectedUser.username}: ${signInError.message}`);
+        removeFromRememberedUsers(selectedUser.username);
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      console.error('Quick Login: Exception:', err);
+      setError('Login failed. Please try again.');
+      removeFromRememberedUsers(selectedUser.username);
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: emailFromUsername,
-      password: selectedUser.password,
-    });
-
-    if (signInError) {
-      setError(`Login failed for ${selectedUser.username}: ${signInError.message}`);
-      removeFromRememberedUsers(selectedUser.username); // Clear invalid entry
-    } else {
-      // Success - navigate to dashboard
-      navigate('/dashboard');
-    }
     setLoading(false);
   };
 
@@ -119,31 +148,61 @@ const Login = () => {
     setLoading(true);
     setError(null);
 
-    // Sign in with username
-    const { data: emailFromUsername, error: rpcError } = await supabase.rpc('get_email_from_username', {
-      p_username: username.trim(),
-    });
+    try {
+      // Sign in with username - first get email from username
+      let emailFromUsername: string | null = null;
+      let retryCount = 0;
+      const maxRetries = 2;
 
-    if (rpcError || !emailFromUsername) {
-      setError('Invalid username or password.');
-      setLoading(false);
-      return;
-    }
+      // Retry logic in case profile is being created
+      while (retryCount <= maxRetries && !emailFromUsername) {
+        const { data, error: rpcError } = await supabase.rpc('get_email_from_username', {
+          p_username: username.trim(),
+        });
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: emailFromUsername,
-      password,
-    });
-    
-    if (signInError) {
-      setError(signInError.message);
-    } else {
-      // Handle remember me logic - save credentials if requested
-      if (rememberMe) {
-        addToRememberedUsers({ username: username.trim(), password });
+        if (data) {
+          emailFromUsername = data;
+          break;
+        }
+
+        if (rpcError) {
+          console.error('Login: Error fetching email for username:', rpcError);
+        }
+
+        // If profile not found and this isn't the last attempt, wait and retry
+        if (retryCount < maxRetries) {
+          console.log('Login: Username not found, retrying in 1s...');
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          retryCount++;
+        } else {
+          break;
+        }
       }
-      // Navigate to dashboard - session persists regardless of Remember Me
-      navigate('/dashboard');
+
+      if (!emailFromUsername) {
+        setError('Invalid username or password. If you just signed up, please wait a moment and try again.');
+        setLoading(false);
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: emailFromUsername,
+        password,
+      });
+      
+      if (signInError) {
+        setError(signInError.message);
+      } else {
+        // Handle remember me logic - save credentials if requested
+        if (rememberMe) {
+          addToRememberedUsers({ username: username.trim(), password });
+        }
+        // Navigate to dashboard - session persists regardless of Remember Me
+        navigate('/dashboard');
+      }
+    } catch (err: any) {
+      console.error('Login: Exception during login:', err);
+      setError('An error occurred during login. Please try again.');
     }
 
     setLoading(false);

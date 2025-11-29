@@ -40,6 +40,8 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
+    // Supabase's signOut() handles its own session cleanup
+    // Don't clear localStorage/sessionStorage to preserve remembered users
     await supabase.auth.signOut();
     navigate('/login');
   };

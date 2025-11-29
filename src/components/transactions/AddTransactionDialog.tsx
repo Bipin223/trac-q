@@ -69,6 +69,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      amount: 0,
       date: new Date(),
       description: "",
       categoryId: defaultCategoryId || "",
@@ -347,14 +348,11 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                         <SelectContent>
                           <SelectItem value="daily">Daily</SelectItem>
                           <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly (Same day each month)</SelectItem>
+                          <SelectItem value="monthly">Monthly (same day)</SelectItem>
                           <SelectItem value="yearly">Yearly</SelectItem>
-                          <SelectItem value="custom">Custom Day of Month</SelectItem>
+                          <SelectItem value="custom">Custom Day</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>
-                        How often should this transaction repeat?
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -374,38 +372,25 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent className="max-h-[200px]">
-                            <SelectItem value="1">1st - Monthly (First of month)</SelectItem>
-                            <SelectItem value="5">5th - Rent Payment</SelectItem>
+                            <SelectItem value="1">1st</SelectItem>
+                            <SelectItem value="5">5th</SelectItem>
                             <SelectItem value="10">10th</SelectItem>
-                            <SelectItem value="15">15th - Mid-month</SelectItem>
+                            <SelectItem value="15">15th</SelectItem>
                             <SelectItem value="20">20th</SelectItem>
-                            <SelectItem value="25">25th - Pension/Salary</SelectItem>
-                            <SelectItem value="28">28th - Safe for all months</SelectItem>
+                            <SelectItem value="25">25th</SelectItem>
+                            <SelectItem value="28">28th</SelectItem>
                             {Array.from({ length: 31 }, (_, i) => i + 1)
                               .filter(day => ![1, 5, 10, 15, 20, 25, 28].includes(day))
                               .map(day => (
-                                <SelectItem key={day} value={day.toString()}>{day}{day === 31 ? ' (Last day)' : ''}</SelectItem>
+                                <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
                               ))}
                           </SelectContent>
                         </Select>
-                        <FormDescription>
-                          Choose specific day of month for recurrence
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
-                
-                <div className="text-xs text-muted-foreground bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
-                  <p className="font-semibold mb-1">💡 Quick Tips:</p>
-                  <ul className="space-y-1 ml-4 list-disc">
-                    <li><strong>Daily:</strong> For everyday income/expenses</li>
-                    <li><strong>Weekly:</strong> Every 7 days from selected date</li>
-                    <li><strong>Monthly:</strong> Same day each month (e.g., 15th)</li>
-                    <li><strong>Custom:</strong> Specific day like 1st (rent) or 25th (salary)</li>
-                  </ul>
-                </div>
               </div>
             )}
             

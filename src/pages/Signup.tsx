@@ -59,27 +59,50 @@ const Signup = () => {
       return;
     }
 
-    const { error: signUpError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: {
-          username: username.trim(),
-        },
-        emailRedirectTo: window.location.origin + '/login',
-      },
-    });
+    try {
+      // Check if username already exists
+      const { data: existingUsername, error: usernameCheckError } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username.trim())
+        .maybeSingle();
 
-    if (signUpError) {
-      if (signUpError.message.toLowerCase().includes('user already registered')) {
-        setError('This email is already registered. Please login or use a different email.');
-      } else {
-        setError(signUpError.message);
+      if (usernameCheckError && usernameCheckError.code !== 'PGRST116') {
+        throw usernameCheckError;
       }
+
+      if (existingUsername) {
+        setError('This username is already taken. Please choose a different username.');
+        setLoading(false);
+        return;
+      }
+
+      // Attempt to sign up
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            username: username.trim(),
+          },
+          emailRedirectTo: window.location.origin + '/login',
+        },
+      });
+
+      if (signUpError) {
+        if (signUpError.message.toLowerCase().includes('user already registered')) {
+          setError('This email is already registered. Please login instead, or use "Forgot Password" if you need to reset it.');
+        } else {
+          setError(signUpError.message);
+        }
+        setLoading(false);
+      } else {
+        // Show success dialog
+        setShowSuccessDialog(true);
+      }
+    } catch (err: any) {
+      setError(err.message || 'An unexpected error occurred. Please try again.');
       setLoading(false);
-    } else {
-      // Show success dialog
-      setShowSuccessDialog(true);
     }
   };
 
