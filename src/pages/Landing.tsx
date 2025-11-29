@@ -20,7 +20,7 @@ const Landing = () => {
   const navigate = useNavigate();
 
   const handleGetStarted = () => {
-    navigate('/login', { state: { signUp: true } });
+    navigate('/signup');
   };
   const features = [
     {
@@ -57,22 +57,22 @@ const Landing = () => {
 
   const testimonials = [
     {
-      name: "Priya Sharma",
+      name: "Bipin Rizal",
       role: "Freelance Designer",
       content: "Trac-Q has revolutionized how I manage my freelance income. The budget tracking feature helps me save more each month!",
-      avatar: "PS"
+      avatar: "BR"
     },
     {
-      name: "Rajesh Kumar",
+      name: "Sanam Shrestha",
       role: "Small Business Owner",
       content: "Finally, a money management tool that's simple yet powerful. I can track all my business expenses effortlessly.",
-      avatar: "RK"
+      avatar: "SS"
     },
     {
-      name: "Anita Patel",
+      name: "Aakash Limbu",
       role: "Student",
       content: "As a student, budgeting is crucial. Trac-Q's visual reports help me understand where my money goes and plan better.",
-      avatar: "AP"
+      avatar: "AL"
     }
   ];
 
@@ -82,7 +82,7 @@ const Landing = () => {
     "Monthly financial summaries",
     "Secure data encryption",
     "Multi-device sync",
-    "Export financial reports"
+    "Finance Tools integration"
   ];
 
   return (
@@ -137,16 +137,6 @@ const Landing = () => {
                     Login
                   </Button>
                 </Link>
-              </div>
-              <div className="flex items-center space-x-6 pt-4">
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">No credit card required</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <CheckCircle2 className="h-5 w-5 text-green-600" />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">Free forever</span>
-                </div>
               </div>
             </div>
             <div className="relative">

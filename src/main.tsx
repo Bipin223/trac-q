@@ -4,6 +4,7 @@ import App from './App.tsx'
 import './globals.css'
 import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
 import Login from './pages/Login.tsx'
+import Signup from './pages/Signup.tsx'
 import Landing from './pages/Landing.tsx'
 import { SessionContextProvider } from '@supabase/auth-helpers-react'
 import { supabase } from './integrations/supabase/client.ts'
@@ -27,6 +28,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/signup" element={<Signup />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
                 <Route 
