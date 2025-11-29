@@ -28,16 +28,13 @@ const MAX_REMEMBERED_USERS = 5;
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSignUp, setIsSignUp] = useState(location.state?.signUp || false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showUserExistsOptions, setShowUserExistsOptions] = useState(false);
   const [rememberedUsers, setRememberedUsers] = useState<RememberedUser[]>([]);
   const [passwordInputRef, setPasswordInputRef] = useState<HTMLInputElement | null>(null);
 
@@ -121,70 +118,38 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
-    setShowUserExistsOptions(false);
 
-    let authError = null;
+    // Sign in with username
+    const { data: emailFromUsername, error: rpcError } = await supabase.rpc('get_email_from_username', {
+      p_username: username.trim(),
+    });
 
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
-        email: email.trim(),
-        password,
-        options: {
-          data: {
-            username: username.trim(),
-          },
-          emailRedirectTo: 'https://fgyoexlosyvvgumpzgwe.dyad.sh/',
-        },
-      });
-      authError = error;
-      if (!authError) {
-        setSuccess("Sign-up successful! Please check your email to verify your account, then sign in.");
-        setIsSignUp(false);
-        setEmail('');
-        setPassword('');
-        setUsername('');
-        setRememberMe(false);
-      } else {
-        if (error.message.toLowerCase().includes('user already registered')) {
-          setShowUserExistsOptions(true);
-        }
-      }
+    if (rpcError || !emailFromUsername) {
+      setError('Invalid username or password.');
+      setLoading(false);
+      return;
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: emailFromUsername,
+      password,
+    });
+    
+    if (signInError) {
+      setError(signInError.message);
     } else {
-      // Sign in with username
-      const { data: emailFromUsername, error: rpcError } = await supabase.rpc('get_email_from_username', {
-        p_username: username.trim(),
-      });
-
-      if (rpcError || !emailFromUsername) {
-        setError('Invalid username or password.');
-        setLoading(false);
-        return;
+      // Handle remember me logic - save credentials if requested
+      if (rememberMe) {
+        addToRememberedUsers({ username: username.trim(), password });
       }
-
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: emailFromUsername,
-        password,
-      });
-      
-      authError = signInError;
-      if (!authError) {
-        // Handle remember me logic - save credentials if requested
-        if (rememberMe) {
-          addToRememberedUsers({ username: username.trim(), password });
-        }
-        // Navigate to dashboard - session persists regardless of Remember Me
-        navigate('/dashboard');
-      }
+      // Navigate to dashboard - session persists regardless of Remember Me
+      navigate('/dashboard');
     }
 
-    if (authError) {
-      setError(authError.message);
-    }
     setLoading(false);
   };
 
-  const hasRememberedUsers = rememberedUsers.length > 0 && !isSignUp;
+  const hasRememberedUsers = rememberedUsers.length > 0;
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-50 via-blue-50 to-white dark:from-gray-900 dark:via-purple-900/80 dark:to-blue-900/80 p-4 relative">
@@ -257,9 +222,7 @@ const Login = () => {
           </div>
           
           <div className="space-y-2 text-center">
-            <h2 className="text-2xl font-bold">
-              {isSignUp ? 'Create an Account' : 'Welcome Back!'}
-            </h2>
+            <h2 className="text-2xl font-bold">Welcome Back!</h2>
           </div>
 
           {error && (
@@ -270,86 +233,23 @@ const Login = () => {
             </Alert>
           )}
 
-          {showUserExistsOptions && (
-            <div className="p-4 border border-muted-foreground/20 bg-muted/50 rounded-lg space-y-3 text-center">
-                <p className="text-sm font-medium text-foreground">It looks like you already have an account.</p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                    <Button variant="outline" className="w-full" onClick={() => {
-                        setIsSignUp(false);
-                        setError(null);
-                        setShowUserExistsOptions(false);
-                    }}>
-                        Sign In Instead
-                    </Button>
-                    <Button variant="secondary" className="w-full" disabled={loading}>
-                      <Link to="/forgot-password" className="no-underline">Forgot Password?</Link>
-                    </Button>
-                </div>
-            </div>
-          )}
-
-          {success && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Success</AlertTitle>
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-
           <form onSubmit={handleAuthAction} className="space-y-4">
-            {isSignUp ? (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="username-signup">Username</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      id="username-signup"
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      placeholder="Choose a username"
-                      required
-                      className="pl-10 bg-transparent"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      required
-                      className="pl-10 bg-transparent"
-                      disabled={loading}
-                    />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="username-login">Username</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    id="username-login"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    placeholder="Enter your username"
-                    required
-                    className="pl-10 bg-transparent"
-                    disabled={loading}
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="username-login">Username</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  id="username-login"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  required
+                  className="pl-10 bg-transparent"
+                  disabled={loading}
+                />
               </div>
-            )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -375,53 +275,39 @@ const Login = () => {
                   <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
                 </button>
               </div>
-               {!isSignUp && (
-                <div className="flex justify-end mt-2">
-                  {loading ? (
-                    <span className="text-sm text-muted-foreground">Forgot your password?</span>
-                  ) : (
-                    <Link
-                      to="/forgot-password"
-                      className="text-sm underline"
-                    >
-                      Forgot your password?
-                    </Link>
-                  )}
-                </div>
-              )}
-            </div>
-            {!isSignUp && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(!!checked)}
-                  disabled={loading}
-                />
-                <Label htmlFor="remember" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Remember me
-                </Label>
+              <div className="flex justify-end mt-2">
+                {loading ? (
+                  <span className="text-sm text-muted-foreground">Forgot your password?</span>
+                ) : (
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm underline"
+                  >
+                    Forgot your password?
+                  </Link>
+                )}
               </div>
-            )}
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(!!checked)}
+                disabled={loading}
+              />
+              <Label htmlFor="remember" className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                Remember me
+              </Label>
+            </div>
             <Button type="submit" disabled={loading} className="w-full">
-              {loading ? 'Logging in...' : (isSignUp ? 'Create Account' : 'Sign In')}
+              {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
-            {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setError(null);
-                setSuccess(null);
-                setShowUserExistsOptions(false);
-                setRememberMe(false);
-              }}
-              className="underline font-semibold disabled:opacity-50"
-              disabled={loading}
-            >
-              {isSignUp ? 'Sign In' : 'Sign Up'}
-            </button>
+            Don't have an account?{' '}
+            <Link to="/signup" className="underline font-semibold">
+              Sign Up
+            </Link>
           </div>
         </div>
         <div className="hidden md:flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-100 via-blue-100 to-white dark:from-purple-900/50 dark:to-blue-900/50">
