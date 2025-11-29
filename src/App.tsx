@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { useSession } from '@supabase/auth-helpers-react';
+import { supabase } from './integrations/supabase/client';
 import Sidebar, { SidebarContent } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Incomes from './pages/Incomes';
@@ -19,11 +20,12 @@ import CalculatorHub from './pages/CalculatorHub';
 import Comparison from './pages/Comparison';
 import RecurringTransactions from './pages/RecurringTransactions';
 import { Button } from './components/ui/button';
-import { Menu, Loader2, Bell } from 'lucide-react';
+import { Menu, Loader2, Bell, AlertCircle } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
 import { ThemeToggle } from './components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { Badge } from './components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from './components/ui/alert';
 //import AdminAccountsPage from './pages/admin/AdminAccounts';
 import AdminUsersPage from './pages/admin/AdminUsers';
 import { useProfile } from './contexts/ProfileContext';
@@ -37,10 +39,18 @@ import {
 
 function App() {
   const session = useSession();
+  const navigate = useNavigate();
   const { profile, loading } = useProfile();
   const { todayCount, upcomingCount } = useNotifications();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate('/');
+  };
 
   if (loading) {
     return (
@@ -52,8 +62,22 @@ function App() {
 
   if (!profile) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      <div className="flex h-screen w-full items-center justify-center flex-col gap-4 p-8">
+        <Alert variant="destructive" className="max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Profile Error</AlertTitle>
+          <AlertDescription>
+            Unable to load your profile. This might be due to a session issue or missing profile data.
+          </AlertDescription>
+        </Alert>
+        <div className="flex gap-4">
+          <Button onClick={handleLogout} variant="outline">
+            Logout & Try Again
+          </Button>
+          <Button onClick={() => window.location.reload()}>
+            Reload Page
+          </Button>
+        </div>
       </div>
     );
   }
