@@ -11,31 +11,37 @@ import ForgotPassword from './pages/ForgotPassword.tsx'
 import { ThemeProvider } from './components/theme-provider.tsx'
 import ResetPasswordPage from './pages/ResetPassword.tsx'
 import { ProfileProvider } from './contexts/ProfileContext'
+import { NotificationProvider } from './contexts/NotificationContext'
 import { ProtectedRoute } from './components/ProtectedRoute.tsx'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <SessionContextProvider supabaseClient={supabase}>
+    <SessionContextProvider 
+      supabaseClient={supabase}
+      initialSession={null}
+    >
       <ProfileProvider>
-        <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme" attribute="class">
-          <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Landing />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route 
-                path="/dashboard/*" 
-                element={
-                  <ProtectedRoute>
-                    <App />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </BrowserRouter>
-        </ThemeProvider>
+        <NotificationProvider>
+          <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme" attribute="class">
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Landing />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route 
+                  path="/dashboard/*" 
+                  element={
+                    <ProtectedRoute>
+                      <App />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </BrowserRouter>
+          </ThemeProvider>
+        </NotificationProvider>
       </ProfileProvider>
     </SessionContextProvider>
   </React.StrictMode>,

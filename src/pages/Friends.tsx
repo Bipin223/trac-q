@@ -147,7 +147,7 @@ export default function Friends() {
         requested_by,
         requester_profile:profiles!friends_requested_by_fkey(full_name, email)
       `)
-      .eq('friend_id', profile.id)
+      .eq('user_id', profile.id)
       .eq('status', 'pending');
 
     if (error) {

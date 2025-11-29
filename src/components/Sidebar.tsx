@@ -1,4 +1,4 @@
-import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users, Mail, Handshake, UserPlus, Clock, Calculator } from 'lucide-react';
+import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users, Mail, Handshake, UserPlus, Clock, Calculator, TrendingUp, Repeat } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
@@ -12,6 +12,8 @@ const navItems = [
   { to: '/dashboard', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
   { to: '/dashboard/incomes', icon: <DollarSign className="h-5 w-5" />, label: 'Incomes' },
   { to: '/dashboard/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
+  { to: '/dashboard/comparison', icon: <TrendingUp className="h-5 w-5" />, label: 'Comparison' },
+  { to: '/dashboard/recurring', icon: <Repeat className="h-5 w-5" />, label: 'Recurring' },
   { to: '/dashboard/lend-borrow', icon: <Handshake className="h-5 w-5" />, label: 'Lend & Borrow' },
   { to: '/dashboard/friends', icon: <UserPlus className="h-5 w-5" />, label: 'Friends' },
   { to: '/dashboard/pending-transactions', icon: <Clock className="h-5 w-5" />, label: 'Pending' },
