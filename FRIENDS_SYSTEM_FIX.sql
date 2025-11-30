@@ -4,6 +4,25 @@
 -- This fixes the friend request functionality
 -- ============================================
 
+-- STEP 0: First, ensure friends table has proper foreign key constraints to profiles
+-- Drop old constraints if they exist (they might reference auth.users)
+ALTER TABLE public.friends DROP CONSTRAINT IF EXISTS friends_user_id_fkey;
+ALTER TABLE public.friends DROP CONSTRAINT IF EXISTS friends_friend_id_fkey;
+ALTER TABLE public.friends DROP CONSTRAINT IF EXISTS friends_requested_by_fkey;
+
+-- Add proper foreign keys to profiles table
+ALTER TABLE public.friends 
+  ADD CONSTRAINT friends_user_id_fkey 
+  FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+ALTER TABLE public.friends 
+  ADD CONSTRAINT friends_friend_id_fkey 
+  FOREIGN KEY (friend_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+ALTER TABLE public.friends 
+  ADD CONSTRAINT friends_requested_by_fkey 
+  FOREIGN KEY (requested_by) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
 -- STEP 1: Fix profiles RLS - Allow users to view other users' basic info
 -- This is needed so users can search for friends by friend code
 DROP POLICY IF EXISTS "Users can view other profiles for friend requests" ON public.profiles;
@@ -21,11 +40,15 @@ USING (
 -- user_id = B (recipient), friend_id = A (sender), requested_by = A
 -- But current policy requires user_id = auth.uid(), which would be A, not B!
 
--- Drop old restrictive policies
+-- Drop ALL old policies (including ones from the original setup)
 DROP POLICY IF EXISTS "Users can create friend requests" ON public.friends;
 DROP POLICY IF EXISTS "Users can view their own friendships" ON public.friends;
 DROP POLICY IF EXISTS "Users can update their friend requests" ON public.friends;
 DROP POLICY IF EXISTS "Users can delete their friendships" ON public.friends;
+DROP POLICY IF EXISTS "Users can view their friendships" ON public.friends;
+DROP POLICY IF EXISTS "Users can send friend requests" ON public.friends;
+DROP POLICY IF EXISTS "Users can accept/reject requests sent to them" ON public.friends;
+DROP POLICY IF EXISTS "Users can remove friendships" ON public.friends;
 
 -- Create better policies
 
@@ -105,9 +128,9 @@ SELECT
     WHEN f.requested_by = f.user_id THEN 'sent'
     ELSE 'received'
   END as request_direction,
-  p_user.full_name as user_name,
+  COALESCE(p_user.first_name || ' ' || p_user.last_name, p_user.username) as user_name,
   p_user.email as user_email,
-  p_friend.full_name as friend_name,
+  COALESCE(p_friend.first_name || ' ' || p_friend.last_name, p_friend.username) as friend_name,
   p_friend.email as friend_email
 FROM friends f
 LEFT JOIN profiles p_user ON f.user_id = p_user.id
