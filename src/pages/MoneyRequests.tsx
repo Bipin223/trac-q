@@ -71,43 +71,64 @@ export default function MoneyRequests() {
     if (!profile) return;
     setLoading(true);
 
-    // Fetch sent requests
-    const { data: sentData } = await supabase
-      .from('money_requests')
-      .select('id, from_user_id, to_user_id, amount, currency, description, request_type, status, due_date, created_at')
-      .eq('from_user_id', profile.id)
-      .order('created_at', { ascending: false });
+    try {
+      // Fetch sent requests
+      const { data: sentData, error: sentError } = await supabase
+        .from('money_requests')
+        .select('id, from_user_id, to_user_id, amount, currency, description, request_type, status, due_date, created_at')
+        .eq('from_user_id', profile.id)
+        .order('created_at', { ascending: false });
 
-    // Fetch received requests
-    const { data: receivedData } = await supabase
-      .from('money_requests')
-      .select('id, from_user_id, to_user_id, amount, currency, description, request_type, status, due_date, created_at')
-      .eq('to_user_id', profile.id)
-      .order('created_at', { ascending: false });
+      if (sentError) {
+        console.error('Error fetching sent requests:', sentError);
+        if (sentError.message.includes('does not exist')) {
+          showError('Money request system not set up. Please run MONEY_REQUEST_SYSTEM.sql in Supabase.');
+        }
+        setLoading(false);
+        return;
+      }
 
-    // Get user profiles for all requests
-    const allUserIds = new Set<string>();
-    [...(sentData || []), ...(receivedData || [])].forEach(req => {
-      allUserIds.add(req.from_user_id);
-      allUserIds.add(req.to_user_id);
-    });
+      // Fetch received requests
+      const { data: receivedData, error: receivedError } = await supabase
+        .from('money_requests')
+        .select('id, from_user_id, to_user_id, amount, currency, description, request_type, status, due_date, created_at')
+        .eq('to_user_id', profile.id)
+        .order('created_at', { ascending: false });
 
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, email')
-      .in('id', Array.from(allUserIds));
+      if (receivedError) {
+        console.error('Error fetching received requests:', receivedError);
+        setLoading(false);
+        return;
+      }
 
-    const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      // Get user profiles for all requests
+      const allUserIds = new Set<string>();
+      [...(sentData || []), ...(receivedData || [])].forEach(req => {
+        allUserIds.add(req.from_user_id);
+        allUserIds.add(req.to_user_id);
+      });
 
-    const enrichData = (data: any[]) => data.map(req => ({
-      ...req,
-      from_user: profilesMap.get(req.from_user_id) || { first_name: '', last_name: '', email: 'Unknown' },
-      to_user: profilesMap.get(req.to_user_id) || { first_name: '', last_name: '', email: 'Unknown' },
-    }));
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', Array.from(allUserIds));
 
-    setSentRequests(enrichData(sentData || []));
-    setReceivedRequests(enrichData(receivedData || []));
-    setLoading(false);
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const enrichData = (data: any[]) => data.map(req => ({
+        ...req,
+        from_user: profilesMap.get(req.from_user_id) || { first_name: '', last_name: '', email: 'Unknown' },
+        to_user: profilesMap.get(req.to_user_id) || { first_name: '', last_name: '', email: 'Unknown' },
+      }));
+
+      setSentRequests(enrichData(sentData || []));
+      setReceivedRequests(enrichData(receivedData || []));
+    } catch (error: any) {
+      console.error('Unexpected error:', error);
+      showError('Failed to load money requests');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const acceptRequest = async (requestId: string) => {

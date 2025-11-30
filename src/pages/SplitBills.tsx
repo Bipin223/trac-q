@@ -334,50 +334,65 @@ export default function SplitBills() {
     if (!profile) return;
     setLoading(true);
 
-    // Get bills where user is creator or participant
-    const { data: billsData } = await supabase
-      .from('split_bills')
-      .select('*')
-      .or(`creator_id.eq.${profile.id}`)
-      .order('created_at', { ascending: false });
+    try {
+      // Get bills where user is creator or participant
+      const { data: billsData, error: billsError } = await supabase
+        .from('split_bills')
+        .select('*')
+        .or(`creator_id.eq.${profile.id}`)
+        .order('created_at', { ascending: false });
 
-    if (!billsData) {
-      setSplitBills([]);
+      if (billsError) {
+        console.error('Error fetching split bills:', billsError);
+        if (billsError.message.includes('does not exist')) {
+          showError('Split bills system not set up. Please run MONEY_REQUEST_SYSTEM.sql in Supabase.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (!billsData) {
+        setSplitBills([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get participants for all bills
+      const billIds = billsData.map(b => b.id);
+      const { data: participantsData } = await supabase
+        .from('split_bill_participants')
+        .select('*')
+        .in('split_bill_id', billIds);
+
+      // Get user profiles
+      const userIds = new Set<string>();
+      participantsData?.forEach(p => userIds.add(p.user_id));
+      
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', Array.from(userIds));
+
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+      // Combine data
+      const enrichedBills = billsData.map(bill => ({
+        ...bill,
+        participants: (participantsData || [])
+          .filter(p => p.split_bill_id === bill.id)
+          .map(p => ({
+            ...p,
+            user: profilesMap.get(p.user_id) || { first_name: '', last_name: '', email: 'Unknown' }
+          }))
+      }));
+
+      setSplitBills(enrichedBills);
+    } catch (error: any) {
+      console.error('Unexpected error:', error);
+      showError('Failed to load split bills');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    // Get participants for all bills
-    const billIds = billsData.map(b => b.id);
-    const { data: participantsData } = await supabase
-      .from('split_bill_participants')
-      .select('*')
-      .in('split_bill_id', billIds);
-
-    // Get user profiles
-    const userIds = new Set<string>();
-    participantsData?.forEach(p => userIds.add(p.user_id));
-    
-    const { data: profilesData } = await supabase
-      .from('profiles')
-      .select('id, first_name, last_name, email')
-      .in('id', Array.from(userIds));
-
-    const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
-
-    // Combine data
-    const enrichedBills = billsData.map(bill => ({
-      ...bill,
-      participants: (participantsData || [])
-        .filter(p => p.split_bill_id === bill.id)
-        .map(p => ({
-          ...p,
-          user: profilesMap.get(p.user_id) || { first_name: '', last_name: '', email: 'Unknown' }
-        }))
-    }));
-
-    setSplitBills(enrichedBills);
-    setLoading(false);
   };
 
   const markAsPaid = async (participantId: string, shareAmount: number) => {

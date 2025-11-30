@@ -418,7 +418,7 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
                       className="bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle2 className="h-4 w-4 mr-1" />
-                      Done
+                      Pay
                     </Button>
                     <Button
                       size="sm"
@@ -565,7 +565,7 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
               onClick={actionType === 'skip' ? handleSkip : handleMarkAsDone}
               className={actionType === 'skip' ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}
             >
-              {actionType === 'mark-done' && 'Mark as Done'}
+              {actionType === 'mark-done' && 'Pay'}
               {actionType === 'edit' && 'Save & Complete'}
               {actionType === 'skip' && 'Skip to Next'}
             </Button>
