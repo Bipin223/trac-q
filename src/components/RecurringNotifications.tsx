@@ -259,6 +259,7 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
           description: actionType === 'edit' ? editDescription : selectedNotification.description,
           [dateField]: actionType === 'edit' ? editDate : format(selectedNotification.dueDate, 'yyyy-MM-dd'),
           category_id: original.category_id,
+          subcategory_id: original.subcategory_id || null,
           is_recurring: false, // This is the completed instance
           created_at: new Date().toISOString(),
         });
