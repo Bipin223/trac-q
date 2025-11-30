@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
+import { MoneyRequestDialog } from '@/components/MoneyRequestDialog';
 import { 
   Users, 
   UserPlus, 
@@ -19,7 +20,9 @@ import {
   Mail,
   Hash,
   Camera,
-  Upload
+  Upload,
+  DollarSign,
+  HandCoins
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -78,6 +81,9 @@ export default function Friends() {
   const [userFriendCode, setUserFriendCode] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState('');
+  const [showMoneyRequestDialog, setShowMoneyRequestDialog] = useState(false);
+  const [selectedFriendForRequest, setSelectedFriendForRequest] = useState<string | undefined>();
+  const [moneyRequestType, setMoneyRequestType] = useState<'request_money' | 'send_money'>('request_money');
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -658,7 +664,33 @@ export default function Friends() {
                       <Badge variant="secondary">Friend</Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedFriendForRequest(friend.friend_id);
+                          setMoneyRequestType('request_money');
+                          setShowMoneyRequestDialog(true);
+                        }}
+                      >
+                        <HandCoins className="h-4 w-4 mr-2" />
+                        Request Money
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedFriendForRequest(friend.friend_id);
+                          setMoneyRequestType('send_money');
+                          setShowMoneyRequestDialog(true);
+                        }}
+                      >
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Send Money
+                      </Button>
+                    </div>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="destructive" size="sm" className="w-full">
@@ -833,6 +865,19 @@ export default function Friends() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Money Request Dialog */}
+      <MoneyRequestDialog
+        open={showMoneyRequestDialog}
+        onOpenChange={setShowMoneyRequestDialog}
+        friends={friends}
+        onSuccess={() => {
+          showSuccess('Request sent successfully!');
+          setSelectedFriendForRequest(undefined);
+        }}
+        defaultFriendId={selectedFriendForRequest}
+        defaultType={moneyRequestType}
+      />
     </div>
   );
 }

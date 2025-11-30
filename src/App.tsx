@@ -12,6 +12,8 @@ import ExchangeRatesPage from './pages/ExchangeRates';
 import Accounts from './pages/Accounts';
 import LendBorrowPage from './pages/LendBorrow';
 import Friends from './pages/Friends';
+import MoneyRequests from './pages/MoneyRequests';
+import SplitBills from './pages/SplitBills';
 import PendingTransactions from './pages/PendingTransactions';
 import TaxCalculator from './pages/TaxCalculator';
 import DiscountCalculator from './pages/DiscountCalculator';
@@ -192,6 +194,8 @@ function App() {
               <Route path="/profile" element={<ProfileEnhanced />} />
               <Route path="/lend-borrow" element={<LendBorrowPage />} />
               <Route path="/friends" element={<Friends />} />
+              <Route path="/money-requests" element={<MoneyRequests />} />
+              <Route path="/split-bills" element={<SplitBills />} />
               <Route path="/pending-transactions" element={<PendingTransactions />} />
               {/*isAdmin && <Route path="/admin/accounts" element={<AdminAccountsPage />} />*/}
               {isAdmin && <Route path="/admin/users" element={<AdminUsersPage />} />}
