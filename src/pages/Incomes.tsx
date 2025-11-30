@@ -32,6 +32,9 @@ import {
   Star,
   Repeat,
   Settings,
+  FileCheck,
+  Utensils,
+  ShoppingCart,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -61,7 +64,9 @@ const PREDEFINED_INCOME_SOURCES = [
   { name: 'Content Creation', type: 'income' as const, icon: <Monitor className="h-5 w-5" /> },
   { name: 'Coaching Classes', type: 'income' as const, icon: <Users className="h-5 w-5" /> },
   { name: 'Typing', type: 'income' as const, icon: <Type className="h-5 w-5" /> },
-  { name: 'Paper Checking', type: 'income' as const, icon: <ClipboardCheck className="h-5 w-5" /> },
+  { name: 'Paper Checking', type: 'income' as const, icon: <FileCheck className="h-5 w-5" /> },
+  { name: 'Food', type: 'income' as const, icon: <Utensils className="h-5 w-5" /> },
+  { name: 'Groceries', type: 'income' as const, icon: <ShoppingCart className="h-5 w-5" /> },
 ];
 
 interface QuickIncome {
@@ -224,6 +229,42 @@ export default function Incomes() {
     } else {
       showSuccess(currentStatus ? '⭐ Removed from favorites' : '⭐ Added to favorites!');
       fetchSubcategories();
+    }
+  };
+
+  const handleDeleteSubcategory = async (subcategoryId: string, subcategoryName: string) => {
+    if (!profile) return;
+
+    try {
+      // Check if subcategory is in use
+      const { count, error: countError } = await supabase
+        .from('incomes')
+        .select('id', { count: 'exact' })
+        .eq('user_id', profile.id)
+        .eq('subcategory_id', subcategoryId);
+
+      if (countError) throw countError;
+
+      if (count && count > 0) {
+        showError(
+          `Cannot delete "${subcategoryName}". There are ${count} income(s) using it. Please reassign them first.`
+        );
+        return;
+      }
+
+      const { error } = await supabase
+        .from('subcategories')
+        .delete()
+        .eq('id', subcategoryId)
+        .eq('user_id', profile.id);
+
+      if (error) throw error;
+
+      showSuccess(`Subcategory "${subcategoryName}" deleted successfully.`);
+      fetchSubcategories();
+    } catch (error: any) {
+      console.error('Error deleting subcategory:', error);
+      showError(error.message || 'Failed to delete subcategory.');
     }
   };
   
@@ -409,6 +450,36 @@ export default function Incomes() {
                     }`} 
                   />
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 z-10"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      <span className="sr-only">Delete {sub.name}</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete subcategory?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete the subcategory "{sub.name}". This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => handleDeleteSubcategory(sub.id, sub.name)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <CardContent className="p-0 flex flex-col items-center justify-center">
                   <div className="p-3 bg-green-100 dark:bg-green-900/40 rounded-full text-green-600 dark:text-green-400 mb-2">
                     <Wallet className="h-5 w-5" />

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 import { useSession } from '@supabase/auth-helpers-react';
 import { supabase } from './integrations/supabase/client';
+import { showSuccess } from './utils/toast';
 import Sidebar, { SidebarContent } from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Incomes from './pages/Incomes';
@@ -52,6 +53,16 @@ function App() {
     await supabase.auth.signOut();
     navigate('/');
   };
+
+  // Global copy event listener
+  useEffect(() => {
+    const handleCopy = () => {
+      showSuccess('Text copied to clipboard!');
+    };
+
+    document.addEventListener('copy', handleCopy);
+    return () => document.removeEventListener('copy', handleCopy);
+  }, []);
 
   if (loading) {
     return (

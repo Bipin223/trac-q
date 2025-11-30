@@ -373,8 +373,8 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                       </PopoverTrigger>
                       <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                         <Command>
-                          <CommandInput placeholder="Search subcategory..." />
-                          <CommandList>
+                          <CommandInput placeholder="Search subcategory..." className="h-10" />
+                          <CommandList className="max-h-[200px] overflow-y-auto">
                             <CommandEmpty>No subcategories found.</CommandEmpty>
                             <CommandGroup>
                               <CommandItem
