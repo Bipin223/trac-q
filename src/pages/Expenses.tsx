@@ -530,6 +530,7 @@ export default function Expenses() {
               setSelectedCategoryForSubcategories(null);
             }
           }}
+          onSubcategoryChange={fetchSubcategories}
         />
       )}
 

@@ -48,6 +48,14 @@ export default function ProfileEnhanced() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [isAnimating, setIsAnimating] = useState(true);
+
+  useEffect(() => {
+    // Reset animation when component mounts
+    setIsAnimating(true);
+    const timer = setTimeout(() => setIsAnimating(false), 600);
+    return () => clearTimeout(timer);
+  }, []);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [monthlySummary, setMonthlySummary] = useState<FinancialSummary | null>(null);
   const [yearlySummary, setYearlySummary] = useState<FinancialSummary | null>(null);

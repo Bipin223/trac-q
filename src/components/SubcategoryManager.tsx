@@ -41,6 +41,7 @@ interface SubcategoryManagerProps {
   categoryType: 'income' | 'expense';
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSubcategoryChange?: () => void;
 }
 
 export function SubcategoryManager({
@@ -49,6 +50,7 @@ export function SubcategoryManager({
   categoryType,
   open,
   onOpenChange,
+  onSubcategoryChange,
 }: SubcategoryManagerProps) {
   const { profile } = useProfile();
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
@@ -109,6 +111,7 @@ export function SubcategoryManager({
       showSuccess(`"${newSubcategoryName}" added to ${categoryName}`);
       setNewSubcategoryName('');
       fetchSubcategories();
+      onSubcategoryChange?.();
     } catch (error) {
       const err = error as { code?: string };
       if (err.code === '23505') {
@@ -137,6 +140,7 @@ export function SubcategoryManager({
       setEditingId(null);
       setEditingName('');
       fetchSubcategories();
+      onSubcategoryChange?.();
     } catch (error) {
       const err = error as { code?: string };
       if (err.code === '23505') {
@@ -178,6 +182,7 @@ export function SubcategoryManager({
 
       showSuccess(`"${name}" deleted`);
       fetchSubcategories();
+      onSubcategoryChange?.();
     } catch (error) {
       console.error('Error deleting subcategory:', error);
       showError('Failed to delete subcategory');
@@ -198,6 +203,7 @@ export function SubcategoryManager({
 
       showSuccess(currentStatus ? 'Removed from favorites' : 'Added to favorites');
       fetchSubcategories();
+      onSubcategoryChange?.();
     } catch (error) {
       showError('Failed to update favorite status');
     }
@@ -207,9 +213,9 @@ export function SubcategoryManager({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Manage Subcategories: {categoryName}</DialogTitle>
+          <DialogTitle>Create Subcategories from {categoryName}</DialogTitle>
           <DialogDescription>
-            Create custom subcategories like "Samosa", "Momo", or "Netflix" to better organize your {categoryType}s.
+            Create custom subcategories to better organize your {categoryType}s.
           </DialogDescription>
         </DialogHeader>
 
@@ -217,7 +223,7 @@ export function SubcategoryManager({
           {/* Add New Subcategory */}
           <div className="flex gap-2">
             <Input
-              placeholder={`e.g., ${categoryType === 'expense' ? 'Samosa, Momo, Netflix' : 'Freelance Writing, Side Project'}`}
+              placeholder={`Enter subcategory name...`}
               value={newSubcategoryName}
               onChange={(e) => setNewSubcategoryName(e.target.value)}
               onKeyPress={(e) => {

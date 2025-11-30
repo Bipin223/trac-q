@@ -154,8 +154,8 @@ function App() {
               </Tooltip>
             </TooltipProvider>
 
-            <Link to="/dashboard/profile" className="transition-transform hover:scale-110">
-              <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-transparent hover:ring-purple-500 transition-all">
+            <Link to="/dashboard/profile" className="transition-all duration-300 hover:scale-110 active:scale-95">
+              <Avatar className="h-10 w-10 cursor-pointer ring-2 ring-transparent hover:ring-purple-500 hover:shadow-lg transition-all duration-300">
                 <AvatarImage src={profile?.avatar_url} alt="User avatar" />
                 <AvatarFallback className="h-10 w-10 text-sm bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300">{initials}</AvatarFallback>
               </Avatar>
