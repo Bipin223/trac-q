@@ -13,7 +13,11 @@ import {
   Target,
   LineChart,
   Mail,
-  MessageCircle
+  MessageCircle,
+  Handshake,
+  Calculator,
+  Repeat,
+  Tags
 } from 'lucide-react';
 
 const Landing = () => {
@@ -202,24 +206,24 @@ const Landing = () => {
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="p-6 rounded-xl bg-gradient-to-br from-purple-600 to-purple-700 text-white">
-                <Target className="h-10 w-10 mb-4" />
-                <div className="text-3xl font-bold mb-2">10K+</div>
-                <div className="text-purple-100">Active Users</div>
+                <Handshake className="h-10 w-10 mb-4" />
+                <div className="text-3xl font-bold mb-2">Lend & Borrow</div>
+                <div className="text-purple-100">Track Money Owed</div>
               </div>
               <div className="p-6 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white">
-                <LineChart className="h-10 w-10 mb-4" />
-                <div className="text-3xl font-bold mb-2">$5M+</div>
-                <div className="text-blue-100">Money Tracked</div>
+                <Calculator className="h-10 w-10 mb-4" />
+                <div className="text-3xl font-bold mb-2">4 Calculators</div>
+                <div className="text-blue-100">Financial Tools</div>
               </div>
               <div className="p-6 rounded-xl bg-gradient-to-br from-green-600 to-green-700 text-white">
-                <TrendingUp className="h-10 w-10 mb-4" />
-                <div className="text-3xl font-bold mb-2">35%</div>
-                <div className="text-green-100">Avg. Savings Increase</div>
+                <Repeat className="h-10 w-10 mb-4" />
+                <div className="text-3xl font-bold mb-2">Recurring</div>
+                <div className="text-green-100">Auto Transaction Alerts</div>
               </div>
               <div className="p-6 rounded-xl bg-gradient-to-br from-pink-600 to-pink-700 text-white">
-                <Shield className="h-10 w-10 mb-4" />
-                <div className="text-3xl font-bold mb-2">100%</div>
-                <div className="text-pink-100">Secure & Private</div>
+                <Tags className="h-10 w-10 mb-4" />
+                <div className="text-3xl font-bold mb-2">30+ Categories</div>
+                <div className="text-pink-100">Custom Subcategories</div>
               </div>
             </div>
           </div>
