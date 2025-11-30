@@ -251,28 +251,39 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
       if (updateError) throw updateError;
 
       // Create a completed instance of this recurring transaction
+      const completedTransaction: any = {
+        user_id: profile.id,
+        amount: actionType === 'edit' ? parseFloat(editAmount) : selectedNotification.amount,
+        description: actionType === 'edit' ? editDescription : selectedNotification.description,
+        [dateField]: actionType === 'edit' ? editDate : format(selectedNotification.dueDate, 'yyyy-MM-dd'),
+        category_id: original.category_id,
+        subcategory_id: original.subcategory_id || null,
+        is_recurring: false,
+        recurring_frequency: null,
+        recurring_day: null,
+        created_at: new Date().toISOString(),
+      };
+
       const { error: createError } = await supabase
         .from(table)
-        .insert({
-          user_id: profile.id,
-          amount: actionType === 'edit' ? parseFloat(editAmount) : selectedNotification.amount,
-          description: actionType === 'edit' ? editDescription : selectedNotification.description,
-          [dateField]: actionType === 'edit' ? editDate : format(selectedNotification.dueDate, 'yyyy-MM-dd'),
-          category_id: original.category_id,
-          subcategory_id: original.subcategory_id || null,
-          is_recurring: false, // This is the completed instance
-          created_at: new Date().toISOString(),
-        });
+        .insert(completedTransaction);
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Create error:', createError);
+        throw createError;
+      }
 
-      showSuccess(`${selectedNotification.type === 'income' ? 'Income' : 'Expense'} marked as completed and scheduled for next occurrence`);
+      showSuccess(`${selectedNotification.type === 'income' ? 'Income' : 'Expense'} paid and scheduled for next occurrence`);
       setShowActionDialog(false);
       fetchRecurringNotifications();
       onNotificationUpdate?.();
     } catch (error: unknown) {
       console.error('Error marking as done:', error);
-      showError(error instanceof Error ? error.message : 'Failed to update transaction');
+      if (error && typeof error === 'object' && 'message' in error) {
+        showError(`Failed: ${(error as any).message}`);
+      } else {
+        showError('Failed to complete transaction');
+      }
     }
   };
 
