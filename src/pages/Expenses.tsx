@@ -232,6 +232,40 @@ export default function Expenses() {
     }
   };
 
+  const handleDeleteSubcategory = async (subcategoryId: string, subcategoryName: string) => {
+    if (!profile) return;
+
+    try {
+      // Check if subcategory is used in any expenses
+      const { data: usedInExpenses, error: checkError } = await supabase
+        .from('expenses')
+        .select('id')
+        .eq('subcategory_id', subcategoryId)
+        .limit(1);
+
+      if (checkError) throw checkError;
+
+      if (usedInExpenses && usedInExpenses.length > 0) {
+        showError(`Cannot delete "${subcategoryName}" - it's used in expense transactions. Remove those transactions first.`);
+        return;
+      }
+
+      // Delete the subcategory
+      const { error: deleteError } = await supabase
+        .from('subcategories')
+        .delete()
+        .eq('id', subcategoryId);
+
+      if (deleteError) throw deleteError;
+
+      showSuccess(`✅ Subcategory "${subcategoryName}" deleted successfully`);
+      fetchSubcategories();
+    } catch (error: any) {
+      console.error('Error deleting subcategory:', error);
+      showError(error.message || `Failed to delete subcategory "${subcategoryName}".`);
+    }
+  };
+
   const ensureAndFetchAllCategories = async (): Promise<void> => {
     if (!profile) return;
 
@@ -414,6 +448,36 @@ export default function Expenses() {
                     }`} 
                   />
                 </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-1 right-1 h-7 w-7 z-10 transition-all hover:scale-110 hover:bg-red-100 dark:hover:bg-red-900/40"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{sub.name}"? This action cannot be undone.
+                        This will only work if no expense transactions use this subcategory.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteSubcategory(sub.id, sub.name)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
                 <CardContent className="p-0 flex flex-col items-center justify-center">
                   <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-full text-blue-600 dark:text-blue-400 mb-2">
                     <Wallet className="h-5 w-5" />

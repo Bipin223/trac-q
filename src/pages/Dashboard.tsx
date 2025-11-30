@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake } from 'lucide-react';
+import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake, HandCoins, Receipt } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -330,7 +330,9 @@ const Dashboard = () => {
     { to: '/dashboard/comparison', icon: <TrendingUp className="h-6 w-6" />, title: 'Comparison', description: 'Compare income and expenses across periods.' },
     { to: '/dashboard/recurring', icon: <Repeat className="h-6 w-6" />, title: 'Recurring', description: 'Manage recurring transactions and subscriptions.' },
     { to: '/dashboard/lend-borrow', icon: <Handshake className="h-6 w-6" />, title: 'Lend & Borrow', description: 'Track money you lend or borrow from others.' },
-    { to: '/dashboard/friends', icon: <UserPlus className="h-6 w-6" />, title: 'Friends', description: 'Connect with friends and share transactions.' }
+    { to: '/dashboard/friends', icon: <UserPlus className="h-6 w-6" />, title: 'Friends', description: 'Connect with friends and share transactions.' },
+    { to: '/dashboard/money-requests', icon: <HandCoins className="h-6 w-6" />, title: 'Money Requests', description: 'Request and send money to friends.' },
+    { to: '/dashboard/split-bills', icon: <Receipt className="h-6 w-6" />, title: 'Split Bills', description: 'Split expenses equally with friends.' }
   ];
 
   const actualIncome = financials?.totalIncome || 0;

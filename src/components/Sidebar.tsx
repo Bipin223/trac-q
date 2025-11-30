@@ -14,13 +14,13 @@ const navItems = [
   { to: '/dashboard/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
   { to: '/dashboard/comparison', icon: <TrendingUp className="h-5 w-5" />, label: 'Comparison' },
   { to: '/dashboard/recurring', icon: <Repeat className="h-5 w-5" />, label: 'Recurring' },
+  { to: '/dashboard/pending-transactions', icon: <Clock className="h-5 w-5" />, label: 'Pending' },
+  { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },
+  { to: '/dashboard/calculators', icon: <Calculator className="h-5 w-5" />, label: 'Calculators' },
   { to: '/dashboard/lend-borrow', icon: <Handshake className="h-5 w-5" />, label: 'Lend & Borrow' },
   { to: '/dashboard/friends', icon: <UserPlus className="h-5 w-5" />, label: 'Friends' },
   { to: '/dashboard/money-requests', icon: <HandCoins className="h-5 w-5" />, label: 'Money Requests' },
   { to: '/dashboard/split-bills', icon: <Receipt className="h-5 w-5" />, label: 'Split Bills' },
-  { to: '/dashboard/pending-transactions', icon: <Clock className="h-5 w-5" />, label: 'Pending' },
-  { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },
-  { to: '/dashboard/calculators', icon: <Calculator className="h-5 w-5" />, label: 'Calculators' },
   { to: '/dashboard/profile', icon: <User className="h-5 w-5" />, label: 'Profile' },
 ];
 
