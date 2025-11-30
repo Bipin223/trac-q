@@ -44,6 +44,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   date: z.date(),
   categoryId: z.string({ required_error: "Please select or create a category." }),
+  subcategoryId: z.string().optional(),
   is_recurring: z.boolean().default(false),
   recurring_frequency: z.enum(["daily", "weekly", "monthly", "yearly", "custom"]).optional(),
   recurring_day: z.coerce.number().min(1).max(31).optional(),
@@ -60,10 +61,12 @@ interface AddTransactionDialogProps {
 }
 
 interface Category { id: string; name: string; }
+interface Subcategory { id: string; name: string; parent_category_id: string; }
 
 export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defaultCategoryId }: AddTransactionDialogProps) {
   const user = useUser();
   const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -73,6 +76,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
       date: new Date(),
       description: "",
       categoryId: defaultCategoryId || "",
+      subcategoryId: "",
       is_recurring: false,
       recurring_frequency: "monthly",
       recurring_day: new Date().getDate(),
@@ -96,6 +100,8 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
             const matchingCategory = categoriesData.find(cat => cat.id === defaultCategoryId);
             if (matchingCategory) {
               form.setValue("categoryId", defaultCategoryId);
+              // Fetch subcategories for default category
+              fetchSubcategories(defaultCategoryId);
             }
           }
         } catch (error) {
@@ -106,6 +112,28 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
       fetchPrerequisites();
     }
   }, [open, user, type, defaultCategoryId, form]);
+
+  const fetchSubcategories = async (categoryId: string) => {
+    if (!user || !categoryId) {
+      setSubcategories([]);
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from("subcategories")
+        .select("id, name, parent_category_id")
+        .eq("user_id", user.id)
+        .eq("parent_category_id", categoryId)
+        .order("name", { ascending: true });
+      
+      if (error) throw error;
+      setSubcategories(data || []);
+    } catch (error) {
+      console.error('Error fetching subcategories:', error);
+      setSubcategories([]);
+    }
+  };
 
   const handleCreateCategory = async (categoryName: string) => {
     if (!user) return null;
@@ -134,11 +162,12 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
     setLoading(true);
 
     try {
-      const payload = {
+      const payload: any = {
         user_id: user.id,
         amount: values.amount,
         description: values.description,
         category_id: values.categoryId,
+        subcategory_id: values.subcategoryId || null,
         is_recurring: values.is_recurring,
         [type === 'income' ? 'income_date' : 'expense_date']: format(values.date, 'yyyy-MM-dd'),
       };
@@ -148,16 +177,21 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
       if (error) {
         showError(`Failed to add ${type}.`);
       } else {
-        showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount} added successfully.`);
+        const subcategoryText = values.subcategoryId 
+          ? ` (${subcategories.find(s => s.id === values.subcategoryId)?.name})` 
+          : '';
+        showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount}${subcategoryText} added successfully.`);
         onSuccess();
         form.reset({ 
           date: new Date(), 
           description: "", 
-          categoryId: defaultCategoryId || "", 
+          categoryId: defaultCategoryId || "",
+          subcategoryId: "",
           is_recurring: false,
           recurring_frequency: "monthly",
           recurring_day: new Date().getDate(),
         });
+        setSubcategories([]);
       }
     } catch (error) {
       console.error('Error adding transaction:', error);
@@ -288,6 +322,8 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                                 key={cat.id}
                                 onSelect={() => {
                                   form.setValue("categoryId", cat.id);
+                                  form.setValue("subcategoryId", ""); // Reset subcategory
+                                  fetchSubcategories(cat.id); // Load subcategories
                                 }}
                               >
                                 <Check
@@ -308,6 +344,80 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                 </FormItem>
               )}
             />
+            
+            {/* Subcategory Field - Only show if category is selected and has subcategories */}
+            {form.watch("categoryId") && subcategories.length > 0 && (
+              <FormField
+                control={form.control}
+                name="subcategoryId"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Subcategory (Optional)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className={cn(
+                              "w-full justify-between",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value
+                              ? subcategories.find((sub) => sub.id === field.value)?.name
+                              : "Select subcategory (optional)"}
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                        <Command>
+                          <CommandInput placeholder="Search subcategory..." />
+                          <CommandList>
+                            <CommandEmpty>No subcategories found.</CommandEmpty>
+                            <CommandGroup>
+                              <CommandItem
+                                value=""
+                                onSelect={() => {
+                                  form.setValue("subcategoryId", "");
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    !field.value ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <span className="text-muted-foreground">None (General)</span>
+                              </CommandItem>
+                              {subcategories.map((sub) => (
+                                <CommandItem
+                                  value={sub.name}
+                                  key={sub.id}
+                                  onSelect={() => {
+                                    form.setValue("subcategoryId", sub.id);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      sub.id === field.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {sub.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
             <FormField
               control={form.control}
               name="is_recurring"

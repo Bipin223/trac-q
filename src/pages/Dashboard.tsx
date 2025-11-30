@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
 import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
@@ -31,6 +31,7 @@ const formatCurrency = (amount: number) => {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { profile, loading: profileLoading } = useProfile();
   const { refreshNotifications } = useNotifications();
   const [financials, setFinancials] = useState<{ totalIncome: number; totalExpenses: number; chartData: ChartData[] } | null>(null);
@@ -46,64 +47,77 @@ const Dashboard = () => {
   const currentYear = new Date().getFullYear();
   const currentMonthNum = new Date().getMonth() + 1;
 
-  useEffect(() => {
-    if (profile) {
-      const fetchDashboardData = async () => {
-        setLoadingFinancials(true);
-        setError(null);
-        try {
-          console.log('Dashboard: Fetching data for user', profile.id);
-          const today = new Date();
-          const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString();
-          const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString();
-          const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const fetchDashboardData = useCallback(async () => {
+    if (!profile) return;
+    
+    setLoadingFinancials(true);
+    setError(null);
+    try {
+      console.log('Dashboard: Fetching data for user', profile.id);
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
-          const { data: incomes, error: incomeError } = await supabase.from('incomes').select('amount, income_date').eq('user_id', profile.id).gte('income_date', firstDay).lte('income_date', lastDay);
-          if (incomeError) throw incomeError;
+      console.log('Dashboard: Date range:', firstDay.toISOString(), 'to', nextMonth.toISOString());
 
-          const { data: expenses, error: expenseError } = await supabase.from('expenses').select('amount, expense_date').eq('user_id', profile.id).gte('expense_date', firstDay).lte('expense_date', lastDay);
-          if (expenseError) throw expenseError;
+      const { data: incomes, error: incomeError } = await supabase
+        .from('incomes')
+        .select('amount, income_date')
+        .eq('user_id', profile.id)
+        .gte('income_date', firstDay.toISOString())
+        .lt('income_date', nextMonth.toISOString());
+      
+      console.log('Dashboard: Incomes fetched:', incomes?.length || 0, 'records', incomes);
+      if (incomeError) {
+        console.error('Dashboard: Income fetch error:', incomeError);
+        throw incomeError;
+      }
 
-          const totalIncome = incomes?.reduce((sum, item) => sum + item.amount, 0) || 0;
-          const totalExpenses = expenses?.reduce((sum, item) => sum + item.amount, 0) || 0;
+      const { data: expenses, error: expenseError } = await supabase
+        .from('expenses')
+        .select('amount, expense_date')
+        .eq('user_id', profile.id)
+        .gte('expense_date', firstDay.toISOString())
+        .lt('expense_date', nextMonth.toISOString());
+      
+      console.log('Dashboard: Expenses fetched:', expenses?.length || 0, 'records', expenses);
+      if (expenseError) {
+        console.error('Dashboard: Expense fetch error:', expenseError);
+        throw expenseError;
+      }
 
-          const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
-            day: (i + 1).toString().padStart(2, '0'), 
-            dayNum: i + 1,  // Added for type consistency with FinancialChart
-            income: 0, 
-            expenses: 0,
-            cumulativeIncome: 0,
-            cumulativeExpenses: 0
-          }));
-          
-          incomes?.forEach(i => { 
-            const date = new Date(i.income_date).getDate();
-            if(dailyData[date - 1]) dailyData[date - 1].income += i.amount; 
-          });
-          expenses?.forEach(e => { 
-            const date = new Date(e.expense_date).getDate();
-            if(dailyData[date - 1]) dailyData[date - 1].expenses += e.amount; 
-          });
+      const totalIncome = incomes?.reduce((sum, item) => sum + item.amount, 0) || 0;
+      const totalExpenses = expenses?.reduce((sum, item) => sum + item.amount, 0) || 0;
 
-          setFinancials({ totalIncome, totalExpenses, chartData: dailyData });
-          console.log('Dashboard: Fetched financials - Income:', totalIncome, 'Expenses:', totalExpenses);
-        } catch (err: any) {
-          console.error('Dashboard: Fetch error:', err);
-          setError("Could not load financial data. Please try again.");
-          showError('Failed to load data.');
-        } finally {
-          setLoadingFinancials(false);
-        }
-      };
-      fetchDashboardData();
-      fetchExpenseBudget(); // Initial budget fetch
-      fetchRecurringTransactions(); // Fetch recurring expenses
-      fetchNotifications(); // Fetch pending transactions and friend requests
-    } else if (!profileLoading) {
+      const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
+        day: (i + 1).toString().padStart(2, '0'), 
+        dayNum: i + 1,
+        income: 0, 
+        expenses: 0,
+        cumulativeIncome: 0,
+        cumulativeExpenses: 0
+      }));
+      
+      incomes?.forEach(i => { 
+        const date = new Date(i.income_date).getDate();
+        if(dailyData[date - 1]) dailyData[date - 1].income += i.amount; 
+      });
+      expenses?.forEach(e => { 
+        const date = new Date(e.expense_date).getDate();
+        if(dailyData[date - 1]) dailyData[date - 1].expenses += e.amount; 
+      });
+
+      setFinancials({ totalIncome, totalExpenses, chartData: dailyData });
+      console.log('Dashboard: Fetched financials - Income:', totalIncome, 'Expenses:', totalExpenses);
+    } catch (err: any) {
+      console.error('Dashboard: Fetch error:', err);
+      setError("Could not load financial data. Please try again.");
+      showError('Failed to load data.');
+    } finally {
       setLoadingFinancials(false);
-      setBudgetedExpenses(0);
     }
-  }, [profile, profileLoading]);
+  }, [profile]);
 
   // Simplified: Fetch overall budget directly (category_id IS NULL for overall; no category needed)
   const fetchExpenseBudget = useCallback(async () => {
@@ -205,6 +219,19 @@ const Dashboard = () => {
       console.error('Dashboard: Error fetching notifications:', err);
     }
   }, [profile]);
+
+  useEffect(() => {
+    if (profile && !profileLoading) {
+      console.log('Dashboard: Fetching data for user', profile.id);
+      fetchDashboardData();
+      fetchExpenseBudget();
+      fetchRecurringTransactions();
+      fetchNotifications();
+    } else if (!profileLoading) {
+      setLoadingFinancials(false);
+      setBudgetedExpenses(0);
+    }
+  }, [profile, profileLoading, location.pathname, fetchDashboardData, fetchExpenseBudget, fetchRecurringTransactions, fetchNotifications]);
 
   // Callback for after budget save: Save to database and update UI
   const handleBudgetUpdate = useCallback(async (newExpenses: number) => {

@@ -8,6 +8,7 @@ import { TransactionsDataTable } from '@/components/transactions/TransactionsDat
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { SubcategoryManager } from '@/components/SubcategoryManager';
 import {
   ShoppingCart, // Food & groceries
   Home, // Rent/Housing
@@ -33,6 +34,7 @@ import {
   Star,
   Repeat,
   DollarSign,
+  Settings,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -75,6 +77,14 @@ interface QuickExpense {
   is_favorite: boolean;
 }
 
+interface Subcategory {
+  id: string;
+  name: string;
+  parent_category_id: string;
+  parent_category_name: string;
+  is_favorite: boolean;
+}
+
 export default function Expenses() {
   const { profile } = useProfile();
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -82,15 +92,21 @@ export default function Expenses() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [quickExpenses, setQuickExpenses] = useState<QuickExpense[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [selectedQuickCategory, setSelectedQuickCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'recurring'>('all');
+  const [subcategoryManagerOpen, setSubcategoryManagerOpen] = useState(false);
+  const [selectedCategoryForSubcategories, setSelectedCategoryForSubcategories] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const fetchExpenses = async () => {
     if (!profile) return;
     setLoading(true);
     const { data } = await supabase
       .from('expenses')
-      .select('*, category:categories(name)')
+      .select('*, category:categories(name), subcategory:subcategories(name)')
       .eq('user_id', profile.id)
       .order('expense_date', { ascending: false });
     
@@ -105,6 +121,47 @@ export default function Expenses() {
       setExpenses(formattedData);
     }
     setLoading(false);
+  };
+
+  const fetchSubcategories = async () => {
+    if (!profile) return;
+    
+    // First get all expense category IDs for this user
+    const { data: expenseCategories } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', profile.id)
+      .eq('type', 'expense');
+    
+    if (!expenseCategories || expenseCategories.length === 0) {
+      setSubcategories([]);
+      return;
+    }
+    
+    const categoryIds = expenseCategories.map(cat => cat.id);
+    
+    const { data, error } = await supabase
+      .from('subcategories')
+      .select('id, name, parent_category_id, is_favorite, parent_category:categories!parent_category_id(name)')
+      .in('parent_category_id', categoryIds)
+      .order('is_favorite', { ascending: false })
+      .order('name', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching subcategories:', error);
+      return;
+    }
+    
+    if (data) {
+      const formattedSubcategories = data.map((sub: any) => ({
+        id: sub.id,
+        name: sub.name,
+        parent_category_id: sub.parent_category_id,
+        parent_category_name: sub.parent_category?.name || 'Unknown',
+        is_favorite: sub.is_favorite || false,
+      }));
+      setSubcategories(formattedSubcategories);
+    }
   };
 
   const toggleFavorite = async (id: string, currentStatus: boolean) => {
@@ -158,7 +215,24 @@ export default function Expenses() {
     }
   };
 
-  const ensureAndFetchAllCategories = async () => {
+  const toggleSubcategoryFavorite = async (subcategoryId: string, currentStatus: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile) return;
+    
+    const { error } = await supabase
+      .from('subcategories')
+      .update({ is_favorite: !currentStatus })
+      .eq('id', subcategoryId);
+
+    if (error) {
+      showError('Failed to update subcategory favorite status');
+    } else {
+      showSuccess(currentStatus ? '⭐ Removed from favorites' : '⭐ Added to favorites!');
+      fetchSubcategories();
+    }
+  };
+
+  const ensureAndFetchAllCategories = async (): Promise<void> => {
     if (!profile) return;
 
     const { data: existingCategories, error: fetchError } = await supabase
@@ -283,6 +357,7 @@ export default function Expenses() {
     if (profile) {
       ensureAndFetchAllCategories();
       fetchExpenses();
+      fetchSubcategories();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
@@ -290,6 +365,7 @@ export default function Expenses() {
   const handleSuccess = () => {
     fetchExpenses();
     ensureAndFetchAllCategories();
+    fetchSubcategories();
     setIsAddDialogOpen(false);
     setSelectedQuickCategory(null);
   };
@@ -306,6 +382,50 @@ export default function Expenses() {
           Add Custom Expense (NPR)
         </Button>
       </div>
+
+      {/* Subcategories Section */}
+      {subcategories.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-muted-foreground">Custom Subcategories:</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {subcategories.map((sub) => (
+              <Card
+                key={sub.id}
+                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${
+                  sub.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
+                }`}
+                onClick={() => {
+                  setSelectedQuickCategory(sub.parent_category_id);
+                  setIsAddDialogOpen(true);
+                }}
+                style={{ transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 left-1 h-7 w-7 z-10 transition-all hover:scale-110"
+                  onClick={(e) => toggleSubcategoryFavorite(sub.id, sub.is_favorite, e)}
+                >
+                  <Star 
+                    className={`h-4 w-4 transition-all duration-200 ${
+                      sub.is_favorite 
+                        ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg' 
+                        : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
+                    }`} 
+                  />
+                </Button>
+                <CardContent className="p-0 flex flex-col items-center justify-center">
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-full text-blue-600 dark:text-blue-400 mb-2">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-sm font-medium">{sub.name}</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">{sub.parent_category_name}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Quick Expense Cards */}
       {quickExpenses.length > 0 && (
@@ -334,6 +454,19 @@ export default function Expenses() {
                         : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
                     }`} 
                   />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 right-8 h-7 w-7 z-10 transition-all hover:scale-110"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCategoryForSubcategories({ id: qe.categoryId, name: qe.name });
+                    setSubcategoryManagerOpen(true);
+                  }}
+                  title="Manage subcategories"
+                >
+                  <Settings className="h-4 w-4 text-muted-foreground hover:text-blue-600" />
                 </Button>
                 <CardContent className="p-0 flex flex-col items-center justify-center">
                   <div className="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-full text-purple-600 dark:text-purple-400 mb-2">
@@ -384,6 +517,21 @@ export default function Expenses() {
         onSuccess={handleSuccess}
         defaultCategoryId={selectedQuickCategory}
       />
+
+      {selectedCategoryForSubcategories && (
+        <SubcategoryManager
+          categoryId={selectedCategoryForSubcategories.id}
+          categoryName={selectedCategoryForSubcategories.name}
+          categoryType="expense"
+          open={subcategoryManagerOpen}
+          onOpenChange={(open) => {
+            setSubcategoryManagerOpen(open);
+            if (!open) {
+              setSelectedCategoryForSubcategories(null);
+            }
+          }}
+        />
+      )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'recurring')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">

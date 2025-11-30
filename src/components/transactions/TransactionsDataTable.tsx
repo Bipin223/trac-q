@@ -21,6 +21,7 @@ interface Transaction {
   description: string | null;
   amount: number;
   category: { name: string } | null;
+  subcategory?: { name: string } | null;
   is_favorite?: boolean;
   is_recurring?: boolean;
 }
@@ -84,7 +85,16 @@ export function TransactionsDataTable({ data, onToggleFavorite }: TransactionsDa
                 </TableCell>
                 <TableCell>{format(new Date(item.date), 'PPP')}</TableCell>
                 <TableCell>{item.description || '-'}</TableCell>
-                <TableCell>{item.category?.name || 'Uncategorized'}</TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span>{item.category?.name || 'Uncategorized'}</span>
+                    {item.subcategory && (
+                      <span className="text-xs text-muted-foreground">
+                        → {item.subcategory.name}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   {item.is_recurring && (
                     <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">

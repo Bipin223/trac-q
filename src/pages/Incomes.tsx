@@ -8,6 +8,7 @@ import { TransactionsDataTable } from '@/components/transactions/TransactionsDat
 import { Skeleton } from '@/components/ui/skeleton';
 import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
+import { SubcategoryManager } from '@/components/SubcategoryManager';
 import {
   Briefcase,
   Laptop,
@@ -30,6 +31,7 @@ import {
   Trash2,
   Star,
   Repeat,
+  Settings,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -70,6 +72,14 @@ interface QuickIncome {
   is_favorite: boolean;
 }
 
+interface Subcategory {
+  id: string;
+  name: string;
+  parent_category_id: string;
+  parent_category_name: string;
+  is_favorite: boolean;
+}
+
 export default function Incomes() {
   const { profile } = useProfile();
   const [incomes, setIncomes] = useState<any[]>([]);
@@ -77,15 +87,21 @@ export default function Incomes() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [quickIncomes, setQuickIncomes] = useState<QuickIncome[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [selectedQuickCategory, setSelectedQuickCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'recurring'>('all');
+  const [subcategoryManagerOpen, setSubcategoryManagerOpen] = useState(false);
+  const [selectedCategoryForSubcategories, setSelectedCategoryForSubcategories] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const fetchIncomes = async () => {
     if (!profile) return;
     setLoading(true);
     const { data } = await supabase
       .from('incomes')
-      .select('*, category:categories(name)')
+      .select('*, category:categories(name), subcategory:subcategories(name)')
       .eq('user_id', profile.id)
       .order('income_date', { ascending: false });
     
@@ -102,7 +118,48 @@ export default function Incomes() {
     setLoading(false);
   };
 
-  const toggleFavorite = async (id: string, currentStatus: boolean) => {
+  const fetchSubcategories = async () => {
+    if (!profile) return;
+    
+    // First get all income category IDs for this user
+    const { data: incomeCategories } = await supabase
+      .from('categories')
+      .select('id')
+      .eq('user_id', profile.id)
+      .eq('type', 'income');
+    
+    if (!incomeCategories || incomeCategories.length === 0) {
+      setSubcategories([]);
+      return;
+    }
+    
+    const categoryIds = incomeCategories.map(cat => cat.id);
+    
+    const { data, error } = await supabase
+      .from('subcategories')
+      .select('id, name, parent_category_id, is_favorite, parent_category:categories!parent_category_id(name)')
+      .in('parent_category_id', categoryIds)
+      .order('is_favorite', { ascending: false })
+      .order('name', { ascending: true });
+    
+    if (error) {
+      console.error('Error fetching subcategories:', error);
+      return;
+    }
+    
+    if (data) {
+      const formattedSubcategories = data.map((sub: any) => ({
+        id: sub.id,
+        name: sub.name,
+        parent_category_id: sub.parent_category_id,
+        parent_category_name: sub.parent_category?.name || 'Unknown',
+        is_favorite: sub.is_favorite || false,
+      }));
+      setSubcategories(formattedSubcategories);
+    }
+  };
+
+  const toggleFavorite = async (id: string, currentStatus: boolean): Promise<void> => {
     if (!profile) return;
     
     const { error } = await supabase
@@ -153,6 +210,23 @@ export default function Incomes() {
     }
   };
 
+  const toggleSubcategoryFavorite = async (subcategoryId: string, currentStatus: boolean, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!profile) return;
+    
+    const { error } = await supabase
+      .from('subcategories')
+      .update({ is_favorite: !currentStatus })
+      .eq('id', subcategoryId);
+
+    if (error) {
+      showError('Failed to update subcategory favorite status');
+    } else {
+      showSuccess(currentStatus ? '⭐ Removed from favorites' : '⭐ Added to favorites!');
+      fetchSubcategories();
+    }
+  };
+  
   const ensureAndFetchAllCategories = async () => {
     if (!profile) return;
 
@@ -278,6 +352,7 @@ export default function Incomes() {
     if (profile) {
       ensureAndFetchAllCategories();
       fetchIncomes();
+      fetchSubcategories();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
@@ -285,6 +360,7 @@ export default function Incomes() {
   const handleSuccess = () => {
     fetchIncomes();
     ensureAndFetchAllCategories();
+    fetchSubcategories();
     setIsAddDialogOpen(false);
     setSelectedQuickCategory(null);
   };
@@ -301,6 +377,50 @@ export default function Incomes() {
           Add Custom Income (NPR)
         </Button>
       </div>
+
+      {/* Subcategories Section */}
+      {subcategories.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-muted-foreground">Custom Subcategories:</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {subcategories.map((sub) => (
+              <Card
+                key={sub.id}
+                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${
+                  sub.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
+                }`}
+                onClick={() => {
+                  setSelectedQuickCategory(sub.parent_category_id);
+                  setIsAddDialogOpen(true);
+                }}
+                style={{ transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 left-1 h-7 w-7 z-10 transition-all hover:scale-110"
+                  onClick={(e) => toggleSubcategoryFavorite(sub.id, sub.is_favorite, e)}
+                >
+                  <Star 
+                    className={`h-4 w-4 transition-all duration-200 ${
+                      sub.is_favorite 
+                        ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg' 
+                        : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
+                    }`} 
+                  />
+                </Button>
+                <CardContent className="p-0 flex flex-col items-center justify-center">
+                  <div className="p-3 bg-green-100 dark:bg-green-900/40 rounded-full text-green-600 dark:text-green-400 mb-2">
+                    <Wallet className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="text-sm font-medium">{sub.name}</CardTitle>
+                  <p className="text-xs text-muted-foreground mt-1">{sub.parent_category_name}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Quick Income Cards */}
       {quickIncomes.length > 0 && (
@@ -329,6 +449,19 @@ export default function Incomes() {
                         : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
                     }`} 
                   />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-1 right-8 h-7 w-7 z-10 transition-all hover:scale-110"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCategoryForSubcategories({ id: qi.categoryId, name: qi.name });
+                    setSubcategoryManagerOpen(true);
+                  }}
+                  title="Manage subcategories"
+                >
+                  <Settings className="h-4 w-4 text-muted-foreground hover:text-blue-600" />
                 </Button>
                 <CardContent className="p-0 flex flex-col items-center justify-center">
                   <div className="p-3 bg-purple-100 dark:bg-purple-900/40 rounded-full text-purple-600 dark:text-purple-400 mb-2">
@@ -379,6 +512,21 @@ export default function Incomes() {
         onSuccess={handleSuccess}
         defaultCategoryId={selectedQuickCategory}
       />
+
+      {selectedCategoryForSubcategories && (
+        <SubcategoryManager
+          categoryId={selectedCategoryForSubcategories.id}
+          categoryName={selectedCategoryForSubcategories.name}
+          categoryType="income"
+          open={subcategoryManagerOpen}
+          onOpenChange={(open) => {
+            setSubcategoryManagerOpen(open);
+            if (!open) {
+              setSelectedCategoryForSubcategories(null);
+            }
+          }}
+        />
+      )}
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'recurring')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
