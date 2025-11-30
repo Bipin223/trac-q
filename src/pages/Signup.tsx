@@ -99,9 +99,11 @@ const Signup = () => {
       } else {
         // Show success dialog
         setShowSuccessDialog(true);
+        setLoading(false);
       }
-    } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred. Please try again.');
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred. Please try again.';
+      setError(errorMessage);
       setLoading(false);
     }
   };
@@ -199,7 +201,7 @@ const Signup = () => {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter Password (min. 6 characters)"
+                  placeholder="Enter Password"
                   required
                   className="pl-10 pr-10 bg-transparent"
                   disabled={loading}
