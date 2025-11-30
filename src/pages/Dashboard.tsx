@@ -59,14 +59,18 @@ const Dashboard = () => {
       const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
       const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
 
-      console.log('Dashboard: Date range:', firstDay.toISOString(), 'to', nextMonth.toISOString());
+      // Format dates as YYYY-MM-DD strings to match the DATE column format in database
+      const firstDayStr = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+      const nextMonthStr = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}-${String(nextMonth.getDate()).padStart(2, '0')}`;
+
+      console.log('Dashboard: Date range:', firstDayStr, 'to', nextMonthStr);
 
       const { data: incomes, error: incomeError } = await supabase
         .from('incomes')
         .select('amount, income_date')
         .eq('user_id', profile.id)
-        .gte('income_date', firstDay.toISOString())
-        .lt('income_date', nextMonth.toISOString());
+        .gte('income_date', firstDayStr)
+        .lt('income_date', nextMonthStr);
       
       console.log('Dashboard: Incomes fetched:', incomes?.length || 0, 'records', incomes);
       if (incomeError) {
@@ -78,8 +82,8 @@ const Dashboard = () => {
         .from('expenses')
         .select('amount, expense_date')
         .eq('user_id', profile.id)
-        .gte('expense_date', firstDay.toISOString())
-        .lt('expense_date', nextMonth.toISOString());
+        .gte('expense_date', firstDayStr)
+        .lt('expense_date', nextMonthStr);
       
       console.log('Dashboard: Expenses fetched:', expenses?.length || 0, 'records', expenses);
       if (expenseError) {
