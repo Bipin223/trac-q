@@ -96,6 +96,13 @@ export default function Friends() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
+  // Auto-switch to Requests tab if there are pending requests
+  useEffect(() => {
+    if (friendRequests.length > 0 && activeTab === 'friends') {
+      setActiveTab('requests');
+    }
+  }, [friendRequests.length]);
+
   useEffect(() => {
     // Cleanup scanner on unmount
     return () => {
@@ -529,6 +536,11 @@ export default function Friends() {
           <h1 className="text-3xl font-bold tracking-tight">Friends</h1>
           <p className="text-muted-foreground">Manage your friends and send/receive transactions</p>
         </div>
+        {friendRequests.length > 0 && (
+          <Badge variant="destructive" className="text-lg px-4 py-2">
+            {friendRequests.length} Pending Request{friendRequests.length > 1 ? 's' : ''}
+          </Badge>
+        )}
       </div>
 
       {/* Your Friend Code Card */}
@@ -629,9 +641,14 @@ export default function Friends() {
             <Users className="h-4 w-4" />
             Friends ({friends.length})
           </TabsTrigger>
-          <TabsTrigger value="requests" className="flex items-center gap-2">
+          <TabsTrigger value="requests" className="flex items-center gap-2 relative">
             <Clock className="h-4 w-4" />
             Requests ({friendRequests.length})
+            {friendRequests.length > 0 && (
+              <Badge variant="destructive" className="ml-2 h-5 min-w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                {friendRequests.length}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
