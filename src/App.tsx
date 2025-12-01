@@ -30,6 +30,7 @@ import { ThemeToggle } from './components/theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from './components/ui/avatar';
 import { Badge } from './components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from './components/ui/alert';
+import { NotificationPanel } from './components/NotificationPanel';
 //import AdminAccountsPage from './pages/admin/AdminAccounts';
 import AdminUsersPage from './pages/admin/AdminUsers';
 import { useProfile } from './contexts/ProfileContext';
@@ -45,9 +46,10 @@ function App() {
   const session = useSession();
   const navigate = useNavigate();
   const { profile, loading } = useProfile();
-  const { todayCount, upcomingCount } = useNotifications();
+  const { todayCount, upcomingCount, refreshNotifications } = useNotifications();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
 
   const handleLogout = async () => {
     // Supabase's signOut() handles its own session cleanup
@@ -144,19 +146,22 @@ function App() {
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link to="/dashboard">
-                    <Button variant="ghost" size="icon" className="relative">
-                      <Bell className="h-5 w-5" />
-                      {(todayCount + upcomingCount) > 0 && (
-                        <Badge 
-                          variant="destructive" 
-                          className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                        >
-                          {todayCount + upcomingCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="relative" 
+                    onClick={() => setShowNotificationPanel(true)}
+                  >
+                    <Bell className="h-5 w-5" />
+                    {(todayCount + upcomingCount) > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {todayCount + upcomingCount}
+                      </Badge>
+                    )}
+                  </Button>
                 </TooltipTrigger>
                 <TooltipContent>
                   <div className="text-sm">
@@ -178,6 +183,11 @@ function App() {
           </div>
         </header>
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-background">
+          <NotificationPanel 
+            open={showNotificationPanel} 
+            onOpenChange={setShowNotificationPanel}
+            onUpdate={refreshNotifications}
+          />
           <div className="container mx-auto px-6 py-8">
             <Routes>
               <Route path="/" element={<Dashboard />} />
