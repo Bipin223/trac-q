@@ -519,7 +519,7 @@ export default function Friends() {
   const copyFriendCode = async () => {
     if (userFriendCode) {
       await navigator.clipboard.writeText(userFriendCode);
-      showSuccess('Your friend code copied to clipboard!');
+      showSuccess('Friend code copied to clipboard!');
     }
   };
 

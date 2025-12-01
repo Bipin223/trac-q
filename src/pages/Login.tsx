@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Mail, Lock, User, Eye, EyeOff, User as UserIcon, LogOut, X } from 'lucide-react';
+import { showSuccess } from '@/utils/toast';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -132,6 +133,7 @@ const Login = () => {
         setError(`Login failed for ${selectedUser.username}: ${signInError.message}`);
         removeFromRememberedUsers(selectedUser.username);
       } else {
+        showSuccess(`Welcome back, ${selectedUser.username}!`);
         navigate('/dashboard');
       }
     } catch (err: any) {
@@ -197,6 +199,7 @@ const Login = () => {
         if (rememberMe) {
           addToRememberedUsers({ username: username.trim(), password });
         }
+        showSuccess(`Welcome back, ${username.trim()}!`);
         // Navigate to dashboard - session persists regardless of Remember Me
         navigate('/dashboard');
       }
