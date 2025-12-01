@@ -2,7 +2,6 @@
 -- SUBCATEGORIES FEATURE MIGRATION
 -- ============================================
 -- This migration adds support for custom subcategories
--- Users can create subcategories like "Samosa", "Momo" under parent categories like "Food & Groceries"
 
 -- Create subcategories table
 CREATE TABLE IF NOT EXISTS public.subcategories (

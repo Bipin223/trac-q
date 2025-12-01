@@ -65,7 +65,9 @@ export default function Comparison() {
   const [loading, setLoading] = useState(true);
   const [periodType, setPeriodType] = useState<PeriodType>('monthly');
   const [selectedYear1, setSelectedYear1] = useState<number>(new Date().getFullYear());
-  const [selectedYear2, setSelectedYear2] = useState<number>(new Date().getFullYear() - 1);
+  const [selectedYear2, setSelectedYear2] = useState<number>(new Date().getFullYear());
+  const [selectedMonth1, setSelectedMonth1] = useState<number | null>(null);
+  const [selectedMonth2, setSelectedMonth2] = useState<number | null>(null);
   const [financialData, setFinancialData] = useState<FinancialData[]>([]);
   const [yearComparisons, setYearComparisons] = useState<YearComparison[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryBreakdown[]>([]);
@@ -80,7 +82,7 @@ export default function Comparison() {
       fetchYearComparison();
       fetchCategoryBreakdown();
     }
-  }, [profile, periodType, selectedYear1, selectedYear2]);
+  }, [profile, periodType, selectedYear1, selectedYear2, selectedMonth1, selectedMonth2]);
 
   const fetchAvailableYears = async () => {
     if (!profile) return;
@@ -227,11 +229,25 @@ export default function Comparison() {
 
     try {
       const years = [selectedYear1, selectedYear2];
+      const months = [selectedMonth1, selectedMonth2];
       const comparisons: YearComparison[] = [];
 
-      for (const year of years) {
-        const startDate = new Date(year, 0, 1);
-        const endDate = new Date(year, 11, 31);
+      for (let i = 0; i < years.length; i++) {
+        const year = years[i];
+        const month = months[i];
+        
+        let startDate: Date;
+        let endDate: Date;
+        
+        if (month !== null) {
+          // Month-specific comparison
+          startDate = new Date(year, month, 1);
+          endDate = new Date(year, month + 1, 0, 23, 59, 59);
+        } else {
+          // Full year comparison
+          startDate = new Date(year, 0, 1);
+          endDate = new Date(year, 11, 31);
+        }
 
         const [incomesRes, expensesRes] = await Promise.all([
           supabase
@@ -323,6 +339,15 @@ export default function Comparison() {
 
   const nepalComparisonIncome = ((totalIncome / 12) / NEPAL_AVERAGE_DATA.monthlyIncome * 100) - 100;
   const nepalComparisonExpense = ((totalExpense / 12) / NEPAL_AVERAGE_DATA.monthlyExpense * 100) - 100;
+
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  const getComparisonLabel = (year: number, month: number | null) => {
+    if (month !== null) {
+      return `${monthNames[month]} ${year}`;
+    }
+    return year.toString();
+  };
 
   return (
     <div className="space-y-6">
@@ -529,6 +554,44 @@ export default function Comparison() {
               </Select>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Primary Month (Optional)</label>
+              <Select 
+                value={selectedMonth1 !== null ? selectedMonth1.toString() : "all"} 
+                onValueChange={(value) => setSelectedMonth1(value === "all" ? null : parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Year</SelectItem>
+                  {monthNames.map((month, index) => (
+                    <SelectItem key={index} value={index.toString()}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Compare With Month (Optional)</label>
+              <Select 
+                value={selectedMonth2 !== null ? selectedMonth2.toString() : "all"} 
+                onValueChange={(value) => setSelectedMonth2(value === "all" ? null : parseInt(value))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="All Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Year</SelectItem>
+                  {monthNames.map((month, index) => (
+                    <SelectItem key={index} value={index.toString()}>{month}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -552,11 +615,11 @@ export default function Comparison() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">{selectedYear1}</p>
+                      <p className="text-sm text-muted-foreground">{getComparisonLabel(selectedYear1, selectedMonth1)}</p>
                       <p className="text-2xl font-bold">{formatCurrency(year1Data.totalIncome)}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">{selectedYear2}</p>
+                      <p className="text-sm text-muted-foreground">{getComparisonLabel(selectedYear2, selectedMonth2)}</p>
                       <p className="text-2xl font-bold text-muted-foreground">{formatCurrency(year2Data.totalIncome)}</p>
                     </div>
                   </div>
@@ -569,7 +632,7 @@ export default function Comparison() {
                     <span className={`font-semibold ${incomeChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                       {incomeChange >= 0 ? '+' : ''}{incomeChange.toFixed(1)}%
                     </span>
-                    <span className="text-sm text-muted-foreground">vs {selectedYear2}</span>
+                    <span className="text-sm text-muted-foreground">vs {getComparisonLabel(selectedYear2, selectedMonth2)}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -584,11 +647,11 @@ export default function Comparison() {
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">{selectedYear1}</p>
+                      <p className="text-sm text-muted-foreground">{getComparisonLabel(selectedYear1, selectedMonth1)}</p>
                       <p className="text-2xl font-bold">{formatCurrency(year1Data.totalExpense)}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground">{selectedYear2}</p>
+                      <p className="text-sm text-muted-foreground">{getComparisonLabel(selectedYear2, selectedMonth2)}</p>
                       <p className="text-2xl font-bold text-muted-foreground">{formatCurrency(year2Data.totalExpense)}</p>
                     </div>
                   </div>
@@ -601,7 +664,7 @@ export default function Comparison() {
                     <span className={`font-semibold ${expenseChange >= 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {expenseChange >= 0 ? '+' : ''}{expenseChange.toFixed(1)}%
                     </span>
-                    <span className="text-sm text-muted-foreground">vs {selectedYear2}</span>
+                    <span className="text-sm text-muted-foreground">vs {getComparisonLabel(selectedYear2, selectedMonth2)}</span>
                   </div>
                 </CardContent>
               </Card>

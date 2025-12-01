@@ -27,7 +27,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Clock, AlertTriangle, CheckCircle2, Edit } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
-import { format, differenceInDays, isToday, parseISO } from 'date-fns';
+import { format, differenceInDays, differenceInHours, isToday, parseISO, addDays, addMonths, addYears, isBefore, isAfter } from 'date-fns';
 
 interface RecurringNotification {
   id: string;
@@ -37,6 +37,7 @@ interface RecurringNotification {
   category: string;
   dueDate: Date;
   daysUntil: number;
+  hoursUntil?: number;
   isToday: boolean;
   recurring_frequency?: string;
   recurring_day?: number;
@@ -45,6 +46,80 @@ interface RecurringNotification {
 interface RecurringNotificationsProps {
   onNotificationUpdate?: () => void;
 }
+
+// Helper function to calculate next due date based on recurring frequency
+const calculateNextDueDate = (lastDate: Date, frequency: string, recurringDay?: number): Date => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let nextDate = new Date(lastDate);
+  nextDate.setHours(0, 0, 0, 0);
+
+  // If lastDate is in the future, return it
+  if (isAfter(nextDate, today)) {
+    return nextDate;
+  }
+
+  switch (frequency) {
+    case 'daily':
+      // Find next occurrence (today or next day)
+      while (isBefore(nextDate, today)) {
+        nextDate = addDays(nextDate, 1);
+      }
+      break;
+
+    case 'weekly':
+      // Add weeks until we're in the future
+      while (isBefore(nextDate, today)) {
+        nextDate = addDays(nextDate, 7);
+      }
+      break;
+
+    case 'monthly':
+      // Add months until we're in the future
+      while (isBefore(nextDate, today)) {
+        nextDate = addMonths(nextDate, 1);
+      }
+      break;
+
+    case 'yearly':
+      // Add years until we're in the future
+      while (isBefore(nextDate, today)) {
+        nextDate = addYears(nextDate, 1);
+      }
+      break;
+
+    default:
+      // For custom or unknown, just use the date as is
+      break;
+  }
+
+  return nextDate;
+};
+
+// Helper function to determine if we should show notification based on frequency
+const shouldShowNotification = (daysUntil: number, hoursUntil: number, frequency: string): boolean => {
+  const now = new Date();
+  
+  switch (frequency) {
+    case 'daily':
+      // Show 5 hours before
+      return hoursUntil <= 5 && hoursUntil >= 0;
+    
+    case 'weekly':
+    case 'monthly':
+      // Show 5 days before
+      return daysUntil <= 5 && daysUntil >= 0;
+    
+    case 'yearly':
+      // Show 5 days before
+      return daysUntil <= 5 && daysUntil >= 0;
+    
+    default:
+      // For custom or unknown, show 5 days before
+      return daysUntil <= 5 && daysUntil >= 0;
+  }
+};
 
 export function RecurringNotifications({ onNotificationUpdate }: RecurringNotificationsProps) {
   const { profile } = useProfile();
@@ -66,33 +141,24 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
 
     try {
       const today = new Date();
-      const futureDate = new Date();
-      futureDate.setDate(today.getDate() + 5); // 5 days advance notice
-      
-      const todayStr = today.toISOString().split('T')[0];
-      const futureDateStr = futureDate.toISOString().split('T')[0];
 
-      // Fetch recurring incomes
+      // Fetch ALL recurring incomes (don't filter by date here)
       const { data: incomes, error: incomesError } = await supabase
         .from('incomes')
         .select('id, amount, description, income_date, category_id, recurring_frequency, recurring_day')
         .eq('user_id', profile.id)
-        .eq('is_recurring', true)
-        .gte('income_date', todayStr)
-        .lte('income_date', futureDateStr);
+        .eq('is_recurring', true);
 
       if (incomesError) {
         console.error('Error fetching recurring incomes:', incomesError);
       }
 
-      // Fetch recurring expenses
+      // Fetch ALL recurring expenses (don't filter by date here)
       const { data: expenses, error: expensesError } = await supabase
         .from('expenses')
         .select('id, amount, description, expense_date, category_id, recurring_frequency, recurring_day')
         .eq('user_id', profile.id)
-        .eq('is_recurring', true)
-        .gte('expense_date', todayStr)
-        .lte('expense_date', futureDateStr);
+        .eq('is_recurring', true);
 
       if (expensesError) {
         console.error('Error fetching recurring expenses:', expensesError);
@@ -116,37 +182,51 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
         });
       }
 
-      const processedIncomes: RecurringNotification[] = (incomes || []).map(item => {
-        const dueDate = parseISO(item.income_date);
-        return {
-          id: item.id,
-          type: 'income' as const,
-          amount: item.amount,
-          description: item.description || 'Income',
-          category: categoriesMap.get(item.category_id) || 'Uncategorized',
-          dueDate,
-          daysUntil: differenceInDays(dueDate, today),
-          isToday: isToday(dueDate),
-          recurring_frequency: item.recurring_frequency,
-          recurring_day: item.recurring_day,
-        };
-      });
+      const processedIncomes: RecurringNotification[] = (incomes || [])
+        .map(item => {
+          const lastDate = parseISO(item.income_date);
+          const nextDueDate = calculateNextDueDate(lastDate, item.recurring_frequency || 'monthly', item.recurring_day);
+          const daysUntil = differenceInDays(nextDueDate, today);
+          const hoursUntil = differenceInHours(nextDueDate, new Date());
 
-      const processedExpenses: RecurringNotification[] = (expenses || []).map(item => {
-        const dueDate = parseISO(item.expense_date);
-        return {
-          id: item.id,
-          type: 'expense' as const,
-          amount: item.amount,
-          description: item.description || 'Expense',
-          category: categoriesMap.get(item.category_id) || 'Uncategorized',
-          dueDate,
-          daysUntil: differenceInDays(dueDate, today),
-          isToday: isToday(dueDate),
-          recurring_frequency: item.recurring_frequency,
-          recurring_day: item.recurring_day,
-        };
-      });
+          return {
+            id: item.id,
+            type: 'income' as const,
+            amount: item.amount,
+            description: item.description || 'Income',
+            category: categoriesMap.get(item.category_id) || 'Uncategorized',
+            dueDate: nextDueDate,
+            daysUntil,
+            hoursUntil,
+            isToday: isToday(nextDueDate),
+            recurring_frequency: item.recurring_frequency,
+            recurring_day: item.recurring_day,
+          };
+        })
+        .filter(item => shouldShowNotification(item.daysUntil, item.hoursUntil || 0, item.recurring_frequency || 'monthly'));
+
+      const processedExpenses: RecurringNotification[] = (expenses || [])
+        .map(item => {
+          const lastDate = parseISO(item.expense_date);
+          const nextDueDate = calculateNextDueDate(lastDate, item.recurring_frequency || 'monthly', item.recurring_day);
+          const daysUntil = differenceInDays(nextDueDate, today);
+          const hoursUntil = differenceInHours(nextDueDate, new Date());
+
+          return {
+            id: item.id,
+            type: 'expense' as const,
+            amount: item.amount,
+            description: item.description || 'Expense',
+            category: categoriesMap.get(item.category_id) || 'Uncategorized',
+            dueDate: nextDueDate,
+            daysUntil,
+            hoursUntil,
+            isToday: isToday(nextDueDate),
+            recurring_frequency: item.recurring_frequency,
+            recurring_day: item.recurring_day,
+          };
+        })
+        .filter(item => shouldShowNotification(item.daysUntil, item.hoursUntil || 0, item.recurring_frequency || 'monthly'));
 
       const allNotifications = [...processedIncomes, ...processedExpenses].sort(
         (a, b) => a.daysUntil - b.daysUntil
@@ -239,30 +319,21 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
         original.recurring_day
       );
 
-      // Update the existing recurring transaction with new date
-      const { error: updateError } = await supabase
-        .from(table)
-        .update({
-          [dateField]: nextDate,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', selectedNotification.id);
-
-      if (updateError) throw updateError;
-
-      // Create a completed instance of this recurring transaction
+      // Create a completed instance of this recurring transaction FIRST
       const completedTransaction: any = {
         user_id: profile.id,
         amount: actionType === 'edit' ? parseFloat(editAmount) : selectedNotification.amount,
         description: actionType === 'edit' ? editDescription : selectedNotification.description,
-        [dateField]: actionType === 'edit' ? editDate : format(selectedNotification.dueDate, 'yyyy-MM-dd'),
+        [dateField]: actionType === 'edit' ? editDate : format(new Date(), 'yyyy-MM-dd'),
         category_id: original.category_id,
-        subcategory_id: original.subcategory_id || null,
+        is_favorite: false,
         is_recurring: false,
-        recurring_frequency: null,
-        recurring_day: null,
-        created_at: new Date().toISOString(),
       };
+
+      // Only add subcategory_id if it exists
+      if (original.subcategory_id) {
+        completedTransaction.subcategory_id = original.subcategory_id;
+      }
 
       const { error: createError } = await supabase
         .from(table)
@@ -271,6 +342,19 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
       if (createError) {
         console.error('Create error:', createError);
         throw createError;
+      }
+
+      // THEN update the recurring transaction with new date
+      const { error: updateError } = await supabase
+        .from(table)
+        .update({
+          [dateField]: nextDate,
+        })
+        .eq('id', selectedNotification.id);
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw updateError;
       }
 
       showSuccess(`${selectedNotification.type === 'income' ? 'Income' : 'Expense'} paid and scheduled for next occurrence`);
@@ -360,10 +444,19 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
     }
   };
 
-  const getDaysLabel = (days: number) => {
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Tomorrow';
-    return `In ${days} days`;
+  const getDaysLabel = (notification: RecurringNotification) => {
+    const { daysUntil, hoursUntil, recurring_frequency } = notification;
+    
+    // For daily recurring, show hours if within 24 hours
+    if (recurring_frequency === 'daily' && daysUntil === 0 && hoursUntil !== undefined) {
+      if (hoursUntil <= 0) return 'Due Now';
+      if (hoursUntil < 1) return `In ${Math.round(hoursUntil * 60)} minutes`;
+      return `In ${Math.round(hoursUntil)} hours`;
+    }
+    
+    if (daysUntil === 0) return 'Due Today';
+    if (daysUntil === 1) return 'Tomorrow';
+    return `In ${daysUntil} days`;
   };
 
   if (notifications.length === 0) {
@@ -481,7 +574,7 @@ export function RecurringNotifications({ onNotificationUpdate }: RecurringNotifi
                         NPR {notification.amount.toLocaleString()}
                       </p>
                       <Badge variant="outline" className="text-xs border-blue-600 text-blue-600 mt-1">
-                        {getDaysLabel(notification.daysUntil)}
+                        {getDaysLabel(notification)}
                       </Badge>
                     </div>
                   </div>

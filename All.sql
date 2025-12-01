@@ -1,6 +1,5 @@
 -- ============================================
 -- TRAC-Q COMPLETE DATABASE SETUP
--- Run this ONCE in Supabase SQL Editor
 -- Includes: Auth, Profiles, OTP, Favorites, Friends, Lend/Borrow
 -- ============================================
 
@@ -35,6 +34,7 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Allow profile creation on signup" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Enable insert for service role" ON public.profiles;
 
 -- Create RLS policies
@@ -45,10 +45,6 @@ USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile"
 ON public.profiles FOR UPDATE
 USING (auth.uid() = id);
-
-CREATE POLICY "Allow profile creation on signup"
-ON public.profiles FOR INSERT
-WITH CHECK (true);
 
 CREATE POLICY "Users can insert their own profile"
 ON public.profiles FOR INSERT
@@ -500,8 +496,6 @@ $$;
 
 GRANT EXECUTE ON FUNCTION delete_user_account(UUID) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION delete_user_account(UUID) TO authenticated;
-
 
 -- ============================================
 -- PART 3: LEND & BORROW TABLE
@@ -727,7 +721,7 @@ $$ LANGUAGE plpgsql;
 
 
 -- ============================================
--- PART 6: FRIEND CODES SYSTEM
+-- PART 5: FRIEND CODES SYSTEM
 -- ============================================
 
 -- Note: generate_friend_code() function already created above for use in handle_new_user trigger
@@ -754,24 +748,14 @@ COMMENT ON COLUMN friends.method IS 'Method used to create friendship: invitatio
 -- SETUP COMPLETE!
 -- ============================================
 -- 
--- ✅ Core financial tables (categories, incomes, expenses, budgets, accounts)
--- ✅ Password reset with OTP system
--- ✅ User account deletion function
--- ✅ Lend & Borrow tracking with RLS
--- ✅ Categories can be favorited
--- ✅ Incomes/Expenses can be favorited and marked as recurring
--- ✅ Friends system with invitations and QR codes
--- ✅ Pending transactions requiring dual approval
--- ✅ Friend codes starting with #TRAC- for easy sharing
--- ✅ Full RLS policies for data security
--- 
--- Next steps:
--- 1. Run this entire script in Supabase SQL Editor
--- 2. Then run fix-profile-creation.sql to ensure trigger works
--- 3. Hard refresh your app (Ctrl+Shift+R)
--- 4. All features should work now!
--- 
--- ============================================
--- ============================================
--- PART 5: FRIEND CODES SYSTEM
+-- Core financial tables (categories, incomes, expenses, budgets, accounts)
+-- Password reset with OTP system
+-- User account deletion function
+-- Lend & Borrow tracking with RLS
+-- Categories can be favorited
+-- Incomes/Expenses can be favorited and marked as recurring
+-- Friends system with invitations and QR codes
+-- Pending transactions requiring dual approval
+-- Friend codes starting with #TRAC- for easy sharing
+-- Full RLS policies for data security
 -- ============================================
