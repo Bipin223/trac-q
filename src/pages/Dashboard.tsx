@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake, HandCoins, Receipt, Landmark } from 'lucide-react';
+import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake, HandCoins, Receipt, Landmark, Calendar } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -327,6 +327,7 @@ const Dashboard = () => {
     { to: '/dashboard/expenses', icon: <BarChart2 className="h-6 w-6" />, title: 'Expenses', description: 'Record your spending and analyze your habits.' },
     { to: '/dashboard/daily-wallet', icon: <Landmark className="h-6 w-6" />, title: 'Daily Wallet', description: 'Track daily spending with budget limits and alerts.' },
     { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' },
+    { to: '/dashboard/date-converter', icon: <Calendar className="h-6 w-6" />, title: 'Date Converter', description: 'Convert between AD and BS (Bikram Sambat) dates.' },
     { to: '/dashboard/calculators', icon: <Calculator className="h-6 w-6" />, title: 'Calculators', description: 'Access tax, discount, savings, and loan calculators.' },
     { to: '/dashboard/comparison', icon: <TrendingUp className="h-6 w-6" />, title: 'Comparison', description: 'Compare income and expenses across periods.' },
     { to: '/dashboard/recurring', icon: <Repeat className="h-6 w-6" />, title: 'Recurring', description: 'Manage recurring transactions and subscriptions.' },

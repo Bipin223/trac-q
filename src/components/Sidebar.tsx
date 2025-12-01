@@ -1,4 +1,4 @@
-import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users, Mail, Handshake, UserPlus, Clock, Calculator, TrendingUp, Repeat, HandCoins, Receipt } from 'lucide-react';
+import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users, Mail, Handshake, UserPlus, Clock, Calculator, TrendingUp, Repeat, HandCoins, Receipt, Calendar } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
@@ -17,6 +17,7 @@ const navItems = [
   { to: '/dashboard/recurring', icon: <Repeat className="h-5 w-5" />, label: 'Recurring' },
   { to: '/dashboard/pending-transactions', icon: <Clock className="h-5 w-5" />, label: 'Pending' },
   { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-5 w-5" />, label: 'Exchange Rates' },
+  { to: '/dashboard/date-converter', icon: <Calendar className="h-5 w-5" />, label: 'Date Converter' },
   { to: '/dashboard/calculators', icon: <Calculator className="h-5 w-5" />, label: 'Calculators' },
   { to: '/dashboard/lend-borrow', icon: <Handshake className="h-5 w-5" />, label: 'Lend & Borrow' },
   { to: '/dashboard/friends', icon: <UserPlus className="h-5 w-5" />, label: 'Friends' },
