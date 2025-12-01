@@ -160,7 +160,7 @@ export default function Friends() {
     // Fetch profiles for all friends
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, friend_code')
+      .select('id, first_name, last_name, username, email, friend_code')
       .in('id', friendIds);
 
     if (profilesError) {
@@ -218,7 +218,7 @@ export default function Friends() {
     // Fetch profiles for all requesters
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, friend_code')
+      .select('id, first_name, last_name, username, email, friend_code')
       .in('id', requesterIds);
 
     if (profilesError) {
@@ -664,15 +664,13 @@ export default function Friends() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {friends.map((friend) => {
-                const friendName = friend.friend_profile.first_name && friend.friend_profile.last_name
-                  ? `${friend.friend_profile.first_name} ${friend.friend_profile.last_name}`
-                  : friend.friend_profile.email;
+                const friendUsername = friend.friend_profile.username || friend.friend_profile.email;
                 return (
                 <Card key={friend.id}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">{friendName}</CardTitle>
+                        <CardTitle className="text-lg">{friendUsername}</CardTitle>
                         <CardDescription className="flex items-center gap-1 mt-1">
                           <Mail className="h-3 w-3" />
                           {friend.friend_profile.email}
@@ -719,7 +717,7 @@ export default function Friends() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Remove Friend?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to remove {friendName} from your friends? 
+                            Are you sure you want to remove {friendUsername} from your friends? 
                             You can always add them back later.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
@@ -749,15 +747,13 @@ export default function Friends() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {friendRequests.map((request) => {
-                const requesterName = request.requester_profile.first_name && request.requester_profile.last_name
-                  ? `${request.requester_profile.first_name} ${request.requester_profile.last_name}`
-                  : request.requester_profile.email;
+                const requesterUsername = request.requester_profile.username || request.requester_profile.email;
                 return (
                 <Card key={request.id}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg">{requesterName}</CardTitle>
+                        <CardTitle className="text-lg">{requesterUsername}</CardTitle>
                         <CardDescription className="flex items-center gap-1 mt-1">
                           <Mail className="h-3 w-3" />
                           {request.requester_profile.email}
