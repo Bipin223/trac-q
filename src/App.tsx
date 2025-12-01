@@ -22,6 +22,7 @@ import LoanCalculator from './pages/LoanCalculator';
 import CalculatorHub from './pages/CalculatorHub';
 import Comparison from './pages/Comparison';
 import RecurringTransactions from './pages/RecurringTransactions';
+import DailyWallet from './pages/DailyWallet';
 import { Button } from './components/ui/button';
 import { Menu, Loader2, Bell, AlertCircle } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from './components/ui/sheet';
@@ -191,6 +192,7 @@ function App() {
               <Route path="/loan-calculator" element={<LoanCalculator />} />
               <Route path="/comparison" element={<Comparison />} />
               <Route path="/recurring" element={<RecurringTransactions />} />
+              <Route path="/daily-wallet" element={<DailyWallet />} />
               <Route path="/profile" element={<ProfileEnhanced />} />
               <Route path="/lend-borrow" element={<LendBorrowPage />} />
               <Route path="/friends" element={<Friends />} />

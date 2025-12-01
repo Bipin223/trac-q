@@ -14,6 +14,7 @@ import ResetPasswordPage from './pages/ResetPassword.tsx'
 import { ProfileProvider } from './contexts/ProfileContext'
 import { NotificationProvider } from './contexts/NotificationContext'
 import { ProtectedRoute } from './components/ProtectedRoute.tsx'
+import { Toaster } from 'sonner'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -24,6 +25,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       <ProfileProvider>
         <NotificationProvider>
           <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme" attribute="class">
+            <Toaster position="top-center" richColors />
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Landing />} />
