@@ -312,9 +312,9 @@ export function NotificationPanel({ open, onOpenChange, onUpdate }: Notification
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent className="w-full sm:w-[450px] sm:max-w-[450px]">
           <SheetHeader>
-            <SheetTitle>Recurring Transactions</SheetTitle>
+            <SheetTitle>Notifications Zone</SheetTitle>
             <SheetDescription>
-              Manage your upcoming recurring transactions
+              We cover all your updates here!
             </SheetDescription>
           </SheetHeader>
 
@@ -322,7 +322,7 @@ export function NotificationPanel({ open, onOpenChange, onUpdate }: Notification
             {notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Clock className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">No upcoming recurring transactions</p>
+                <p className="text-muted-foreground">No notifications right now</p>
               </div>
             ) : (
               <div className="space-y-3">
