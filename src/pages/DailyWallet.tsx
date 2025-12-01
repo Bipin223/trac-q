@@ -326,7 +326,14 @@ export default function DailyWallet() {
             <CardContent>
               <div className="flex items-center justify-between">
                 <div className="text-3xl font-bold">NPR {dailyBudget.daily_limit.toLocaleString()}</div>
-                <Button variant="ghost" size="icon" onClick={() => setShowBudgetDialog(true)}>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => {
+                    setBudgetAmount(dailyBudget.daily_limit.toString());
+                    setShowBudgetDialog(true);
+                  }}
+                >
                   <Edit className="h-4 w-4" />
                 </Button>
               </div>
@@ -426,15 +433,16 @@ export default function DailyWallet() {
           </DialogContent>
         </Dialog>
 
-        {!dailyBudget && (
-          <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
-            <DialogTrigger asChild>
+        <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
+          <DialogTrigger asChild>
+            {!dailyBudget && (
               <Button variant="outline" className="flex-1">
                 <Wallet className="h-4 w-4 mr-2" />
                 Set Daily Budget
               </Button>
-            </DialogTrigger>
-            <DialogContent>
+            )}
+          </DialogTrigger>
+          <DialogContent>
               <DialogHeader>
                 <DialogTitle>{dailyBudget ? 'Update' : 'Set'} Daily Budget</DialogTitle>
                 <DialogDescription>Set your daily spending limit</DialogDescription>
@@ -460,7 +468,6 @@ export default function DailyWallet() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        )}
       </div>
 
       {/* Today's Expenses */}
