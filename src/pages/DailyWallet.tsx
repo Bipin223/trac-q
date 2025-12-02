@@ -36,6 +36,7 @@ interface DailyBudget {
   daily_limit: number;
   created_at: string;
   updated_at: string;
+  last_reset_date?: string;
 }
 
 interface DailyExpense {
@@ -66,6 +67,8 @@ export default function DailyWallet() {
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [historySummaries, setHistorySummaries] = useState<DailySummary[]>([]);
+  const [showDailyResetDialog, setShowDailyResetDialog] = useState(false);
+  const [isNewDay, setIsNewDay] = useState(false);
   
   // Form states
   const [budgetAmount, setBudgetAmount] = useState('');
@@ -97,8 +100,21 @@ export default function DailyWallet() {
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching daily budget:', error);
       } else if (data) {
-        setDailyBudget(data);
-        setBudgetAmount(data.daily_limit.toString());
+        // Check if it's a new day
+        const today = format(new Date(), 'yyyy-MM-dd');
+        const lastResetDate = data.last_reset_date ? format(new Date(data.last_reset_date), 'yyyy-MM-dd') : null;
+        
+        if (!lastResetDate || lastResetDate !== today) {
+          // New day detected - reset budget to 0 and show dialog
+          setDailyBudget({ ...data, daily_limit: 0 });
+          setBudgetAmount('');
+          setIsNewDay(true);
+          setShowDailyResetDialog(true);
+        } else {
+          // Same day - use existing budget
+          setDailyBudget(data);
+          setBudgetAmount(data.daily_limit.toString());
+        }
       }
     } catch (error) {
       console.error('Error:', error);
@@ -135,25 +151,38 @@ export default function DailyWallet() {
   }, [profile]);
 
   const fetchHistory = useCallback(async () => {
-    if (!profile || !dailyBudget) return;
+    if (!profile) return;
 
     const summaries: DailySummary[] = [];
     for (let i = 0; i < 7; i++) {
       const date = subDays(new Date(), i);
+      const dateStr = format(date, 'yyyy-MM-dd');
+      
+      // Fetch expenses for this date
       const expenses = await fetchDailyExpenses(date);
-      const spent = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+      const spent = (expenses || []).reduce((sum, exp) => sum + exp.amount, 0);
+      
+      // Fetch the actual budget that was set for this specific date
+      const { data: historyData } = await supabase
+        .from('daily_budget_history')
+        .select('daily_limit')
+        .eq('user_id', profile.id)
+        .eq('budget_date', dateStr)
+        .single();
+      
+      const budgetForDay = historyData?.daily_limit || 0;
       
       summaries.push({
-        date: format(date, 'yyyy-MM-dd'),
-        budget: dailyBudget.daily_limit,
+        date: dateStr,
+        budget: budgetForDay,
         spent,
-        remaining: dailyBudget.daily_limit - spent,
-        expenses,
+        remaining: budgetForDay - spent,
+        expenses: expenses || [],
       });
     }
 
     setHistorySummaries(summaries);
-  }, [profile, dailyBudget, fetchDailyExpenses]);
+  }, [profile, fetchDailyExpenses]);
 
   useEffect(() => {
     if (profile) {
@@ -183,23 +212,52 @@ export default function DailyWallet() {
     }
 
     try {
+      const today = new Date().toISOString();
+      const todayDate = format(new Date(), 'yyyy-MM-dd');
+      
       if (dailyBudget) {
         const { error } = await supabase
           .from('daily_budgets')
-          .update({ daily_limit: amount, updated_at: new Date().toISOString() })
+          .update({ 
+            daily_limit: amount, 
+            updated_at: today,
+            last_reset_date: today
+          })
           .eq('id', dailyBudget.id);
 
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('daily_budgets')
-          .insert({ user_id: profile.id, daily_limit: amount });
+          .insert({ 
+            user_id: profile.id, 
+            daily_limit: amount,
+            last_reset_date: today
+          });
 
         if (error) throw error;
       }
 
+      // Save budget to history table for accurate historical tracking
+      const { error: historyError } = await supabase
+        .from('daily_budget_history')
+        .upsert({ 
+          user_id: profile.id,
+          budget_date: todayDate,
+          daily_limit: amount
+        }, {
+          onConflict: 'user_id,budget_date'
+        });
+
+      if (historyError) {
+        console.error('Error saving budget history:', historyError);
+        // Don't block the main flow if history fails
+      }
+
       showSuccess('Daily budget saved successfully!');
       setShowBudgetDialog(false);
+      setShowDailyResetDialog(false);
+      setIsNewDay(false);
       await fetchDailyBudget();
     } catch (error: any) {
       console.error('Error saving budget:', error);
@@ -306,22 +364,93 @@ export default function DailyWallet() {
       {!dailyBudget && (
         <Alert className="bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
           <AlertCircle className="h-4 w-4 text-yellow-600" />
-          <AlertTitle className="text-yellow-700 dark:text-yellow-300">Set Your Daily Budget</AlertTitle>
+          <AlertTitle className="text-yellow-700 dark:text-yellow-300">Set Your Daily wallet Amount</AlertTitle>
           <AlertDescription className="text-yellow-600 dark:text-yellow-400">
             You haven't set a daily budget yet. Set one to start tracking your daily expenses.
             <Button onClick={() => setShowBudgetDialog(true)} className="ml-4" size="sm">
-              Set Budget
+              Set wallet Amount
             </Button>
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Daily Budget Reset Dialog */}
+      <Dialog open={showDailyResetDialog} onOpenChange={(open) => {
+        // Don't allow closing without setting budget on new day
+        if (!open && isNewDay) {
+          return;
+        }
+        setShowDailyResetDialog(open);
+      }}>
+        <DialogContent className="sm:max-w-[500px]" onInteractOutside={(e) => {
+          if (isNewDay) e.preventDefault();
+        }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              {isNewDay ? 'Set Today\'s Budget' : 'Update Daily Budget'}
+            </DialogTitle>
+            <DialogDescription>
+              {isNewDay 
+                ? 'Your daily wallet has reset to NPR 0. Set your budget for today to start tracking expenses.'
+                : 'Update your daily budget amount.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {isNewDay && (
+              <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                <DollarSign className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-700 dark:text-blue-300">Fresh Start</AlertTitle>
+                <AlertDescription className="text-blue-600 dark:text-blue-400">
+                  Today's wallet balance: NPR 0
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="new-budget">Set Daily Budget (NPR) *</Label>
+              <Input
+                id="new-budget"
+                type="number"
+                placeholder="Enter amount"
+                value={budgetAmount}
+                onChange={(e) => setBudgetAmount(e.target.value)}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground">
+                How much money do you want to allocate for today's expenses?
+              </p>
+            </div>
+
+            {isNewDay && (
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <p className="text-sm font-medium">Daily Reset System</p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>• Your budget resets to NPR 0 every new day</p>
+                  <p>• Yesterday's expenses are saved in history</p>
+                  <p>• Set today's budget to continue tracking</p>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              onClick={handleSaveBudget}
+              className="w-full"
+              disabled={!budgetAmount || parseFloat(budgetAmount) <= 0}
+            >
+              {isNewDay ? 'Set Today\'s Budget' : 'Update Budget'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Today's Summary */}
       {dailyBudget && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="border-blue-200 dark:border-blue-800">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Daily Budget</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Daily Wallet</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
@@ -352,7 +481,7 @@ export default function DailyWallet() {
 
           <Card className={`border-2 ${remaining >= 0 ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Remaining</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Remaining wallet balance:</CardTitle>
             </CardHeader>
             <CardContent>
               <div className={`text-3xl font-bold ${getStatusColor()}`}>
