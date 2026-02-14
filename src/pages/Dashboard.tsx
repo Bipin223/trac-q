@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake, HandCoins, Receipt, Landmark, Calendar } from 'lucide-react';
+import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake, HandCoins, Receipt, Landmark, Calendar, Wallet, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,6 +42,8 @@ const Dashboard = () => {
   const [pendingFriendRequestsCount, setPendingFriendRequestsCount] = useState(0);
   const [recurringExpenses, setRecurringExpenses] = useState<any[]>([]);
   const [upcomingRecurring, setUpcomingRecurring] = useState<any[]>([]);
+  const [accountBalance, setAccountBalance] = useState<number | null>(null);
+  const [recentTransactions, setRecentTransactions] = useState<any[]>([]);
 
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
   const currentYear = new Date().getFullYear();
@@ -49,7 +51,7 @@ const Dashboard = () => {
 
   const fetchDashboardData = useCallback(async () => {
     if (!profile) return;
-    
+
     setLoadingFinancials(true);
     setError(null);
     try {
@@ -71,7 +73,7 @@ const Dashboard = () => {
         .eq('user_id', profile.id)
         .gte('income_date', firstDayStr)
         .lt('income_date', nextMonthStr);
-      
+
       console.log('Dashboard: Incomes fetched:', incomes?.length || 0, 'records', incomes);
       if (incomeError) {
         console.error('Dashboard: Income fetch error:', incomeError);
@@ -84,7 +86,7 @@ const Dashboard = () => {
         .eq('user_id', profile.id)
         .gte('expense_date', firstDayStr)
         .lt('expense_date', nextMonthStr);
-      
+
       console.log('Dashboard: Expenses fetched:', expenses?.length || 0, 'records', expenses);
       if (expenseError) {
         console.error('Dashboard: Expense fetch error:', expenseError);
@@ -94,22 +96,22 @@ const Dashboard = () => {
       const totalIncome = incomes?.reduce((sum, item) => sum + item.amount, 0) || 0;
       const totalExpenses = expenses?.reduce((sum, item) => sum + item.amount, 0) || 0;
 
-      const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({ 
-        day: (i + 1).toString().padStart(2, '0'), 
+      const dailyData: ChartData[] = Array.from({ length: daysInMonth }, (_, i) => ({
+        day: (i + 1).toString().padStart(2, '0'),
         dayNum: i + 1,
-        income: 0, 
+        income: 0,
         expenses: 0,
         cumulativeIncome: 0,
         cumulativeExpenses: 0
       }));
-      
-      incomes?.forEach(i => { 
+
+      incomes?.forEach(i => {
         const date = new Date(i.income_date).getDate();
-        if(dailyData[date - 1]) dailyData[date - 1].income += i.amount; 
+        if (dailyData[date - 1]) dailyData[date - 1].income += i.amount;
       });
-      expenses?.forEach(e => { 
+      expenses?.forEach(e => {
         const date = new Date(e.expense_date).getDate();
-        if(dailyData[date - 1]) dailyData[date - 1].expenses += e.amount; 
+        if (dailyData[date - 1]) dailyData[date - 1].expenses += e.amount;
       });
 
       setFinancials({ totalIncome, totalExpenses, chartData: dailyData });
@@ -132,7 +134,7 @@ const Dashboard = () => {
     }
     try {
       console.log('Dashboard: Fetching overall budget for', profile.id, currentYear, currentMonthNum);
-      
+
       // Query without maybeSingle to see all matching rows
       const { data: budgetData, error } = await supabase
         .from('budgets')
@@ -193,6 +195,38 @@ const Dashboard = () => {
     }
   }, [profile]);
 
+  // Fetch account balance and recent transactions
+  const fetchAccountData = useCallback(async () => {
+    if (!profile) return;
+
+    try {
+      // Fetch account balance
+      const { data: account, error: accountError } = await supabase
+        .from('accounts')
+        .select('balance')
+        .eq('user_id', profile.id)
+        .single();
+
+      if (!accountError && account) {
+        setAccountBalance(account.balance);
+      }
+
+      // Fetch recent transactions
+      const { data: transactions, error: txnError } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!txnError && transactions) {
+        setRecentTransactions(transactions);
+      }
+    } catch (err) {
+      console.error('Dashboard: Error fetching account data:', err);
+    }
+  }, [profile]);
+
   // Fetch notifications for pending transactions and friend requests
   const fetchNotifications = useCallback(async () => {
     if (!profile) return;
@@ -224,6 +258,106 @@ const Dashboard = () => {
     }
   }, [profile]);
 
+  // Real-time subscriptions for dashboard data
+  useEffect(() => {
+    if (profile && !profileLoading) {
+      // Set up real-time subscription for incomes
+      const incomesSubscription = supabase
+        .channel(`dashboard_incomes_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'incomes',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchDashboardData();
+            refreshNotifications();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for expenses
+      const expensesSubscription = supabase
+        .channel(`dashboard_expenses_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'expenses',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchDashboardData();
+            refreshNotifications();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for budgets
+      const budgetsSubscription = supabase
+        .channel(`dashboard_budgets_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'budgets',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchExpenseBudget();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for accounts
+      const accountsSubscription = supabase
+        .channel(`dashboard_accounts_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'accounts',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchAccountData();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for transactions
+      const transactionsSubscription = supabase
+        .channel(`dashboard_transactions_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'transactions',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchAccountData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        incomesSubscription.unsubscribe();
+        expensesSubscription.unsubscribe();
+        budgetsSubscription.unsubscribe();
+        accountsSubscription.unsubscribe();
+        transactionsSubscription.unsubscribe();
+      };
+    }
+  }, [profile, profileLoading, fetchDashboardData, fetchExpenseBudget, refreshNotifications]);
+
   useEffect(() => {
     if (profile && !profileLoading) {
       console.log('Dashboard: Fetching data for user', profile.id);
@@ -231,19 +365,20 @@ const Dashboard = () => {
       fetchExpenseBudget();
       fetchRecurringTransactions();
       fetchNotifications();
+      fetchAccountData();
     } else if (!profileLoading) {
       setLoadingFinancials(false);
       setBudgetedExpenses(0);
     }
-  }, [profile, profileLoading, location.pathname, fetchDashboardData, fetchExpenseBudget, fetchRecurringTransactions, fetchNotifications]);
+  }, [profile, profileLoading, location.pathname, fetchDashboardData, fetchExpenseBudget, fetchRecurringTransactions, fetchNotifications, fetchAccountData]);
 
   // Callback for after budget save: Save to database and update UI
   const handleBudgetUpdate = useCallback(async (newExpenses: number) => {
     if (!profile || newExpenses < 0) return;
-    
+
     try {
       console.log('Dashboard: Saving budget:', newExpenses);
-      
+
       // Check if overall budget already exists (category_id = null)
       const { data: existingBudgets } = await supabase
         .from('budgets')
@@ -254,7 +389,7 @@ const Dashboard = () => {
 
       const overallBudget = existingBudgets?.find(b => b.category_id === null);
       let error;
-      
+
       if (overallBudget) {
         // Update existing overall budget
         console.log('Dashboard: Updating existing budget ID:', overallBudget.id);
@@ -440,7 +575,57 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
-      
+
+      {/* Account Balance Card */}
+      {accountBalance !== null && (
+        <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border-indigo-200 dark:border-indigo-800">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-300">
+                  <Wallet className="h-5 w-5" />
+                  Account Balance
+                </CardTitle>
+                <CardDescription>Your virtual wallet</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/dashboard/accounts')}
+                className="text-indigo-600 border-indigo-300 hover:bg-indigo-50"
+              >
+                View Details
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mb-4">
+              NPR {accountBalance.toLocaleString()}
+            </div>
+            {recentTransactions.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground mb-2">Recent Transactions</p>
+                {recentTransactions.slice(0, 3).map((txn) => (
+                  <div key={txn.id} className="flex items-center justify-between text-sm p-2 rounded bg-white/50 dark:bg-gray-800/50">
+                    <div className="flex items-center gap-2">
+                      {txn.transaction_type === 'credit' ? (
+                        <ArrowDownLeft className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <ArrowUpRight className="h-3 w-3 text-red-600" />
+                      )}
+                      <span className="text-xs truncate max-w-[120px]">{txn.description || txn.category}</span>
+                    </div>
+                    <span className={`font-semibold text-xs ${txn.transaction_type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
+                      {txn.transaction_type === 'credit' ? '+' : '-'}NPR {txn.amount.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Financial Overview Cards with Progress Bars */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Actual Income Card */}
@@ -502,7 +687,7 @@ const Dashboard = () => {
             {budgetedExpenses > 0 ? `${budgetUtilization}% of budget` : 'No budget set'}
           </p>
           <div className="w-full bg-red-200 dark:bg-red-900/40 rounded-full h-2">
-            <div 
+            <div
               className={`h-2 rounded-full ${Number(budgetUtilization) > 100 ? 'bg-gradient-to-r from-red-600 to-red-700' : 'bg-gradient-to-r from-purple-500 to-green-500'}`}
               style={{ width: `${Math.min(Number(budgetUtilization), 100)}%` }}
             ></div>
@@ -536,7 +721,7 @@ const Dashboard = () => {
       </div>
 
       {financials && (
-        <FinancialChart 
+        <FinancialChart
           data={financials.chartData}  // Now compatible with dayNum
           month={currentMonth}
         />
@@ -573,7 +758,7 @@ const Dashboard = () => {
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">{recurringExpenses.length} items</p>
               </div>
-              
+
               <div className="p-4 bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
                 <p className="text-sm text-muted-foreground mb-1">Upcoming (5 days)</p>
                 <p className="text-2xl font-bold text-orange-600">
@@ -581,11 +766,11 @@ const Dashboard = () => {
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">Transactions due soon</p>
               </div>
-              
+
               <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-muted-foreground mb-1">Budget Impact</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {budgetedExpenses > 0 
+                  {budgetedExpenses > 0
                     ? `${((recurringExpenses.reduce((sum, exp) => sum + exp.amount, 0) / budgetedExpenses) * 100).toFixed(0)}%`
                     : 'N/A'
                   }

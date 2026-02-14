@@ -197,6 +197,49 @@ export default function DailyWallet() {
   }, [profile, fetchDailyBudget, fetchDailyExpenses]);
 
   useEffect(() => {
+    if (profile) {
+      // Set up real-time subscription for daily expenses
+      const dailyExpensesSubscription = supabase
+        .channel(`daily_expenses_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'daily_expenses',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchDailyExpenses();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for daily budgets
+      const dailyBudgetsSubscription = supabase
+        .channel(`daily_budgets_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'daily_budgets',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchDailyBudget();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        dailyExpensesSubscription.unsubscribe();
+        dailyBudgetsSubscription.unsubscribe();
+      };
+    }
+  }, [profile, fetchDailyBudget, fetchDailyExpenses]);
+
+  useEffect(() => {
     if (showHistory) {
       fetchHistory();
     }

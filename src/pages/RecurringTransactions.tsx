@@ -114,6 +114,45 @@ export default function RecurringTransactions() {
   useEffect(() => {
     if (profile) {
       fetchRecurringTransactions();
+
+      // Set up real-time subscription for recurring incomes
+      const recurringIncomesSubscription = supabase
+        .channel(`recurring_incomes_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'incomes',
+            filter: `user_id=eq.${profile.id},is_recurring=eq.true`,
+          },
+          () => {
+            fetchRecurringTransactions();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for recurring expenses
+      const recurringExpensesSubscription = supabase
+        .channel(`recurring_expenses_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'expenses',
+            filter: `user_id=eq.${profile.id},is_recurring=eq.true`,
+          },
+          () => {
+            fetchRecurringTransactions();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        recurringIncomesSubscription.unsubscribe();
+        recurringExpensesSubscription.unsubscribe();
+      };
     }
   }, [profile, fetchRecurringTransactions]);
 

@@ -6,17 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
-import { 
-  HandCoins, 
-  Send, 
-  Check, 
-  X, 
-  Clock, 
-  DollarSign,
+import {
+  HandCoins,
+  Send,
+  Check,
+  X,
+  Clock,
   Calendar,
   User,
   ArrowDownLeft,
-  ArrowUpRight
+  ArrowUpRight,
+  Wallet
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -30,6 +30,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
+import { PaymentDialog } from '@/components/PaymentDialog';
 
 interface MoneyRequest {
   id: string;
@@ -54,6 +56,13 @@ interface MoneyRequest {
   };
 }
 
+const getUserName = (user: any) => {
+  if (!user) return 'Unknown User';
+  return user.first_name && user.last_name
+    ? `${user.first_name} ${user.last_name}`
+    : user.email || 'Unknown User';
+};
+
 export default function MoneyRequests() {
   const { profile } = useProfile();
   const [sentRequests, setSentRequests] = useState<MoneyRequest[]>([]);
@@ -61,6 +70,9 @@ export default function MoneyRequests() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('received');
   const [error, setError] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [paymentRequest, setPaymentRequest] = useState<MoneyRequest | null>(null);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const retryFetch = () => {
     fetchMoneyRequests();
@@ -174,62 +186,90 @@ export default function MoneyRequests() {
   }, [profile]);
 
   const acceptRequest = async (requestId: string) => {
-    const { error } = await supabase
-      .from('money_requests')
-      .update({ status: 'accepted', updated_at: new Date().toISOString() })
-      .eq('id', requestId);
+    setProcessingId(requestId);
+    try {
+      const { error } = await supabase
+        .from('money_requests')
+        .update({ status: 'accepted', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
 
-    if (error) {
-      showError('Failed to accept request');
-    } else {
-      showSuccess('Request accepted!');
-      fetchMoneyRequests();
+      if (error) {
+        showError('Failed to accept request');
+      } else {
+        showSuccess('Request accepted!');
+        fetchMoneyRequests();
+      }
+    } catch (error: any) {
+      showError(error.message || 'Failed to accept request');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const rejectRequest = async (requestId: string) => {
-    const { error } = await supabase
-      .from('money_requests')
-      .update({ status: 'rejected', updated_at: new Date().toISOString() })
-      .eq('id', requestId);
+    setProcessingId(requestId);
+    try {
+      const { error } = await supabase
+        .from('money_requests')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
 
-    if (error) {
-      showError('Failed to reject request');
-    } else {
-      showSuccess('Request rejected');
-      fetchMoneyRequests();
+      if (error) {
+        showError('Failed to reject request');
+      } else {
+        showSuccess('Request rejected');
+        fetchMoneyRequests();
+      }
+    } catch (error: any) {
+      showError(error.message || 'Failed to reject request');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const completeRequest = async (requestId: string) => {
-    const { error } = await supabase
-      .from('money_requests')
-      .update({ 
-        status: 'completed', 
-        updated_at: new Date().toISOString(),
-        completed_at: new Date().toISOString()
-      })
-      .eq('id', requestId);
+    setProcessingId(requestId);
+    try {
+      const { error } = await supabase
+        .from('money_requests')
+        .update({
+          status: 'completed',
+          updated_at: new Date().toISOString(),
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', requestId);
 
-    if (error) {
-      showError('Failed to mark as completed');
-    } else {
-      showSuccess('Marked as completed!');
-      fetchMoneyRequests();
+      if (error) {
+        showError('Failed to mark as completed');
+      } else {
+        showSuccess('Marked as completed!');
+        fetchMoneyRequests();
+      }
+    } catch (error: any) {
+      showError(error.message || 'Failed to mark as completed');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const cancelRequest = async (requestId: string) => {
-    const { error } = await supabase
-      .from('money_requests')
-      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-      .eq('id', requestId);
+    setProcessingId(requestId);
+    try {
+      const { error } = await supabase
+        .from('money_requests')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', requestId);
 
-    if (error) {
-      showError('Failed to cancel request');
-    } else {
-      showSuccess('Request cancelled');
-      fetchMoneyRequests();
+      if (error) {
+        showError('Failed to cancel request');
+      } else {
+        showSuccess('Request cancelled');
+        fetchMoneyRequests();
+      }
+    } catch (error: any) {
+      showError(error.message || 'Failed to cancel request');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -241,10 +281,10 @@ export default function MoneyRequests() {
       completed: { variant: 'outline', icon: Check, color: 'text-blue-600' },
       cancelled: { variant: 'outline', icon: X, color: 'text-gray-600' },
     };
-    
+
     const config = variants[status] || variants.pending;
     const IconComponent = config.icon;
-    
+
     return (
       <Badge variant={config.variant} className="flex items-center gap-1">
         <IconComponent className="h-3 w-3" />
@@ -282,6 +322,7 @@ export default function MoneyRequests() {
   const MoneyRequestCard = ({ request, isSent }: { request: MoneyRequest; isSent: boolean }) => {
     const otherUser = isSent ? request.to_user : request.from_user;
     const isRequestMoney = request.request_type === 'request_money';
+    const isProcessing = processingId === request.id;
 
     return (
       <Card>
@@ -328,19 +369,21 @@ export default function MoneyRequests() {
         <CardContent>
           {!isSent && request.status === 'pending' && (
             <div className="flex gap-2">
-              <Button 
-                onClick={() => acceptRequest(request.id)} 
-                size="sm" 
+              <Button
+                onClick={() => acceptRequest(request.id)}
+                size="sm"
                 className="flex-1"
+                disabled={isProcessing}
               >
                 <Check className="h-4 w-4 mr-2" />
-                Accept
+                {isProcessing ? 'Processing...' : 'Accept'}
               </Button>
-              <Button 
-                onClick={() => rejectRequest(request.id)} 
-                variant="outline" 
-                size="sm" 
+              <Button
+                onClick={() => rejectRequest(request.id)}
+                variant="outline"
+                size="sm"
                 className="flex-1"
+                disabled={isProcessing}
               >
                 <X className="h-4 w-4 mr-2" />
                 Decline
@@ -351,7 +394,12 @@ export default function MoneyRequests() {
             <div className="flex gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    disabled={isProcessing}
+                  >
                     <X className="h-4 w-4 mr-2" />
                     Cancel Request
                   </Button>
@@ -371,28 +419,37 @@ export default function MoneyRequests() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button 
+              <Button
                 onClick={() => {
                   // TODO: Implement edit functionality
                   showError('Edit functionality coming soon!');
-                }} 
-                variant="outline" 
+                }}
+                variant="outline"
                 size="sm"
+                disabled={isProcessing}
               >
                 Edit
               </Button>
             </div>
           )}
-          {request.status === 'accepted' && (
-            <Button 
-              onClick={() => completeRequest(request.id)} 
-              size="sm" 
+          {!isSent && request.status === 'accepted' && (
+            <Button
+              onClick={() => {
+                setPaymentRequest(request);
+                setShowPaymentDialog(true);
+              }}
+              size="sm"
               className="w-full"
-              variant="outline"
+              disabled={isProcessing}
             >
-              <Check className="h-4 w-4 mr-2" />
-              Mark as Paid
+              <Wallet className="h-4 w-4 mr-2" />
+              Pay Now
             </Button>
+          )}
+          {isSent && request.status === 'accepted' && (
+            <div className="text-center py-2 text-sm text-muted-foreground">
+              Waiting for payment...
+            </div>
           )}
         </CardContent>
       </Card>
@@ -486,6 +543,23 @@ export default function MoneyRequests() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Payment Dialog */}
+      {paymentRequest && (
+        <PaymentDialog
+          open={showPaymentDialog}
+          onOpenChange={setShowPaymentDialog}
+          moneyRequestId={paymentRequest.id}
+          amount={paymentRequest.amount}
+          receiverId={paymentRequest.from_user_id}
+          receiverName={getUserName(paymentRequest.from_user)}
+          description={paymentRequest.description}
+          onSuccess={() => {
+            setPaymentRequest(null);
+            fetchMoneyRequests();
+          }}
+        />
+      )}
     </div>
   );
 }

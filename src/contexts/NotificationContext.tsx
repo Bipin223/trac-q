@@ -88,10 +88,51 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchNotificationCounts();
     
-    // Refresh every minute
+    if (!profile) return;
+
+    // Set up real-time subscription for money requests
+    const moneyRequestSubscription = supabase
+      .channel(`money_requests_${profile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'money_requests',
+          filter: `to_user_id=eq.${profile.id}`,
+        },
+        () => {
+          fetchNotificationCounts();
+        }
+      )
+      .subscribe();
+
+    // Set up real-time subscription for friend requests
+    const friendRequestSubscription = supabase
+      .channel(`friend_requests_${profile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'friends',
+          filter: `user_id=eq.${profile.id}`,
+        },
+        () => {
+          fetchNotificationCounts();
+        }
+      )
+      .subscribe();
+
+    // Refresh every minute as fallback
     const interval = setInterval(fetchNotificationCounts, 60000);
-    return () => clearInterval(interval);
-  }, [fetchNotificationCounts]);
+
+    return () => {
+      clearInterval(interval);
+      moneyRequestSubscription.unsubscribe();
+      friendRequestSubscription.unsubscribe();
+    };
+  }, [fetchNotificationCounts, profile]);
 
   const refreshNotifications = useCallback(async () => {
     await fetchNotificationCounts();

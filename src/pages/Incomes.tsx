@@ -394,6 +394,46 @@ export default function Incomes() {
       ensureAndFetchAllCategories();
       fetchIncomes();
       fetchSubcategories();
+
+      // Set up real-time subscription for incomes
+      const incomesSubscription = supabase
+        .channel(`incomes_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'incomes',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchIncomes();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for income categories
+      const categoriesSubscription = supabase
+        .channel(`income_categories_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'categories',
+            filter: `user_id=eq.${profile.id},type=eq.income`,
+          },
+          () => {
+            ensureAndFetchAllCategories();
+            fetchSubcategories();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        incomesSubscription.unsubscribe();
+        categoriesSubscription.unsubscribe();
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useProfile } from '@/contexts/ProfileContext';
 import { Button } from '@/components/ui/button';
@@ -129,6 +130,7 @@ const shouldShowNotification = (daysUntil: number, hoursUntil: number, frequency
 };
 
 export function NotificationPanel({ open, onOpenChange, onUpdate }: NotificationPanelProps) {
+  const navigate = useNavigate();
   const { profile } = useProfile();
   const [notifications, setNotifications] = useState<RecurringNotification[]>([]);
   const [moneyRequests, setMoneyRequests] = useState<MoneyRequestNotification[]>([]);
@@ -287,8 +289,51 @@ export function NotificationPanel({ open, onOpenChange, onUpdate }: Notification
 
   useEffect(() => {
     const interval = setInterval(fetchNotifications, 60000);
+
+    if (open && profile) {
+      // Set up real-time subscription for money requests
+      const moneyRequestSubscription = supabase
+        .channel(`money_requests_panel_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'money_requests',
+            filter: `to_user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for friend requests
+      const friendRequestSubscription = supabase
+        .channel(`friend_requests_panel_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friends',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchNotifications();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        clearInterval(interval);
+        moneyRequestSubscription.unsubscribe();
+        friendRequestSubscription.unsubscribe();
+      };
+    }
+
     return () => clearInterval(interval);
-  }, [fetchNotifications]);
+  }, [fetchNotifications, open, profile]);
 
   const handleMarkAsDone = async (notification: RecurringNotification) => {
     try {
@@ -424,8 +469,8 @@ export function NotificationPanel({ open, onOpenChange, onUpdate }: Notification
                           className="flex-1"
                           onClick={() => {
                             onOpenChange(false);
-                            // Navigate to money requests page
-                            window.location.href = '/money-requests';
+                            // Navigate to money requests page using React Router
+                            navigate('/dashboard/money-requests');
                           }}
                         >
                           View Details
@@ -467,8 +512,8 @@ export function NotificationPanel({ open, onOpenChange, onUpdate }: Notification
                           className="flex-1"
                           onClick={() => {
                             onOpenChange(false);
-                            // Navigate to friends page
-                            window.location.href = '/friends';
+                            // Navigate to friends page using React Router
+                            navigate('/dashboard/friends');
                           }}
                         >
                           View Details

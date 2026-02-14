@@ -392,6 +392,46 @@ export default function Expenses() {
       ensureAndFetchAllCategories();
       fetchExpenses();
       fetchSubcategories();
+
+      // Set up real-time subscription for expenses
+      const expensesSubscription = supabase
+        .channel(`expenses_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'expenses',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchExpenses();
+          }
+        )
+        .subscribe();
+
+      // Set up real-time subscription for expense categories
+      const categoriesSubscription = supabase
+        .channel(`expense_categories_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'categories',
+            filter: `user_id=eq.${profile.id},type=eq.expense`,
+          },
+          () => {
+            ensureAndFetchAllCategories();
+            fetchSubcategories();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        expensesSubscription.unsubscribe();
+        categoriesSubscription.unsubscribe();
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);

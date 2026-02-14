@@ -4,6 +4,7 @@ import { useSession } from '@supabase/auth-helpers-react';
 import { supabase } from './integrations/supabase/client';
 import { showSuccess } from './utils/toast';
 import Sidebar, { SidebarContent } from './components/Sidebar';
+import { PageTransition } from './components/PageTransition';
 import Dashboard from './pages/Dashboard';
 import Incomes from './pages/Incomes';
 import Expenses from './pages/Expenses';
@@ -191,32 +192,34 @@ function App() {
             onOpenChange={setShowNotificationPanel}
             onUpdate={refreshNotifications}
           />
-          <div className="container mx-auto px-6 py-8">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/accounts" element={<Accounts />} />
-              <Route path="/incomes" element={<Incomes />} />
-              <Route path="/expenses" element={<Expenses />} />
-              <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
-              <Route path="/calculators" element={<CalculatorHub />} />
-              <Route path="/tax-calculator" element={<TaxCalculator />} />
-              <Route path="/discount-calculator" element={<DiscountCalculator />} />
-              <Route path="/savings-investment" element={<SavingsInvestment />} />
-              <Route path="/loan-calculator" element={<LoanCalculator />} />
-              <Route path="/comparison" element={<Comparison />} />
-              <Route path="/recurring" element={<RecurringTransactions />} />
-              <Route path="/daily-wallet" element={<DailyWallet />} />
-              <Route path="/date-converter" element={<DateConverter />} />
-              <Route path="/profile" element={<ProfileEnhanced />} />
-              <Route path="/lend-borrow" element={<LendBorrowPage />} />
-              <Route path="/friends" element={<Friends />} />
-              <Route path="/money-requests" element={<MoneyRequests />} />
-              <Route path="/split-bills" element={<SplitBills />} />
-              <Route path="/pending-transactions" element={<PendingTransactions />} />
-              {/*isAdmin && <Route path="/admin/accounts" element={<AdminAccountsPage />} />*/}
-              {isAdmin && <Route path="/admin/users" element={<AdminUsersPage />} />}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Routes>
+          <div className="container mx-auto px-6 py-8 route-container">
+            <PageTransition>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/accounts" element={<Accounts />} />
+                <Route path="/incomes" element={<Incomes />} />
+                <Route path="/expenses" element={<Expenses />} />
+                <Route path="/exchange-rates" element={<ExchangeRatesPage />} />
+                <Route path="/calculators" element={<CalculatorHub />} />
+                <Route path="/tax-calculator" element={<TaxCalculator />} />
+                <Route path="/discount-calculator" element={<DiscountCalculator />} />
+                <Route path="/savings-investment" element={<SavingsInvestment />} />
+                <Route path="/loan-calculator" element={<LoanCalculator />} />
+                <Route path="/comparison" element={<Comparison />} />
+                <Route path="/recurring" element={<RecurringTransactions />} />
+                <Route path="/daily-wallet" element={<DailyWallet />} />
+                <Route path="/date-converter" element={<DateConverter />} />
+                <Route path="/profile" element={<ProfileEnhanced />} />
+                <Route path="/lend-borrow" element={<LendBorrowPage />} />
+                <Route path="/friends" element={<Friends />} />
+                <Route path="/money-requests" element={<MoneyRequests />} />
+                <Route path="/split-bills" element={<SplitBills />} />
+                <Route path="/pending-transactions" element={<PendingTransactions />} />
+                {/*isAdmin && <Route path="/admin/accounts" element={<AdminAccountsPage />} />*/}
+                {isAdmin && <Route path="/admin/users" element={<AdminUsersPage />} />}
+                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              </Routes>
+            </PageTransition>
           </div>
         </main>
       </div>

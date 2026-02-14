@@ -81,6 +81,45 @@ export default function Comparison() {
       fetchFinancialData();
       fetchYearComparison();
       fetchCategoryBreakdown();
+
+      // Set up real-time subscription for comparison data
+      const comparisonSubscription = supabase
+        .channel(`comparison_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'incomes',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchAvailableYears();
+            fetchFinancialData();
+            fetchYearComparison();
+            fetchCategoryBreakdown();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'expenses',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchAvailableYears();
+            fetchFinancialData();
+            fetchYearComparison();
+            fetchCategoryBreakdown();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        comparisonSubscription.unsubscribe();
+      };
     }
   }, [profile, periodType, selectedYear1, selectedYear2, selectedMonth1, selectedMonth2]);
 

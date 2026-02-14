@@ -81,6 +81,39 @@ export default function PendingTransactions() {
     if (profile) {
       fetchPendingTransactions();
       fetchFriends();
+
+      // Set up real-time subscription for pending transactions
+      const pendingTransactionsSubscription = supabase
+        .channel(`pending_transactions_${profile.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'pending_transactions',
+            filter: `sender_id=eq.${profile.id},receiver_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchPendingTransactions();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'pending_transactions',
+            filter: `receiver_id=eq.${profile.id}`,
+          },
+          () => {
+            fetchPendingTransactions();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        pendingTransactionsSubscription.unsubscribe();
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
