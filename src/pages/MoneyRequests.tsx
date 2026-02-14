@@ -29,7 +29,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MoneyRequest {
   id: string;
@@ -60,12 +60,11 @@ export default function MoneyRequests() {
   const [receivedRequests, setReceivedRequests] = useState<MoneyRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('received');
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (profile) {
-      fetchMoneyRequests();
-    }
-  }, [profile]);
+  const retryFetch = () => {
+    fetchMoneyRequests();
+  };
 
   const fetchMoneyRequests = async () => {
     if (!profile) return;
@@ -123,13 +122,56 @@ export default function MoneyRequests() {
 
       setSentRequests(enrichData(sentData || []));
       setReceivedRequests(enrichData(receivedData || []));
+      setError(null);
     } catch (error: any) {
       console.error('Unexpected error:', error);
+      setError(error.message || 'Failed to load money requests');
       showError('Failed to load money requests');
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (profile) {
+      fetchMoneyRequests();
+
+      // Set up real-time subscription for money requests
+      const subscription = supabase
+        .channel('money_requests_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'money_requests',
+            filter: `from_user_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            console.log('Money request change (sent):', payload);
+            fetchMoneyRequests();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'money_requests',
+            filter: `to_user_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            console.log('Money request change (received):', payload);
+            fetchMoneyRequests();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [profile]);
 
   const acceptRequest = async (requestId: string) => {
     const { error } = await supabase
@@ -193,20 +235,49 @@ export default function MoneyRequests() {
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, any> = {
-      pending: 'default',
-      accepted: 'secondary',
-      rejected: 'destructive',
-      completed: 'outline',
-      cancelled: 'outline',
+      pending: { variant: 'default', icon: Clock, color: 'text-yellow-600' },
+      accepted: { variant: 'secondary', icon: Check, color: 'text-green-600' },
+      rejected: { variant: 'destructive', icon: X, color: 'text-red-600' },
+      completed: { variant: 'outline', icon: Check, color: 'text-blue-600' },
+      cancelled: { variant: 'outline', icon: X, color: 'text-gray-600' },
     };
-    return <Badge variant={variants[status] || 'default'}>{status}</Badge>;
+    
+    const config = variants[status] || variants.pending;
+    const IconComponent = config.icon;
+    
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-1">
+        <IconComponent className="h-3 w-3" />
+        {status}
+      </Badge>
+    );
   };
 
-  const getUserName = (user: any) => {
-    return user.first_name && user.last_name
-      ? `${user.first_name} ${user.last_name}`
-      : user.email;
-  };
+  const MoneyRequestSkeleton = () => (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-6 w-20" />
+            </div>
+            <Skeleton className="h-5 w-32 mb-1" />
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-6 w-24 mt-2" />
+            <Skeleton className="h-3 w-20 mt-2" />
+          </div>
+          <Skeleton className="h-6 w-16" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-2">
+          <Skeleton className="h-8 flex-1" />
+          <Skeleton className="h-8 flex-1" />
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   const MoneyRequestCard = ({ request, isSent }: { request: MoneyRequest; isSent: boolean }) => {
     const otherUser = isSent ? request.to_user : request.from_user;
@@ -277,28 +348,40 @@ export default function MoneyRequests() {
             </div>
           )}
           {isSent && request.status === 'pending' && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="w-full">
-                  <X className="h-4 w-4 mr-2" />
-                  Cancel Request
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Cancel Request?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to cancel this money request?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>No</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => cancelRequest(request.id)}>
-                    Yes, Cancel
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <div className="flex gap-2">
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="flex-1">
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Request
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Request?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to cancel this money request?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>No</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => cancelRequest(request.id)}>
+                      Yes, Cancel
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button 
+                onClick={() => {
+                  // TODO: Implement edit functionality
+                  showError('Edit functionality coming soon!');
+                }} 
+                variant="outline" 
+                size="sm"
+              >
+                Edit
+              </Button>
+            </div>
           )}
           {request.status === 'accepted' && (
             <Button 
@@ -338,7 +421,23 @@ export default function MoneyRequests() {
         </TabsList>
 
         <TabsContent value="received" className="mt-6">
-          {receivedRequests.length === 0 ? (
+          {error ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <X className="h-12 w-12 text-destructive mb-4" />
+                <p className="text-destructive mb-4">{error}</p>
+                <Button onClick={retryFetch} variant="outline">
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          ) : loading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <MoneyRequestSkeleton key={i} />
+              ))}
+            </div>
+          ) : receivedRequests.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <HandCoins className="h-12 w-12 text-muted-foreground mb-4" />
@@ -355,7 +454,23 @@ export default function MoneyRequests() {
         </TabsContent>
 
         <TabsContent value="sent" className="mt-6">
-          {sentRequests.length === 0 ? (
+          {error ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                <X className="h-12 w-12 text-destructive mb-4" />
+                <p className="text-destructive mb-4">{error}</p>
+                <Button onClick={retryFetch} variant="outline">
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          ) : loading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <MoneyRequestSkeleton key={i} />
+              ))}
+            </div>
+          ) : sentRequests.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                 <Send className="h-12 w-12 text-muted-foreground mb-4" />

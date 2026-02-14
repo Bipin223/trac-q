@@ -13,6 +13,15 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -75,6 +84,8 @@ export function MoneyRequestDialog({
 }: MoneyRequestDialogProps) {
   const { profile } = useProfile();
   const [loading, setLoading] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [pendingValues, setPendingValues] = useState<z.infer<typeof formSchema> | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -90,22 +101,28 @@ export function MoneyRequestDialog({
   const requestType = form.watch('request_type');
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!profile) return;
+    setPendingValues(values);
+    setShowConfirmation(true);
+  };
+
+  const confirmSubmit = async () => {
+    if (!profile || !pendingValues) return;
 
     setLoading(true);
+    setShowConfirmation(false);
     try {
       const requestData: any = {
         from_user_id: profile.id,
-        to_user_id: values.friend_id,
-        amount: values.amount,
+        to_user_id: pendingValues.friend_id,
+        amount: pendingValues.amount,
         currency: 'NPR',
-        description: values.description,
-        request_type: values.request_type,
+        description: pendingValues.description,
+        request_type: pendingValues.request_type,
         status: 'pending',
       };
 
-      if (values.due_date) {
-        requestData.due_date = values.due_date.toISOString();
+      if (pendingValues.due_date) {
+        requestData.due_date = pendingValues.due_date.toISOString();
       }
 
       const { error } = await supabase
@@ -114,12 +131,13 @@ export function MoneyRequestDialog({
 
       if (error) throw error;
 
-      const actionText = values.request_type === 'request_money' 
+      const actionText = pendingValues.request_type === 'request_money' 
         ? 'Money request sent' 
         : 'Payment request sent';
       
       showSuccess(`${actionText} successfully!`);
       form.reset();
+      setPendingValues(null);
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
@@ -131,6 +149,7 @@ export function MoneyRequestDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
@@ -323,5 +342,51 @@ export function MoneyRequestDialog({
         </Form>
       </DialogContent>
     </Dialog>
+
+    {/* Confirmation Dialog */}
+    <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Money Request</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingValues && (
+              <div className="space-y-2">
+                <p>
+                  You are about to {pendingValues.request_type === 'request_money' ? 'request' : 'send'} 
+                  <span className="font-semibold"> NPR {pendingValues.amount.toLocaleString()}</span> 
+                  {pendingValues.request_type === 'request_money' ? ' from ' : ' to '}
+                  <span className="font-semibold">
+                    {friends.find(f => f.friend_id === pendingValues.friend_id)?.friend_profile.first_name} 
+                    {friends.find(f => f.friend_id === pendingValues.friend_id)?.friend_profile.last_name}
+                  </span>
+                </p>
+                {pendingValues.description && (
+                  <p className="text-sm text-muted-foreground">
+                    Description: {pendingValues.description}
+                  </p>
+                )}
+                {pendingValues.due_date && (
+                  <p className="text-sm text-muted-foreground">
+                    Due date: {format(pendingValues.due_date, 'PPP')}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground">
+                  This action cannot be undone. The recipient will be notified immediately.
+                </p>
+              </div>
+            )}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setShowConfirmation(false)}>
+            Cancel
+          </AlertDialogAction>
+          <AlertDialogAction onClick={confirmSubmit} className="bg-primary">
+            {loading ? 'Sending...' : 'Confirm & Send'}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

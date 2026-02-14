@@ -47,7 +47,7 @@ function App() {
   const session = useSession();
   const navigate = useNavigate();
   const { profile, loading } = useProfile();
-  const { todayCount, upcomingCount, refreshNotifications } = useNotifications();
+  const { todayCount, upcomingCount, moneyRequestsCount, friendRequestsCount, refreshNotifications } = useNotifications();
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
@@ -154,12 +154,12 @@ function App() {
                     onClick={() => setShowNotificationPanel(true)}
                   >
                     <Bell className="h-5 w-5" />
-                    {(todayCount + upcomingCount) > 0 && (
+                    {(todayCount + upcomingCount + moneyRequestsCount + friendRequestsCount) > 0 && (
                       <Badge 
                         variant="destructive" 
                         className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                       >
-                        {todayCount + upcomingCount}
+                        {todayCount + upcomingCount + moneyRequestsCount + friendRequestsCount}
                       </Badge>
                     )}
                   </Button>
@@ -168,7 +168,9 @@ function App() {
                   <div className="text-sm">
                     {todayCount > 0 && <p className="text-red-600 font-semibold">{todayCount} due today</p>}
                     {upcomingCount > 0 && <p>{upcomingCount} upcoming</p>}
-                    {(todayCount + upcomingCount) === 0 && <p>No notifications</p>}
+                    {moneyRequestsCount > 0 && <p className="text-blue-600">{moneyRequestsCount} money requests</p>}
+                    {friendRequestsCount > 0 && <p className="text-green-600">{friendRequestsCount} friend requests</p>}
+                    {(todayCount + upcomingCount + moneyRequestsCount + friendRequestsCount) === 0 && <p>No notifications</p>}
                   </div>
                 </TooltipContent>
               </Tooltip>

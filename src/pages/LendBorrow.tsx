@@ -35,6 +35,28 @@ export default function LendBorrowPage() {
   useEffect(() => {
     if (profile) {
       fetchData();
+
+      // Set up real-time subscription for lend/borrow entries
+      const subscription = supabase
+        .channel('lend_borrow_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'lend_borrow',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            console.log('Lend/Borrow change:', payload);
+            fetchData();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        subscription.unsubscribe();
+      };
     }
   }, [profile]);
 

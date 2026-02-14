@@ -50,6 +50,28 @@ interface RecurringNotification {
   recurring_day?: number;
 }
 
+interface MoneyRequestNotification {
+  id: string;
+  amount: number;
+  description: string;
+  from_user: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  created_at: string;
+}
+
+interface FriendRequestNotification {
+  id: string;
+  requester_profile: {
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  created_at: string;
+}
+
 interface NotificationPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -109,6 +131,8 @@ const shouldShowNotification = (daysUntil: number, hoursUntil: number, frequency
 export function NotificationPanel({ open, onOpenChange, onUpdate }: NotificationPanelProps) {
   const { profile } = useProfile();
   const [notifications, setNotifications] = useState<RecurringNotification[]>([]);
+  const [moneyRequests, setMoneyRequests] = useState<MoneyRequestNotification[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequestNotification[]>([]);
   const [selectedNotification, setSelectedNotification] = useState<RecurringNotification | null>(null);
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [showDismissConfirm, setShowDismissConfirm] = useState(false);
@@ -200,6 +224,56 @@ export function NotificationPanel({ open, onOpenChange, onUpdate }: Notification
       }
 
       setNotifications(allNotifications);
+
+      // Fetch money requests
+      const { data: moneyReqData } = await supabase
+        .from('money_requests')
+        .select('id, amount, description, from_user_id, created_at')
+        .eq('to_user_id', profile.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (moneyReqData) {
+        const userIds = moneyReqData.map(req => req.from_user_id);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        
+        const enrichedRequests = moneyReqData.map(req => ({
+          ...req,
+          from_user: profilesMap.get(req.from_user_id) || { first_name: '', last_name: '', email: 'Unknown' }
+        }));
+        
+        setMoneyRequests(enrichedRequests);
+      }
+
+      // Fetch friend requests
+      const { data: friendReqData } = await supabase
+        .from('friends')
+        .select('id, requested_by, created_at')
+        .eq('user_id', profile.id)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+
+      if (friendReqData) {
+        const userIds = friendReqData.map(req => req.requested_by);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', userIds);
+
+        const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+        
+        const enrichedRequests = friendReqData.map(req => ({
+          ...req,
+          requester_profile: profilesMap.get(req.requested_by) || { first_name: '', last_name: '', email: 'Unknown' }
+        }));
+        
+        setFriendRequests(enrichedRequests);
+      }
     } catch (error) {
       console.error('Error fetching notifications:', error);
     }
@@ -319,79 +393,175 @@ export function NotificationPanel({ open, onOpenChange, onUpdate }: Notification
           </SheetHeader>
 
           <ScrollArea className="h-[calc(100vh-120px)] mt-6">
-            {notifications.length === 0 ? (
+            {/* Money Requests Section */}
+            {moneyRequests.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <span className="h-2 w-2 bg-blue-500 rounded-full"></span>
+                  Money Requests ({moneyRequests.length})
+                </h3>
+                <div className="space-y-3">
+                  {moneyRequests.map((request) => (
+                    <div key={request.id} className="p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="secondary" className="text-xs">Money Request</Badge>
+                          </div>
+                          <h4 className="font-semibold truncate">
+                            From {request.from_user.first_name} {request.from_user.last_name}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">{request.description}</p>
+                          <p className="text-lg font-bold mt-1 text-blue-600">
+                            NPR {request.amount.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1"
+                          onClick={() => {
+                            onOpenChange(false);
+                            // Navigate to money requests page
+                            window.location.href = '/money-requests';
+                          }}
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Friend Requests Section */}
+            {friendRequests.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <span className="h-2 w-2 bg-green-500 rounded-full"></span>
+                  Friend Requests ({friendRequests.length})
+                </h3>
+                <div className="space-y-3">
+                  {friendRequests.map((request) => (
+                    <div key={request.id} className="p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className="text-xs">Friend Request</Badge>
+                          </div>
+                          <h4 className="font-semibold truncate">
+                            From {request.requester_profile.first_name} {request.requester_profile.last_name}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {request.requester_profile.email}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1"
+                          onClick={() => {
+                            onOpenChange(false);
+                            // Navigate to friends page
+                            window.location.href = '/friends';
+                          }}
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Recurring Transactions Section */}
+            {notifications.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  <span className="h-2 w-2 bg-amber-500 rounded-full"></span>
+                  Recurring Transactions ({notifications.length})
+                </h3>
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`
+                        p-4 rounded-lg border transition-all duration-500
+                        ${notification.isToday 
+                          ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' 
+                          : 'bg-card border-border hover:border-primary/50'
+                        }
+                        ${animatingItems.has(notification.id) 
+                          ? 'animate-in fade-in fade-in slide-in-from-right-5' 
+                          : ''
+                        }
+                      `}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant={notification.type === 'income' ? 'default' : 'destructive'} className="text-xs">
+                              {notification.type}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {getDaysLabel(notification)}
+                            </Badge>
+                          </div>
+                          <h4 className="font-semibold truncate">{notification.description}</h4>
+                          <p className="text-sm text-muted-foreground">{notification.category}</p>
+                          <p className="text-lg font-bold mt-1">
+                            NPR {notification.amount.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <Calendar className="inline h-3 w-3 mr-1" />
+                            {format(notification.dueDate, 'MMM dd, yyyy')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="flex-1"
+                          onClick={() => openActionDialog(notification, 'mark-done')}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-1" />
+                          Complete
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openActionDialog(notification, 'edit')}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openActionDialog(notification, 'skip')}
+                        >
+                          <XCircle className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {notifications.length === 0 && moneyRequests.length === 0 && friendRequests.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Clock className="h-12 w-12 text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">No notifications right now</p>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`
-                      p-4 rounded-lg border transition-all duration-500
-                      ${notification.isToday 
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' 
-                        : 'bg-card border-border hover:border-primary/50'
-                      }
-                      ${animatingItems.has(notification.id) 
-                        ? 'animate-in fade-in slide-in-from-right-5' 
-                        : ''
-                      }
-                    `}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant={notification.type === 'income' ? 'default' : 'destructive'} className="text-xs">
-                            {notification.type}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {getDaysLabel(notification)}
-                          </Badge>
-                        </div>
-                        <h4 className="font-semibold truncate">{notification.description}</h4>
-                        <p className="text-sm text-muted-foreground">{notification.category}</p>
-                        <p className="text-lg font-bold mt-1">
-                          NPR {notification.amount.toLocaleString()}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          <Calendar className="inline h-3 w-3 mr-1" />
-                          {format(notification.dueDate, 'MMM dd, yyyy')}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="flex-1"
-                        onClick={() => openActionDialog(notification, 'mark-done')}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Complete
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openActionDialog(notification, 'edit')}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openActionDialog(notification, 'skip')}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+            ) : null}
           </ScrollArea>
         </SheetContent>
       </Sheet>

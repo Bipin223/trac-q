@@ -92,6 +92,43 @@ export default function Friends() {
       fetchFriends();
       fetchFriendRequests();
       fetchUserFriendCode();
+
+      // Set up real-time subscriptions for friends and friend requests
+      const friendsSubscription = supabase
+        .channel('friends_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friends',
+            filter: `user_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            console.log('Friends change:', payload);
+            fetchFriends();
+            fetchFriendRequests();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friends',
+            filter: `friend_id=eq.${profile.id}`,
+          },
+          (payload) => {
+            console.log('Friends change (as friend):', payload);
+            fetchFriends();
+            fetchFriendRequests();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        friendsSubscription.unsubscribe();
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);

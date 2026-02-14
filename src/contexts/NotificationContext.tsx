@@ -7,6 +7,8 @@ interface NotificationContextType {
   recurringCount: number;
   todayCount: number;
   upcomingCount: number;
+  moneyRequestsCount: number;
+  friendRequestsCount: number;
   refreshNotifications: () => Promise<void>;
 }
 
@@ -17,12 +19,16 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [recurringCount, setRecurringCount] = useState(0);
   const [todayCount, setTodayCount] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
+  const [moneyRequestsCount, setMoneyRequestsCount] = useState(0);
+  const [friendRequestsCount, setFriendRequestsCount] = useState(0);
 
   const fetchNotificationCounts = useCallback(async () => {
     if (!profile) {
       setRecurringCount(0);
       setTodayCount(0);
       setUpcomingCount(0);
+      setMoneyRequestsCount(0);
+      setFriendRequestsCount(0);
       return;
     }
 
@@ -34,7 +40,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       const todayStr = today.toISOString().split('T')[0];
       const futureDateStr = futureDate.toISOString().split('T')[0];
 
-      const [incomesRes, expensesRes] = await Promise.all([
+      const [incomesRes, expensesRes, moneyRequestsRes, friendRequestsRes] = await Promise.all([
         supabase
           .from('incomes')
           .select('id, income_date')
@@ -49,6 +55,16 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
           .eq('is_recurring', true)
           .gte('expense_date', todayStr)
           .lte('expense_date', futureDateStr),
+        supabase
+          .from('money_requests')
+          .select('id')
+          .eq('to_user_id', profile.id)
+          .eq('status', 'pending'),
+        supabase
+          .from('friends')
+          .select('id')
+          .eq('user_id', profile.id)
+          .eq('status', 'pending'),
       ]);
 
       const allItems = [
@@ -62,6 +78,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       setRecurringCount(allItems.length);
       setTodayCount(todayItems.length);
       setUpcomingCount(upcomingItems.length);
+      setMoneyRequestsCount(moneyRequestsRes.data?.length || 0);
+      setFriendRequestsCount(friendRequestsRes.data?.length || 0);
     } catch (error) {
       console.error('Error fetching notification counts:', error);
     }
@@ -80,7 +98,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   }, [fetchNotificationCounts]);
 
   return (
-    <NotificationContext.Provider value={{ recurringCount, todayCount, upcomingCount, refreshNotifications }}>
+    <NotificationContext.Provider value={{ recurringCount, todayCount, upcomingCount, moneyRequestsCount, friendRequestsCount, refreshNotifications }}>
       {children}
     </NotificationContext.Provider>
   );

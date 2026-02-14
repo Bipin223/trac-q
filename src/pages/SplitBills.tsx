@@ -294,6 +294,39 @@ export default function SplitBills() {
     if (profile) {
       fetchFriends();
       fetchSplitBills();
+
+      // Set up real-time subscriptions for split bills
+      const splitBillsSubscription = supabase
+        .channel('split_bills_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'split_bills',
+          },
+          (payload) => {
+            console.log('Split bills change:', payload);
+            fetchSplitBills();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'split_bill_participants',
+          },
+          (payload) => {
+            console.log('Split bill participants change:', payload);
+            fetchSplitBills();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        splitBillsSubscription.unsubscribe();
+      };
     }
   }, [profile]);
 
