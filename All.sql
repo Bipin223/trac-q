@@ -433,6 +433,48 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Function to get user info by email (used by frontend)
+CREATE OR REPLACE FUNCTION get_user_by_email(user_email TEXT)
+RETURNS TABLE (id UUID, email TEXT) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT u.id, u.email
+  FROM auth.users u
+  WHERE u.email = user_email;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to verify OTP separately (used by frontend)
+CREATE OR REPLACE FUNCTION verify_otp(p_user_id UUID, p_otp_code VARCHAR)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM password_reset_otps
+    WHERE user_id = p_user_id
+    AND otp_code = p_otp_code
+    AND used = FALSE
+    AND expires_at > NOW()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to update user password
+CREATE OR REPLACE FUNCTION update_user_password(user_id UUID, new_password TEXT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE auth.users
+  SET encrypted_password = crypt(new_password, gen_salt('bf'))
+  WHERE id = user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to grant permissions to anon/authenticated for OTP system
+-- This is needed for the forgot password flow where user is not yet logged in
+GRANT INSERT, SELECT, UPDATE ON public.password_reset_otps TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION get_user_by_email(TEXT) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION verify_otp(UUID, VARCHAR) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION update_user_password(UUID, TEXT) TO anon, authenticated;
+
 -- Function to verify and reset password using OTP
 CREATE OR REPLACE FUNCTION verify_otp_and_reset_password(
   user_email TEXT,
@@ -463,9 +505,8 @@ BEGIN
     RETURN FALSE;
   END IF;
   
-  UPDATE auth.users
-  SET encrypted_password = crypt(new_password, gen_salt('bf'))
-  WHERE id = user_uuid;
+  -- Update using the already defined function
+  PERFORM update_user_password(user_uuid, new_password);
   
   UPDATE password_reset_otps
   SET used = TRUE

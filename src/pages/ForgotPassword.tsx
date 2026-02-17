@@ -28,7 +28,7 @@ const ForgotPasswordPage = () => {
 
     const start = localPart.substring(0, 2);
     const redacted = start + '*'.repeat(localPart.length - 2);
-    
+
     return `${redacted}@${domain}`;
   };
 
@@ -61,14 +61,14 @@ const ForgotPasswordPage = () => {
         // User found by email
         targetEmail = userData[0].email;
         targetUserId = userData[0].id;
-        
+
         // Get username from profiles table
         const { data: profileData } = await supabase
           .from('profiles')
           .select('username')
           .eq('id', targetUserId)
           .single();
-        
+
         targetUsername = profileData?.username || '';
       } else {
         setError('No account found with that email. Please try again.');
@@ -89,7 +89,7 @@ const ForgotPasswordPage = () => {
       console.error('Error finding account:', err);
       setError('An error occurred while searching for your account. Please try again.');
     }
-    
+
     setLoading(false);
   };
 
@@ -117,10 +117,10 @@ const ForgotPasswordPage = () => {
       // Send email with OTP using Supabase Edge Function
       try {
         const { data: functionData, error: functionError } = await supabase.functions.invoke('send-otp-email', {
-          body: { 
-            email: email, 
+          body: {
+            email: email,
             otp: otpCode,
-            username: username 
+            username: username
           }
         });
 
@@ -139,7 +139,7 @@ const ForgotPasswordPage = () => {
         console.log(`OTP for ${email}: ${otpCode}`);
         setMessage(`A 6-digit OTP code has been sent to ${redactEmail(email)}. Please check your email. (Dev: Check console)`);
       }
-      
+
       setStep(2);
     } catch (err) {
       console.error('Error sending OTP:', err);
@@ -153,24 +153,14 @@ const ForgotPasswordPage = () => {
     setError(null);
 
     try {
-      // Verify OTP from database
-      const { data: otpData, error: otpError } = await supabase
-        .from('password_reset_otps')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('otp_code', otp.trim())
-        .eq('used', false)
-        .single();
+      // Verify OTP using RPC
+      const { data: isValid, error: otpError } = await supabase.rpc('verify_otp', {
+        p_user_id: userId,
+        p_otp_code: otp.trim()
+      });
 
-      if (otpError || !otpData) {
-        setError('Invalid OTP code. Please try again.');
-        setLoading(false);
-        return;
-      }
-
-      // Check if OTP is expired
-      if (new Date(otpData.expires_at) < new Date()) {
-        setError('OTP code has expired. Please request a new one.');
+      if (otpError || !isValid) {
+        setError('Invalid or expired OTP code. Please try again.');
         setLoading(false);
         return;
       }
@@ -325,8 +315,8 @@ const ForgotPasswordPage = () => {
                 </div>
 
                 {/* Send OTP Button */}
-                <Button 
-                  onClick={() => sendOTP(foundEmail, userId, foundUsername)} 
+                <Button
+                  onClick={() => sendOTP(foundEmail, userId, foundUsername)}
                   disabled={loading}
                   className="w-full"
                 >
@@ -334,9 +324,9 @@ const ForgotPasswordPage = () => {
                 </Button>
 
                 {/* Change Email Button */}
-                <Button 
+                <Button
                   type="button"
-                  variant="ghost" 
+                  variant="ghost"
                   onClick={() => {
                     setAccountFound(false);
                     setIdentifier('');
@@ -380,7 +370,7 @@ const ForgotPasswordPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md text-center">
               <p className="text-sm text-muted-foreground mb-1">OTP sent to:</p>
               <p className="font-semibold text-purple-600 dark:text-purple-400">{redactEmail(foundEmail)}</p>
@@ -407,9 +397,9 @@ const ForgotPasswordPage = () => {
               <Button type="submit" disabled={loading || otp.length !== 6} className="w-full">
                 {loading ? 'Verifying...' : 'Verify OTP'}
               </Button>
-              <Button 
-                type="button" 
-                variant="ghost" 
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => sendOTP(foundEmail, userId, foundUsername)}
                 className="w-full"
               >
