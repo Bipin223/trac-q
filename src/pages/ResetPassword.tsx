@@ -21,7 +21,7 @@ const ResetPasswordPage = () => {
     // This effect runs once to check for the recovery token.
     // Supabase client automatically handles the session from the URL fragment.
     // We listen for the PASSWORD_RECOVERY event to confirm we are in the right state.
-    
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
         setTokenFound(true);
@@ -47,8 +47,8 @@ const ResetPasswordPage = () => {
       return;
     }
     if (password.length < 6) {
-        setError("Password must be at least 6 characters long.");
-        return;
+      setError("Password must be at least 6 characters long.");
+      return;
     }
 
     setLoading(true);
@@ -82,20 +82,20 @@ const ResetPasswordPage = () => {
   if (!tokenFound) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-          <div className="w-full max-w-md space-y-6 text-center">
-              <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Invalid Link</AlertTitle>
-                  <AlertDescription>
-                      The password reset link is invalid or has expired. Please request a new one.
-                  </AlertDescription>
-              </Alert>
-               <div className="mt-4 text-center text-sm">
-                  <Link to="/forgot-password" className="underline font-semibold">
-                      Request a new link
-                  </Link>
-              </div>
+        <div className="w-full max-w-md space-y-6 text-center">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Invalid Link</AlertTitle>
+            <AlertDescription>
+              The password reset link is invalid or has expired. Please request a new one.
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4 text-center text-sm">
+            <Link to="/forgot-password" className="underline font-semibold">
+              Request a new link
+            </Link>
           </div>
+        </div>
       </div>
     )
   }
@@ -130,33 +130,33 @@ const ResetPasswordPage = () => {
           <div className="space-y-2">
             <Label htmlFor="password">New Password</Label>
             <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    required
-                    disabled={!!message}
-                    className="pl-10"
-                />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter new password"
+                required
+                disabled={!!message}
+                className="pl-10"
+              />
             </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm-password">Confirm New Password</Label>
             <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input
-                    id="confirm-password"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm new password"
-                    required
-                    disabled={!!message}
-                    className="pl-10"
-                />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                required
+                disabled={!!message}
+                className="pl-10"
+              />
             </div>
           </div>
           <Button type="submit" disabled={loading || !!message} className="w-full">
