@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { useProfile } from '@/contexts/ProfileContext';
 
 const navItems = [
   { to: '/dashboard', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
@@ -39,14 +38,31 @@ interface SidebarContentProps {
 export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarContentProps) => {
   const supabase = useSupabaseClient();
   const navigate = useNavigate();
-  const { profile } = useProfile();
 
   const handleLogout = async () => {
     if (onLinkClick) onLinkClick();
-    // Supabase's signOut() handles its own session cleanup
-    // Don't clear localStorage/sessionStorage to preserve remembered users
-    await supabase.auth.signOut();
-    navigate('/login');
+    try {
+      // Supabase signOut might fail if session is already invalid
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      // Selective clearing to preserve theme and "Remember me" data
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      });
+      sessionStorage.clear();
+      // Remove specific Supabase cookies
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      // Use window.location.href for a full reload to clear all React state/contexts
+      window.location.href = '/login';
+    }
   };
 
   return (

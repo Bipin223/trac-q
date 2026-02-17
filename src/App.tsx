@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
-import { useSession } from '@supabase/auth-helpers-react';
 import { supabase } from './integrations/supabase/client';
 import { showSuccess } from './utils/toast';
 import Sidebar, { SidebarContent } from './components/Sidebar';
@@ -45,7 +44,6 @@ import {
 } from './components/ui/tooltip';
 
 function App() {
-  const session = useSession();
   const navigate = useNavigate();
   const { profile, loading } = useProfile();
   const { todayCount, upcomingCount, moneyRequestsCount, friendRequestsCount, refreshNotifications } = useNotifications();
@@ -54,11 +52,24 @@ function App() {
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
 
   const handleLogout = async () => {
-    // Supabase's signOut() handles its own session cleanup
-    // Don't clear localStorage/sessionStorage to preserve remembered users
-    // and avoid race conditions with auth state
-    await supabase.auth.signOut();
-    navigate('/');
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('sb-') || key.includes('supabase')) {
+          localStorage.removeItem(key);
+        }
+      });
+      sessionStorage.clear();
+      document.cookie.split(";").forEach((c) => {
+        document.cookie = c
+          .replace(/^ +/, "")
+          .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+      });
+      window.location.href = '/login';
+    }
   };
 
   // Global copy event listener
@@ -148,16 +159,16 @@ function App() {
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="relative" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative"
                     onClick={() => setShowNotificationPanel(true)}
                   >
                     <Bell className="h-5 w-5" />
                     {(todayCount + upcomingCount + moneyRequestsCount + friendRequestsCount) > 0 && (
-                      <Badge 
-                        variant="destructive" 
+                      <Badge
+                        variant="destructive"
                         className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                       >
                         {todayCount + upcomingCount + moneyRequestsCount + friendRequestsCount}
@@ -187,8 +198,8 @@ function App() {
           </div>
         </header>
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-background">
-          <NotificationPanel 
-            open={showNotificationPanel} 
+          <NotificationPanel
+            open={showNotificationPanel}
             onOpenChange={setShowNotificationPanel}
             onUpdate={refreshNotifications}
           />
