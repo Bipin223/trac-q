@@ -6,11 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { showSuccess, showError } from '@/utils/toast';
-import { 
-  ArrowRight, 
+import {
+  ArrowRight,
   ArrowLeft,
-  Check, 
-  X, 
+  Check,
+  X,
   Clock,
   Send,
   Inbox,
@@ -50,14 +50,14 @@ interface PendingTransaction {
   receiver_accepted: boolean;
   initiated_by: string;
   transaction_date: string;
-  sender_profile: { full_name: string; email: string };
-  receiver_profile: { full_name: string; email: string };
+  sender_profile: { first_name: string; last_name: string; email: string };
+  receiver_profile: { first_name: string; last_name: string; email: string };
   created_at: string;
 }
 
 interface Friend {
   friend_id: string;
-  friend_profile: { full_name: string; email: string };
+  friend_profile: { first_name: string; last_name: string; email: string };
 }
 
 export default function PendingTransactions() {
@@ -121,14 +121,32 @@ export default function PendingTransactions() {
   const fetchFriends = async () => {
     if (!profile) return;
 
-    const { data, error } = await supabase
+    const { data: friendsData, error: friendsError } = await supabase
       .from('friends')
-      .select('friend_id, friend_profile:profiles!friends_friend_id_fkey(full_name, email)')
+      .select('friend_id')
       .eq('user_id', profile.id)
       .eq('status', 'accepted');
 
-    if (!error && data) {
-      setFriends(data);
+    if (friendsError) {
+      console.error('Error fetching friends:', friendsError);
+      return;
+    }
+
+    if (friendsData && friendsData.length > 0) {
+      const friendIds = friendsData.map(f => f.friend_id);
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email')
+        .in('id', friendIds);
+
+      if (!profilesError && profilesData) {
+        const profilesMap = new Map(profilesData.map(p => [p.id, p]));
+        const enrichedFriends = friendsData.map(f => ({
+          friend_id: f.friend_id,
+          friend_profile: profilesMap.get(f.friend_id) || { first_name: '', last_name: '', email: 'Unknown' }
+        }));
+        setFriends(enrichedFriends);
+      }
     }
   };
 
@@ -136,26 +154,51 @@ export default function PendingTransactions() {
     if (!profile) return;
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from('pending_transactions')
-      .select(`
-        *,
-        sender_profile:profiles!pending_transactions_sender_id_fkey(full_name, email),
-        receiver_profile:profiles!pending_transactions_receiver_id_fkey(full_name, email)
-      `)
-      .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
-      .in('status', ['pending_receiver', 'pending_sender'])
-      .order('created_at', { ascending: false });
+    try {
+      const { data: transactionsData, error: txError } = await supabase
+        .from('pending_transactions')
+        .select('*')
+        .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
+        .in('status', ['pending_receiver', 'pending_sender'])
+        .order('created_at', { ascending: false });
 
-    if (error) {
+      if (txError) throw txError;
+
+      if (transactionsData && transactionsData.length > 0) {
+        const userIds = new Set<string>();
+        transactionsData.forEach(t => {
+          userIds.add(t.sender_id);
+          userIds.add(t.receiver_id);
+        });
+
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', Array.from(userIds));
+
+        if (profilesError) throw profilesError;
+
+        const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+        const enrichedTransactions = transactionsData.map(t => ({
+          ...t,
+          sender_profile: profilesMap.get(t.sender_id) || { first_name: '', last_name: '', email: 'Unknown' },
+          receiver_profile: profilesMap.get(t.receiver_id) || { first_name: '', last_name: '', email: 'Unknown' }
+        }));
+
+        setPendingTransactions(enrichedTransactions);
+        setSentTransactions(enrichedTransactions.filter(t => t.sender_id === profile.id));
+        setReceivedTransactions(enrichedTransactions.filter(t => t.receiver_id === profile.id));
+      } else {
+        setPendingTransactions([]);
+        setSentTransactions([]);
+        setReceivedTransactions([]);
+      }
+    } catch (error: any) {
       console.error('Error fetching pending transactions:', error);
       showError('Failed to load pending transactions');
-    } else {
-      setPendingTransactions(data || []);
-      setSentTransactions((data || []).filter((t: PendingTransaction) => t.sender_id === profile.id));
-      setReceivedTransactions((data || []).filter((t: PendingTransaction) => t.receiver_id === profile.id));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const createTransaction = async () => {
@@ -221,7 +264,7 @@ export default function PendingTransactions() {
   const rejectTransaction = async (transactionId: string) => {
     const { error } = await supabase
       .from('pending_transactions')
-      .update({ 
+      .update({
         status: 'rejected',
         rejected_at: new Date().toISOString(),
       })
@@ -250,7 +293,7 @@ export default function PendingTransactions() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(amount);
+    return "रु " + amount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const getTransactionTypeColor = (type: string) => {
@@ -281,7 +324,7 @@ export default function PendingTransactions() {
                   <ArrowLeft className="h-4 w-4 text-green-500" />
                 )}
                 <CardTitle className="text-lg">
-                  {isSender ? 'To' : 'From'}: {otherParty.full_name}
+                  {isSender ? 'To' : 'From'}: {otherParty.first_name} {otherParty.last_name}
                 </CardTitle>
               </div>
               <CardDescription className="space-y-1">
@@ -324,18 +367,18 @@ export default function PendingTransactions() {
 
           {!myAcceptance && (
             <div className="flex gap-2">
-              <Button 
-                onClick={() => acceptTransaction(transaction.id)} 
-                size="sm" 
+              <Button
+                onClick={() => acceptTransaction(transaction.id)}
+                size="sm"
                 className="flex-1"
               >
                 <Check className="h-4 w-4 mr-2" />
                 Accept
               </Button>
-              <Button 
-                onClick={() => rejectTransaction(transaction.id)} 
-                variant="destructive" 
-                size="sm" 
+              <Button
+                onClick={() => rejectTransaction(transaction.id)}
+                variant="destructive"
+                size="sm"
                 className="flex-1"
               >
                 <X className="h-4 w-4 mr-2" />
@@ -345,10 +388,10 @@ export default function PendingTransactions() {
           )}
 
           {myAcceptance && isSender && (
-            <Button 
-              onClick={() => cancelTransaction(transaction.id)} 
-              variant="outline" 
-              size="sm" 
+            <Button
+              onClick={() => cancelTransaction(transaction.id)}
+              variant="outline"
+              size="sm"
               className="w-full"
             >
               Cancel Transaction
@@ -390,7 +433,7 @@ export default function PendingTransactions() {
                   <SelectContent>
                     {friends.map(friend => (
                       <SelectItem key={friend.friend_id} value={friend.friend_id}>
-                        {friend.friend_profile.full_name}
+                        {friend.friend_profile.first_name} {friend.friend_profile.last_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -413,25 +456,25 @@ export default function PendingTransactions() {
               </div>
               <div>
                 <Label>Amount (NPR)</Label>
-                <Input 
-                  type="number" 
-                  value={amount} 
+                <Input
+                  type="number"
+                  value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
                 />
               </div>
               <div>
                 <Label>Date</Label>
-                <Input 
-                  type="date" 
-                  value={transactionDate} 
+                <Input
+                  type="date"
+                  value={transactionDate}
                   onChange={(e) => setTransactionDate(e.target.value)}
                 />
               </div>
               <div>
                 <Label>Description (Optional)</Label>
-                <Textarea 
-                  value={description} 
+                <Textarea
+                  value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="What is this transaction for?"
                   rows={3}
@@ -473,9 +516,9 @@ export default function PendingTransactions() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {receivedTransactions.map(transaction => (
-                <TransactionCard 
-                  key={transaction.id} 
-                  transaction={transaction} 
+                <TransactionCard
+                  key={transaction.id}
+                  transaction={transaction}
                   isSender={false}
                 />
               ))}
@@ -494,9 +537,9 @@ export default function PendingTransactions() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {sentTransactions.map(transaction => (
-                <TransactionCard 
-                  key={transaction.id} 
-                  transaction={transaction} 
+                <TransactionCard
+                  key={transaction.id}
+                  transaction={transaction}
                   isSender={true}
                 />
               ))}

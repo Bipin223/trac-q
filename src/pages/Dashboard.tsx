@@ -204,7 +204,7 @@ const Dashboard = () => {
         .from('accounts')
         .select('balance')
         .eq('user_id', profile.id)
-        .single();
+        .maybeSingle();
 
       if (!accountError && account) {
         setAccountBalance(account.balance);
@@ -503,7 +503,7 @@ const Dashboard = () => {
                   onClick={() => navigate('/dashboard/pending-transactions')}
                   className="bg-white dark:bg-gray-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 border-amber-300 dark:border-amber-700"
                 >
-                  <TransactionIcon className="h-4 w-4 mr-2" />
+                  <ArrowRightLeft className="h-4 w-4 mr-2" />
                   {pendingTransactionsCount} Pending Transaction{pendingTransactionsCount > 1 ? 's' : ''}
                   <Badge className="ml-2 bg-amber-500 text-white">{pendingTransactionsCount}</Badge>
                 </Button>
