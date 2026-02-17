@@ -1,16 +1,15 @@
-import { Home, BarChart2, User, LogOut, ArrowRightLeft, DollarSign, Landmark, Shield, Users, Mail, Handshake, UserPlus, Clock, Calculator, TrendingUp, Repeat, HandCoins, Receipt, Calendar } from 'lucide-react';
+import { Home, BarChart2, User, LogOut, ArrowRightLeft, Landmark, Users, Handshake, UserPlus, Clock, Calculator, TrendingUp, Repeat, HandCoins, Receipt, Calendar } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
 import { cn } from "@/lib/utils";
 import SidebarLink from './SidebarLink';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { Badge } from './ui/badge';
 import { useProfile } from '@/contexts/ProfileContext';
 
 const navItems = [
   { to: '/dashboard', icon: <Home className="h-5 w-5" />, label: 'Dashboard' },
-  { to: '/dashboard/incomes', icon: <DollarSign className="h-5 w-5" />, label: 'Incomes' },
+  { to: '/dashboard/incomes', icon: <span className="h-5 w-5 flex items-center justify-center font-bold text-base leading-none">रु</span>, label: 'Incomes' },
   { to: '/dashboard/expenses', icon: <BarChart2 className="h-5 w-5" />, label: 'Expenses' },
   { to: '/dashboard/daily-wallet', icon: <Landmark className="h-5 w-5" />, label: 'Daily Wallet' },
   { to: '/dashboard/comparison', icon: <TrendingUp className="h-5 w-5" />, label: 'Comparison' },
@@ -27,8 +26,8 @@ const navItems = [
 ];
 
 const adminNavItems = [
-    //{ to: '/dashboard/admin/accounts', icon: <Shield className="h-5 w-5" />, label: 'Accounts (Admin)' },
-    { to: '/dashboard/admin/users', icon: <Users className="h-5 w-5" />, label: 'Users (Admin)' },
+  //{ to: '/dashboard/admin/accounts', icon: <Shield className="h-5 w-5" />, label: 'Accounts (Admin)' },
+  { to: '/dashboard/admin/users', icon: <Users className="h-5 w-5" />, label: 'Users (Admin)' },
 ];
 
 interface SidebarContentProps {
@@ -60,12 +59,12 @@ export const SidebarContent = ({ isSidebarOpen, isAdmin, onLinkClick }: SidebarC
           {isSidebarOpen && <span className="ml-3 text-xl font-semibold">Trac-Q</span>}
         </Link>
       </div>
-      
+
       <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
           <SidebarLink key={item.to} {...item} isSidebarOpen={isSidebarOpen} onClick={onLinkClick} />
         ))}
-        
+
         {isAdmin && <div className="pt-2 mt-2 border-t dark:border-gray-700"></div>}
         {isAdmin && isSidebarOpen && (
           <p className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
