@@ -344,7 +344,7 @@ export default function MoneyRequests() {
                   )
                 )}
                 <CardTitle className="text-lg">
-                  NPR {request.amount.toLocaleString()}
+                  रु  {request.amount.toLocaleString()}
                 </CardTitle>
               </div>
               <CardDescription className="flex items-center gap-1">

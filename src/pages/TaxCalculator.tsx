@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Calculator, FileText, Info, TrendingDown, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calculator, Info, TrendingDown, Coins, ChevronDown, ChevronUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
@@ -46,28 +46,28 @@ export default function TaxCalculator() {
   const [taxBreakdown, setTaxBreakdown] = useState<TaxBreakdown[]>([]);
   const [showTaxInfo, setShowTaxInfo] = useState(false);
   const [isTaxInfoDialogOpen, setIsTaxInfoDialogOpen] = useState(false);
-  
+
   const calculateTax = () => {
     const gross = parseFloat(grossIncome) || 0;
-    
+
     // Apply deduction limits
     const retirementDeduction = Math.min(parseFloat(retirementFund) || 0, 300000);
     const lifeInsDeduction = Math.min(parseFloat(lifeInsurance) || 0, 25000);
     const medicalInsDeduction = Math.min(parseFloat(medicalInsurance) || 0, 20000);
     const remoteDeduction = Math.min(parseFloat(remoteAllowance) || 0, 50000);
     const otherDed = parseFloat(otherDeductions) || 0;
-    
+
     const totalDeductions = retirementDeduction + lifeInsDeduction + medicalInsDeduction + remoteDeduction + otherDed;
-    
+
     // Add spouse allowance for married individuals
     const spouseAllowance = maritalStatus === 'married' ? 200000 : 0;
-    
+
     const taxableIncome = Math.max(0, gross - totalDeductions - spouseAllowance);
-    
+
     // Calculate tax based on brackets
     let totalTax = 0;
     const breakdown: TaxBreakdown[] = [];
-    
+
     for (const bracket of NEPAL_TAX_BRACKETS) {
       if (taxableIncome > bracket.min) {
         const taxableInBracket = Math.min(
@@ -76,7 +76,7 @@ export default function TaxCalculator() {
         );
         const taxInBracket = (taxableInBracket * bracket.rate) / 100;
         totalTax += taxInBracket;
-        
+
         breakdown.push({
           bracket: bracket.description,
           taxableAmount: taxableInBracket,
@@ -85,11 +85,11 @@ export default function TaxCalculator() {
         });
       }
     }
-    
+
     setTaxBreakdown(breakdown);
     setCalculated(true);
   };
-  
+
   const resetCalculator = () => {
     setGrossIncome('');
     setRetirementFund('');
@@ -101,7 +101,7 @@ export default function TaxCalculator() {
     setCalculated(false);
     setTaxBreakdown([]);
   };
-  
+
   // Calculated values
   const gross = parseFloat(grossIncome) || 0;
   const retirementDeduction = Math.min(parseFloat(retirementFund) || 0, 300000);
@@ -115,7 +115,7 @@ export default function TaxCalculator() {
   const totalTax = taxBreakdown.reduce((sum, b) => sum + b.tax, 0);
   const afterTaxIncome = gross - totalTax;
   const effectiveTaxRate = gross > 0 ? ((totalTax / gross) * 100).toFixed(2) : '0.00';
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -128,7 +128,7 @@ export default function TaxCalculator() {
           FY 2023/24
         </Badge>
       </div>
-      
+
       <Alert className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
         <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400" />
         <AlertTitle className="text-blue-700 dark:text-blue-300 flex items-center justify-between">
@@ -191,9 +191,9 @@ export default function TaxCalculator() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Allowable Deductions</h3>
                     <Table>
@@ -233,9 +233,9 @@ export default function TaxCalculator() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Tax Calculation Example</h3>
                     <div className="bg-muted p-4 rounded-lg space-y-2 text-sm">
@@ -250,7 +250,7 @@ export default function TaxCalculator() {
                       </ul>
                     </div>
                   </div>
-                  
+
                   <div className="text-xs text-muted-foreground">
                     <p><strong>Source:</strong> Income Tax Act, 2058 (Nepal)</p>
                     <p><strong>Fiscal Year:</strong> 2023/24 (2080/81 BS)</p>
@@ -285,13 +285,13 @@ export default function TaxCalculator() {
           ) : null}
         </AlertDescription>
       </Alert>
-      
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Input Section */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5" />
+              <Coins className="h-5 w-5" />
               Income & Deductions
             </CardTitle>
             <CardDescription>Enter your gross income and applicable deductions</CardDescription>
@@ -308,7 +308,7 @@ export default function TaxCalculator() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="marital-status">Marital Status</Label>
               <Select value={maritalStatus} onValueChange={(v) => setMaritalStatus(v as 'single' | 'married')}>
@@ -321,12 +321,12 @@ export default function TaxCalculator() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-4">
               <h4 className="font-semibold text-sm text-muted-foreground">Deductions</h4>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="retirement">Retirement Contribution Fund</Label>
                 <Input
@@ -339,7 +339,7 @@ export default function TaxCalculator() {
                   max="300000"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="life-insurance">Life Insurance Premium</Label>
                 <Input
@@ -352,7 +352,7 @@ export default function TaxCalculator() {
                   max="25000"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="medical-insurance">Medical Insurance</Label>
                 <Input
@@ -365,7 +365,7 @@ export default function TaxCalculator() {
                   max="20000"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="remote-allowance">Remote Area Allowance</Label>
                 <Input
@@ -378,7 +378,7 @@ export default function TaxCalculator() {
                   max="50000"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <Label htmlFor="other-deductions">Other Deductions</Label>
                 <Input
@@ -391,7 +391,7 @@ export default function TaxCalculator() {
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-2 pt-4">
               <Button onClick={calculateTax} className="flex-1">
                 <Calculator className="h-4 w-4 mr-2" />
@@ -403,7 +403,7 @@ export default function TaxCalculator() {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Results Section */}
         <div className="space-y-6">
           <Card>
@@ -421,7 +421,7 @@ export default function TaxCalculator() {
                   NPR {gross.toLocaleString()}
                 </span>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Total Deductions</span>
@@ -434,16 +434,16 @@ export default function TaxCalculator() {
                   </div>
                 )}
               </div>
-              
+
               <Separator />
-              
+
               <div className="flex justify-between items-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 <span className="text-sm font-medium">Taxable Income</span>
                 <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
                   NPR {taxableIncome.toLocaleString()}
                 </span>
               </div>
-              
+
               {calculated && taxBreakdown.length > 0 && (
                 <>
                   <Separator />
@@ -464,9 +464,9 @@ export default function TaxCalculator() {
                   </div>
                 </>
               )}
-              
+
               <Separator />
-              
+
               <div className="flex justify-between items-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
                 <div>
                   <span className="text-sm font-medium block">Total Tax Payable</span>
@@ -476,7 +476,7 @@ export default function TaxCalculator() {
                   NPR {totalTax.toLocaleString()}
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <span className="text-sm font-medium">After-Tax Income</span>
                 <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">

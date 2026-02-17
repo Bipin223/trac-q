@@ -68,11 +68,9 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
 
   const hasData = chartData.some(d => d.cumulativeIncome > 0 || d.cumulativeExpenses > 0);
 
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat("en-NP", {
-      style: "currency",
-      currency: "NPR",
-    }).format(value);
+  const formatCurrency = (value: number) => {
+    return "रु  " + value.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
 
   const formatAxisValue = (value: number) => {
     if (value >= 1000) {
@@ -122,8 +120,8 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
           <LineChart data={chartData} margin={{ right: 30 }}>
             {/* No grid lines - fully transparent/invisible */}
             <CartesianGrid stroke="none" />
-            
-            <XAxis 
+
+            <XAxis
               dataKey="dayNum"  // Use numeric day for domain control
               type="number"
               domain={[1, daysInMonth]}  // Force full month ticks (1 to 30/31)
@@ -131,29 +129,29 @@ export const FinancialChart = ({ data, month }: FinancialChartProps) => {
               tickFormatter={(value) => value.toString()}  // Plain numbers ("1", "2", ..., "30")
               label={{ value: 'Day of Month', position: 'insideBottom', offset: -5 }}
             />
-            <YAxis 
+            <YAxis
               tickFormatter={formatAxisValue}
-              label={{ value: 'Amount (NPR)', angle: -90, position: 'insideLeft' }}
+              label={{ value: 'Amount (रु )', angle: -90, position: 'insideLeft' }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            
+
             {/* Cumulative Income (Green) - stops at today */}
-            <Line 
-              type="monotone" 
-              dataKey="cumulativeIncome" 
-              stroke="#22c55e" 
+            <Line
+              type="monotone"
+              dataKey="cumulativeIncome"
+              stroke="#22c55e"
               name="Income"
               activeDot={{ r: 6, stroke: '#22c55e', strokeWidth: 2 }}
               strokeWidth={2}
               connectNulls={false}  // Don't connect across nulls (ensures clean stop)
             />
-            
+
             {/* Cumulative Expenses (Red) - stops at today */}
-            <Line 
-              type="monotone" 
-              dataKey="cumulativeExpenses" 
-              stroke="#ef4444" 
+            <Line
+              type="monotone"
+              dataKey="cumulativeExpenses"
+              stroke="#ef4444"
               name="Expenses"
               strokeWidth={2}
               connectNulls={false}  // Don't connect across nulls (ensures clean stop)

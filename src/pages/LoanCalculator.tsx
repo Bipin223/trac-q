@@ -26,75 +26,75 @@ export default function LoanCalculator() {
   const [loanType, setLoanType] = useState<string>('personal');
   const [showLoanInfo, setShowLoanInfo] = useState(false);
   const [isLoanInfoDialogOpen, setIsLoanInfoDialogOpen] = useState(false);
-  
+
   // Debt Payoff Calculator
   const [totalDebt, setTotalDebt] = useState<string>('');
   const [avgInterest, setAvgInterest] = useState<string>('');
   const [monthlyPayment, setMonthlyPayment] = useState<string>('');
   const [extraPayment, setExtraPayment] = useState<string>('');
-  
+
   // Loan Calculations
   const principal = parseFloat(loanAmount) || 0;
   const monthlyRate = (parseFloat(interestRate) || 0) / 100 / 12;
   const numPayments = (parseFloat(loanTerm) || 0) * 12;
-  
+
   // Monthly payment formula: M = P[r(1+r)^n]/[(1+r)^n-1]
   const monthlyPaymentAmount = principal > 0 && monthlyRate > 0 && numPayments > 0
     ? principal * (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / (Math.pow(1 + monthlyRate, numPayments) - 1)
     : 0;
-  
+
   const totalPayment = monthlyPaymentAmount * numPayments;
   const totalInterest = totalPayment - principal;
-  
+
   // Debt Payoff Calculations
   const debt = parseFloat(totalDebt) || 0;
   const avgRate = (parseFloat(avgInterest) || 0) / 100 / 12;
   const payment = parseFloat(monthlyPayment) || 0;
   const extra = parseFloat(extraPayment) || 0;
   const totalMonthlyPayment = payment + extra;
-  
+
   // Calculate months to pay off debt
   let monthsToPayoff = 0;
   let totalInterestPaid = 0;
-  
+
   if (debt > 0 && totalMonthlyPayment > 0 && avgRate >= 0) {
     let remainingBalance = debt;
     while (remainingBalance > 0 && monthsToPayoff < 600) { // Max 50 years
       const interestCharge = remainingBalance * avgRate;
       const principalPayment = Math.min(totalMonthlyPayment - interestCharge, remainingBalance);
-      
+
       if (principalPayment <= 0) break; // Payment doesn't cover interest
-      
+
       remainingBalance -= principalPayment;
       totalInterestPaid += interestCharge;
       monthsToPayoff++;
     }
   }
-  
+
   const yearsToPayoff = Math.floor(monthsToPayoff / 12);
   const remainingMonthsPayoff = monthsToPayoff % 12;
-  
+
   // Calculate savings from extra payment
   let monthsWithoutExtra = 0;
   let interestWithoutExtra = 0;
-  
+
   if (debt > 0 && payment > 0 && avgRate >= 0) {
     let balance = debt;
     while (balance > 0 && monthsWithoutExtra < 600) {
       const interest = balance * avgRate;
       const principal = Math.min(payment - interest, balance);
-      
+
       if (principal <= 0) break;
-      
+
       balance -= principal;
       interestWithoutExtra += interest;
       monthsWithoutExtra++;
     }
   }
-  
+
   const monthsSaved = monthsWithoutExtra - monthsToPayoff;
   const interestSaved = interestWithoutExtra - totalInterestPaid;
-  
+
   const getLoanIcon = () => {
     switch (loanType) {
       case 'home':
@@ -107,7 +107,7 @@ export default function LoanCalculator() {
         return <CreditCard className="h-5 w-5" />;
     }
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -116,7 +116,7 @@ export default function LoanCalculator() {
           <p className="text-muted-foreground">Calculate loan payments and debt payoff strategies</p>
         </div>
       </div>
-      
+
       <Alert className="bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
         <Info className="h-4 w-4 text-purple-600 dark:text-purple-400" />
         <AlertTitle className="text-purple-700 dark:text-purple-300 flex items-center justify-between">
@@ -185,9 +185,9 @@ export default function LoanCalculator() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Key Loan Terms</h3>
                     <div className="space-y-3">
@@ -213,9 +213,9 @@ export default function LoanCalculator() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Loan Calculation Formula</h3>
                     <div className="bg-muted p-4 rounded-lg space-y-2 text-sm">
@@ -229,7 +229,7 @@ export default function LoanCalculator() {
                       </ul>
                     </div>
                   </div>
-                  
+
                   <div className="text-xs text-muted-foreground">
                     <p><strong>Note:</strong> Interest rates vary by bank, borrower credit score, and loan type. The rates shown are approximate ranges as of 2024. Always check with your bank for current rates and terms.</p>
                   </div>
@@ -288,9 +288,9 @@ export default function LoanCalculator() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="loan-amount">Loan Amount (NPR)</Label>
+              <Label htmlFor="loan-amount">Loan Amount (रु )</Label>
               <Input
                 id="loan-amount"
                 type="number"
@@ -300,7 +300,7 @@ export default function LoanCalculator() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="interest-rate">Annual Interest Rate (%)</Label>
               <Input
@@ -313,7 +313,7 @@ export default function LoanCalculator() {
                 step="0.1"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="loan-term">Loan Term (Years)</Label>
               <Input
@@ -325,9 +325,9 @@ export default function LoanCalculator() {
                 min="0"
               />
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-3">
               <div className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 {getLoanIcon()}
@@ -335,7 +335,7 @@ export default function LoanCalculator() {
                   {loanType.charAt(0).toUpperCase() + loanType.slice(1)} Loan
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <div>
                   <span className="text-sm font-medium text-blue-600 dark:text-blue-400 block">
@@ -346,26 +346,26 @@ export default function LoanCalculator() {
                   </span>
                 </div>
                 <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  NPR {monthlyPaymentAmount.toLocaleString()}
+                  रु  {monthlyPaymentAmount.toLocaleString()}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">Principal</p>
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    NPR {principal.toLocaleString()}
+                    रु  {principal.toLocaleString()}
                   </p>
                 </div>
-                
+
                 <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">Interest</p>
                   <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                    NPR {totalInterest.toLocaleString()}
+                    रु  {totalInterest.toLocaleString()}
                   </p>
                 </div>
               </div>
-              
+
               <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
@@ -376,21 +376,21 @@ export default function LoanCalculator() {
                   </Badge>
                 </div>
                 <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
-                  NPR {totalPayment.toLocaleString()}
+                  रु  {totalPayment.toLocaleString()}
                 </p>
               </div>
-              
+
               {totalInterest > 0 && (
                 <div className="p-3 bg-muted rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-muted-foreground">Interest vs Principal</span>
                   </div>
                   <div className="flex gap-2 h-4 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="bg-green-500 dark:bg-green-600"
                       style={{ width: `${(principal / totalPayment) * 100}%` }}
                     />
-                    <div 
+                    <div
                       className="bg-red-500 dark:bg-red-600"
                       style={{ width: `${(totalInterest / totalPayment) * 100}%` }}
                     />
@@ -408,7 +408,7 @@ export default function LoanCalculator() {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Debt Payoff Calculator */}
         <Card>
           <CardHeader>
@@ -420,7 +420,7 @@ export default function LoanCalculator() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="total-debt">Total Debt (NPR)</Label>
+              <Label htmlFor="total-debt">Total Debt (रु )</Label>
               <Input
                 id="total-debt"
                 type="number"
@@ -430,7 +430,7 @@ export default function LoanCalculator() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="avg-interest">Average Interest Rate (%)</Label>
               <Input
@@ -443,9 +443,9 @@ export default function LoanCalculator() {
                 step="0.1"
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="monthly-payment">Current Monthly Payment (NPR)</Label>
+              <Label htmlFor="monthly-payment">Current Monthly Payment (रु )</Label>
               <Input
                 id="monthly-payment"
                 type="number"
@@ -455,9 +455,9 @@ export default function LoanCalculator() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="extra-payment">Extra Monthly Payment (NPR)</Label>
+              <Label htmlFor="extra-payment">Extra Monthly Payment (रु )</Label>
               <Input
                 id="extra-payment"
                 type="number"
@@ -470,17 +470,17 @@ export default function LoanCalculator() {
                 Additional amount you can pay each month
               </p>
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-muted rounded-lg">
                 <span className="text-sm font-medium">Total Monthly Payment</span>
                 <span className="text-lg font-bold">
-                  NPR {totalMonthlyPayment.toLocaleString()}
+                  रु  {totalMonthlyPayment.toLocaleString()}
                 </span>
               </div>
-              
+
               {monthsToPayoff > 0 && (
                 <>
                   <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -496,23 +496,23 @@ export default function LoanCalculator() {
                       {monthsToPayoff} months
                     </p>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
                       <p className="text-xs text-muted-foreground mb-1">Total Paid</p>
                       <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                        NPR {(debt + totalInterestPaid).toLocaleString()}
+                        रु  {(debt + totalInterestPaid).toLocaleString()}
                       </p>
                     </div>
-                    
+
                     <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg text-center">
                       <p className="text-xs text-muted-foreground mb-1">Interest</p>
                       <p className="text-lg font-bold text-red-600 dark:text-red-400">
-                        NPR {totalInterestPaid.toLocaleString()}
+                        रु  {totalInterestPaid.toLocaleString()}
                       </p>
                     </div>
                   </div>
-                  
+
                   {extra > 0 && monthsSaved > 0 && (
                     <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border-2 border-green-200 dark:border-green-800">
                       <h4 className="font-semibold text-sm text-green-700 dark:text-green-300 mb-3">
@@ -528,7 +528,7 @@ export default function LoanCalculator() {
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Interest Saved:</span>
                           <span className="font-semibold text-green-600 dark:text-green-400">
-                            NPR {interestSaved.toLocaleString()}
+                            रु  {interestSaved.toLocaleString()}
                           </span>
                         </div>
                       </div>

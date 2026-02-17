@@ -28,12 +28,11 @@ import { showSuccess, showError } from '@/utils/toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { 
-  Receipt, 
-  PlusCircle, 
+import {
+  ReceiptText,
+  PlusCircle,
   Users,
-  Check,
-  DollarSign
+  Check
 } from 'lucide-react';
 
 const formSchema = z.object({
@@ -156,7 +155,7 @@ function CreateSplitBillDialog({ open, onOpenChange, friends, onSuccess }: Creat
       <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
+            <ReceiptText className="h-5 w-5" />
             Create Split Bill
           </DialogTitle>
           <DialogDescription>
@@ -199,14 +198,14 @@ function CreateSplitBillDialog({ open, onOpenChange, friends, onSuccess }: Creat
               name="total_amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Total Amount (NPR)</FormLabel>
+                  <FormLabel>Total Amount (रु )</FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">रु </span>
                       <Input
                         type="number"
                         placeholder="0.00"
-                        className="pl-9"
+                        className="pl-12"
                         {...field}
                       />
                     </div>
@@ -244,8 +243,8 @@ function CreateSplitBillDialog({ open, onOpenChange, friends, onSuccess }: Creat
                                     return checked
                                       ? field.onChange([...field.value, friend.friend_id])
                                       : field.onChange(
-                                          field.value?.filter((value) => value !== friend.friend_id)
-                                        );
+                                        field.value?.filter((value) => value !== friend.friend_id)
+                                      );
                                   }}
                                 />
                               </FormControl>
@@ -353,9 +352,9 @@ export default function SplitBills() {
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
     const combinedFriends = friendsData.map(friend => ({
       ...friend,
-      friend_profile: profilesMap.get(friend.friend_id) || { 
-        first_name: '', 
-        last_name: '', 
+      friend_profile: profilesMap.get(friend.friend_id) || {
+        first_name: '',
+        last_name: '',
         email: 'Unknown'
       }
     }));
@@ -400,7 +399,7 @@ export default function SplitBills() {
       // Get user profiles
       const userIds = new Set<string>();
       participantsData?.forEach(p => userIds.add(p.user_id));
-      
+
       const { data: profilesData } = await supabase
         .from('profiles')
         .select('id, first_name, last_name, email')
@@ -431,7 +430,7 @@ export default function SplitBills() {
   const markAsPaid = async (participantId: string, shareAmount: number) => {
     const { error } = await supabase
       .from('split_bill_participants')
-      .update({ 
+      .update({
         status: 'paid',
         paid_amount: shareAmount,
         updated_at: new Date().toISOString()
@@ -478,7 +477,7 @@ export default function SplitBills() {
       {splitBills.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Receipt className="h-12 w-12 text-muted-foreground mb-4" />
+            <ReceiptText className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No split bills yet</p>
             <p className="text-sm text-muted-foreground">Create your first split bill to get started</p>
           </CardContent>
@@ -505,7 +504,7 @@ export default function SplitBills() {
                   </div>
                   <div className="flex items-center gap-4 mt-2">
                     <div className="text-2xl font-bold text-primary">
-                      NPR {bill.total_amount.toLocaleString()}
+                      रु  {bill.total_amount.toLocaleString()}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       {paidCount}/{totalParticipants} paid
@@ -531,7 +530,7 @@ export default function SplitBills() {
                               {isCurrentUser && <span className="text-xs text-muted-foreground ml-2">(You)</span>}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              Share: NPR {participant.share_amount.toLocaleString()}
+                              Share: रु  {participant.share_amount.toLocaleString()}
                             </div>
                           </div>
                           <div className="flex items-center gap-2">

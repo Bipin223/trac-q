@@ -16,7 +16,7 @@ import {
   Leaf,
   TrendingUp,
   Home,
-  DollarSign,
+  Coins,
   Plane,
   Shield,
   Landmark,
@@ -55,7 +55,7 @@ const PREDEFINED_INCOME_SOURCES = [
   { name: 'Agriculture', type: 'income' as const, icon: <Leaf className="h-5 w-5" /> },
   { name: 'Investments', type: 'income' as const, icon: <TrendingUp className="h-5 w-5" /> },
   { name: 'Rental Income', type: 'income' as const, icon: <Home className="h-5 w-5" /> },
-  { name: 'Business Profit', type: 'income' as const, icon: <DollarSign className="h-5 w-5" /> },
+  { name: 'Business Profit', type: 'income' as const, icon: <Coins className="h-5 w-5" /> },
   { name: 'Tourism', type: 'income' as const, icon: <Plane className="h-5 w-5" /> },
   { name: 'Pension', type: 'income' as const, icon: <Shield className="h-5 w-5" /> },
   { name: 'Government Allowance', type: 'income' as const, icon: <Landmark className="h-5 w-5" /> },
@@ -90,7 +90,6 @@ export default function Incomes() {
   const [incomes, setIncomes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
   const [quickIncomes, setQuickIncomes] = useState<QuickIncome[]>([]);
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [selectedQuickCategory, setSelectedQuickCategory] = useState<string | null>(null);
@@ -109,7 +108,7 @@ export default function Incomes() {
       .select('*, category:categories(name), subcategory:subcategories(name)')
       .eq('user_id', profile.id)
       .order('income_date', { ascending: false });
-    
+
     if (data) {
       const formattedData = data.map(d => ({ ...d, date: d.income_date }));
       // Sort: favorites first, then by date
@@ -125,33 +124,33 @@ export default function Incomes() {
 
   const fetchSubcategories = async () => {
     if (!profile) return;
-    
+
     // First get all income category IDs for this user
     const { data: incomeCategories } = await supabase
       .from('categories')
       .select('id')
       .eq('user_id', profile.id)
       .eq('type', 'income');
-    
+
     if (!incomeCategories || incomeCategories.length === 0) {
       setSubcategories([]);
       return;
     }
-    
+
     const categoryIds = incomeCategories.map(cat => cat.id);
-    
+
     const { data, error } = await supabase
       .from('subcategories')
       .select('id, name, parent_category_id, is_favorite, parent_category:categories!parent_category_id(name)')
       .in('parent_category_id', categoryIds)
       .order('is_favorite', { ascending: false })
       .order('name', { ascending: true });
-    
+
     if (error) {
       console.error('Error fetching subcategories:', error);
       return;
     }
-    
+
     if (data) {
       const formattedSubcategories = data.map((sub: any) => ({
         id: sub.id,
@@ -166,7 +165,7 @@ export default function Incomes() {
 
   const toggleFavorite = async (id: string, currentStatus: boolean): Promise<void> => {
     if (!profile) return;
-    
+
     const { error } = await supabase
       .from('incomes')
       .update({ is_favorite: !currentStatus })
@@ -184,13 +183,13 @@ export default function Incomes() {
   const toggleCategoryFavorite = async (categoryId: string, currentStatus: boolean, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     if (!profile) return;
-    
+
     // Add animation class to the card
     const cardElement = (e.currentTarget as HTMLElement).closest('.category-card');
     if (cardElement) {
       cardElement.classList.add('favoriting-animation');
     }
-    
+
     const { error } = await supabase
       .from('categories')
       .update({ is_favorite: !currentStatus })
@@ -204,7 +203,7 @@ export default function Incomes() {
       }
     } else {
       showSuccess(currentStatus ? '⭐ Removed from favorites' : '⭐ Added to favorites!');
-      
+
       // Remove animation after a brief delay, then refresh
       setTimeout(() => {
         if (cardElement) {
@@ -218,7 +217,7 @@ export default function Incomes() {
   const toggleSubcategoryFavorite = async (subcategoryId: string, currentStatus: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!profile) return;
-    
+
     const { error } = await supabase
       .from('subcategories')
       .update({ is_favorite: !currentStatus })
@@ -267,7 +266,7 @@ export default function Incomes() {
       showError(error.message || 'Failed to delete subcategory.');
     }
   };
-  
+
   const ensureAndFetchAllCategories = async () => {
     if (!profile) return;
 
@@ -450,12 +449,12 @@ export default function Incomes() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Incomes</h1>
-        <Button 
+        <Button
           onClick={() => { setSelectedQuickCategory(null); setIsAddDialogOpen(true); }}
           className="flex items-center gap-2"
         >
           <PlusCircle className="h-4 w-4" />
-          Add Custom Income (NPR)
+          Add Custom Income (रु )
         </Button>
       </div>
 
@@ -467,9 +466,8 @@ export default function Incomes() {
             {subcategories.map((sub) => (
               <Card
                 key={sub.id}
-                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${
-                  sub.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
-                }`}
+                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${sub.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
+                  }`}
                 onClick={() => {
                   setSelectedQuickCategory(sub.parent_category_id);
                   setIsAddDialogOpen(true);
@@ -482,12 +480,11 @@ export default function Incomes() {
                   className="absolute top-1 left-1 h-7 w-7 z-10 transition-all hover:scale-110"
                   onClick={(e) => toggleSubcategoryFavorite(sub.id, sub.is_favorite, e)}
                 >
-                  <Star 
-                    className={`h-4 w-4 transition-all duration-200 ${
-                      sub.is_favorite 
-                        ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg' 
-                        : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
-                    }`} 
+                  <Star
+                    className={`h-4 w-4 transition-all duration-200 ${sub.is_favorite
+                      ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg'
+                      : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
+                      }`}
                   />
                 </Button>
                 <AlertDialog>
@@ -511,7 +508,7 @@ export default function Incomes() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={() => handleDeleteSubcategory(sub.id, sub.name)}
                         className="bg-red-600 hover:bg-red-700"
                       >
@@ -541,9 +538,8 @@ export default function Incomes() {
             {quickIncomes.map((qi) => (
               <Card
                 key={qi.categoryId}
-                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${
-                  qi.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
-                }`}
+                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${qi.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
+                  }`}
                 onClick={() => handleQuickIncomeClick(qi.categoryId)}
                 style={{ transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
               >
@@ -553,12 +549,11 @@ export default function Incomes() {
                   className="absolute top-1 left-1 h-7 w-7 z-10 transition-all hover:scale-110"
                   onClick={(e) => toggleCategoryFavorite(qi.categoryId, qi.is_favorite, e)}
                 >
-                  <Star 
-                    className={`h-4 w-4 transition-all duration-200 ${
-                      qi.is_favorite 
-                        ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg' 
-                        : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
-                    }`} 
+                  <Star
+                    className={`h-4 w-4 transition-all duration-200 ${qi.is_favorite
+                      ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg'
+                      : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
+                      }`}
                   />
                 </Button>
                 <Button
@@ -643,7 +638,7 @@ export default function Incomes() {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'recurring')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="all" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
+            <Coins className="h-4 w-4" />
             All Incomes ({incomes.length})
           </TabsTrigger>
           <TabsTrigger value="recurring" className="flex items-center gap-2">
@@ -672,8 +667,8 @@ export default function Incomes() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : (
-            <TransactionsDataTable 
-              data={incomes.filter(i => i.is_recurring)} 
+            <TransactionsDataTable
+              data={incomes.filter(i => i.is_recurring)}
               onToggleFavorite={toggleFavorite}
             />
           )}

@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/form';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, DollarSign, Send, HandCoins } from 'lucide-react';
+import { CalendarIcon, Send, HandCoins } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -131,10 +131,10 @@ export function MoneyRequestDialog({
 
       if (error) throw error;
 
-      const actionText = pendingValues.request_type === 'request_money' 
-        ? 'Money request sent' 
+      const actionText = pendingValues.request_type === 'request_money'
+        ? 'Money request sent'
         : 'Payment request sent';
-      
+
       showSuccess(`${actionText} successfully!`);
       form.reset();
       setPendingValues(null);
@@ -150,243 +150,243 @@ export function MoneyRequestDialog({
 
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {requestType === 'request_money' ? (
-              <>
-                <HandCoins className="h-5 w-5" />
-                Request Money
-              </>
-            ) : (
-              <>
-                <Send className="h-5 w-5" />
-                Send Money
-              </>
-            )}
-          </DialogTitle>
-          <DialogDescription>
-            {requestType === 'request_money'
-              ? 'Request money from a friend. They will be notified and can accept or decline.'
-              : 'Send money to a friend. This will create a payment request for you to fulfill.'}
-          </DialogDescription>
-        </DialogHeader>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="request_type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Request Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="request_money">
-                        <div className="flex items-center gap-2">
-                          <HandCoins className="h-4 w-4" />
-                          Request Money (I need money)
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="send_money">
-                        <div className="flex items-center gap-2">
-                          <Send className="h-4 w-4" />
-                          Send Money (I will pay)
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {requestType === 'request_money' ? (
+                <>
+                  <HandCoins className="h-5 w-5" />
+                  Request Money
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5" />
+                  Send Money
+                </>
               )}
-            />
+            </DialogTitle>
+            <DialogDescription>
+              {requestType === 'request_money'
+                ? 'Request money from a friend. They will be notified and can accept or decline.'
+                : 'Send money to a friend. This will create a payment request for you to fulfill.'}
+            </DialogDescription>
+          </DialogHeader>
 
-            <FormField
-              control={form.control}
-              name="friend_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {requestType === 'request_money' ? 'Request From' : 'Send To'}
-                  </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="request_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Request Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="request_money">
+                          <div className="flex items-center gap-2">
+                            <HandCoins className="h-4 w-4" />
+                            Request Money (I need money)
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="send_money">
+                          <div className="flex items-center gap-2">
+                            <Send className="h-4 w-4" />
+                            Send Money (I will pay)
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="friend_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      {requestType === 'request_money' ? 'Request From' : 'Send To'}
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a friend" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {friends.map((friend) => {
+                          const name = friend.friend_profile.first_name && friend.friend_profile.last_name
+                            ? `${friend.friend_profile.first_name} ${friend.friend_profile.last_name}`
+                            : friend.friend_profile.email;
+                          return (
+                            <SelectItem key={friend.friend_id} value={friend.friend_id}>
+                              {name}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount (रु )</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a friend" />
-                      </SelectTrigger>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">रु </span>
+                        <Input
+                          type="number"
+                          placeholder="0.00"
+                          className="pl-10"
+                          {...field}
+                        />
+                      </div>
                     </FormControl>
-                    <SelectContent>
-                      {friends.map((friend) => {
-                        const name = friend.friend_profile.first_name && friend.friend_profile.last_name
-                          ? `${friend.friend_profile.first_name} ${friend.friend_profile.last_name}`
-                          : friend.friend_profile.email;
-                        return (
-                          <SelectItem key={friend.friend_id} value={friend.friend_id}>
-                            {name}
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount (NPR)</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        type="number"
-                        placeholder="0.00"
-                        className="pl-9"
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="What is this for? (e.g., Lunch, Movie tickets, Rent)"
                         {...field}
                       />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="What is this for? (e.g., Lunch, Movie tickets, Rent)"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Add details about this {requestType === 'request_money' ? 'request' : 'payment'}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="due_date"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Due Date (Optional)</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            'w-full pl-3 text-left font-normal',
-                            !field.value && 'text-muted-foreground'
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, 'PPP')
-                          ) : (
-                            <span>Pick a due date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) =>
-                          date < new Date(new Date().setHours(0, 0, 0, 0))
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <FormDescription>
-                    When do you need this {requestType === 'request_money' ? 'money' : 'payment'}?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading ? 'Sending...' : 'Send Request'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-
-    {/* Confirmation Dialog */}
-    <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Confirm Money Request</AlertDialogTitle>
-          <AlertDialogDescription>
-            {pendingValues && (
-              <div className="space-y-2">
-                <p>
-                  You are about to {pendingValues.request_type === 'request_money' ? 'request' : 'send'} 
-                  <span className="font-semibold"> NPR {pendingValues.amount.toLocaleString()}</span> 
-                  {pendingValues.request_type === 'request_money' ? ' from ' : ' to '}
-                  <span className="font-semibold">
-                    {friends.find(f => f.friend_id === pendingValues.friend_id)?.friend_profile.first_name} 
-                    {friends.find(f => f.friend_id === pendingValues.friend_id)?.friend_profile.last_name}
-                  </span>
-                </p>
-                {pendingValues.description && (
-                  <p className="text-sm text-muted-foreground">
-                    Description: {pendingValues.description}
-                  </p>
+                    </FormControl>
+                    <FormDescription>
+                      Add details about this {requestType === 'request_money' ? 'request' : 'payment'}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                {pendingValues.due_date && (
-                  <p className="text-sm text-muted-foreground">
-                    Due date: {format(pendingValues.due_date, 'PPP')}
-                  </p>
+              />
+
+              <FormField
+                control={form.control}
+                name="due_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Due Date (Optional)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'w-full pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, 'PPP')
+                            ) : (
+                              <span>Pick a due date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date < new Date(new Date().setHours(0, 0, 0, 0))
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                      When do you need this {requestType === 'request_money' ? 'money' : 'payment'}?
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
                 )}
-                <p className="text-sm text-muted-foreground">
-                  This action cannot be undone. The recipient will be notified immediately.
-                </p>
-              </div>
-            )}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogAction onClick={() => setShowConfirmation(false)}>
-            Cancel
-          </AlertDialogAction>
-          <AlertDialogAction onClick={confirmSubmit} className="bg-primary">
-            {loading ? 'Sending...' : 'Confirm & Send'}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+              />
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading ? 'Sending...' : 'Send Request'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Money Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingValues && (
+                <div className="space-y-2">
+                  <p>
+                    You are about to {pendingValues.request_type === 'request_money' ? 'request' : 'send'}
+                    <span className="font-semibold"> Rs. {pendingValues.amount.toLocaleString()}</span>
+                    {pendingValues.request_type === 'request_money' ? ' from ' : ' to '}
+                    <span className="font-semibold">
+                      {friends.find(f => f.friend_id === pendingValues.friend_id)?.friend_profile.first_name}
+                      {friends.find(f => f.friend_id === pendingValues.friend_id)?.friend_profile.last_name}
+                    </span>
+                  </p>
+                  {pendingValues.description && (
+                    <p className="text-sm text-muted-foreground">
+                      Description: {pendingValues.description}
+                    </p>
+                  )}
+                  {pendingValues.due_date && (
+                    <p className="text-sm text-muted-foreground">
+                      Due date: {format(pendingValues.due_date, 'PPP')}
+                    </p>
+                  )}
+                  <p className="text-sm text-muted-foreground">
+                    This action cannot be undone. The recipient will be notified immediately.
+                  </p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setShowConfirmation(false)}>
+              Cancel
+            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmSubmit} className="bg-primary">
+              {loading ? 'Sending...' : 'Confirm & Send'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

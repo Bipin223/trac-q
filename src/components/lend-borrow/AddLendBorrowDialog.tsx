@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
@@ -39,7 +39,7 @@ import { showSuccess, showError } from "@/utils/toast";
 
 const formSchema = z.object({
   type: z.enum(["lend", "borrow"], { required_error: "Please select a type." }),
-  amount: z.coerce.number().positive({ message: "Amount must be a positive number in NPR." }),
+  amount: z.coerce.number().positive({ message: "Amount must be a positive number in Rs." }),
   description: z.string().optional(),
   contactName: z.string().min(1, { message: "Contact name is required." }).max(100),
   date: z.date(),

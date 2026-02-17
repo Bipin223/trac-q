@@ -2,8 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { DollarSign, BarChart2, ArrowRightLeft, Bell, UserPlus, ArrowRightLeft as TransactionIcon, Calculator, Repeat, Clock, AlertTriangle, TrendingUp, Handshake, HandCoins, Receipt, Landmark, Calendar, Wallet, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
-import { MonthlySummary } from "@/components/dashboard/MonthlySummary";
+import { Bell, UserPlus, ArrowRightLeft, Calculator, Repeat, Clock, AlertTriangle, ReceiptText, Landmark, Wallet, ArrowUpRight, ArrowDownLeft, Handshake, TrendingUp, BarChart2 } from 'lucide-react';
 import { FinancialChart } from "@/components/dashboard/FinancialChart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile } from "../contexts/ProfileContext";
@@ -26,7 +25,7 @@ interface ChartData {
 }
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(amount);
+  return "रु " + amount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 const Dashboard = () => {
@@ -420,7 +419,7 @@ const Dashboard = () => {
         console.log('Dashboard: Budget saved successfully');
         // Update UI immediately
         setBudgetedExpenses(newExpenses);
-        showSuccess(`Budget updated to NPR ${newExpenses.toLocaleString()}`);
+        showSuccess(`Budget updated to रु  ${newExpenses.toLocaleString()}`);
       }
     } catch (err: any) {
       console.error('Dashboard: Budget save exception:', err);
@@ -458,18 +457,18 @@ const Dashboard = () => {
 
   const displayName = profile.username || "Valued User";
   const dashboardItems = [
-    { to: '/dashboard/incomes', icon: <DollarSign className="h-6 w-6" />, title: 'Incomes', description: 'Log your earnings and manage income sources.' },
-    { to: '/dashboard/expenses', icon: <BarChart2 className="h-6 w-6" />, title: 'Expenses', description: 'Record your spending and analyze your habits.' },
-    { to: '/dashboard/daily-wallet', icon: <Landmark className="h-6 w-6" />, title: 'Daily Wallet', description: 'Track daily spending with budget limits and alerts.' },
-    { to: '/dashboard/exchange-rates', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Exchange Rates', description: 'Check currency conversions and rates.' },
-    { to: '/dashboard/date-converter', icon: <Calendar className="h-6 w-6" />, title: 'Date Converter', description: 'Convert between AD and BS (Bikram Sambat) dates.' },
-    { to: '/dashboard/calculators', icon: <Calculator className="h-6 w-6" />, title: 'Calculators', description: 'Access tax, discount, savings, and loan calculators.' },
-    { to: '/dashboard/comparison', icon: <TrendingUp className="h-6 w-6" />, title: 'Comparison', description: 'Compare income and expenses across periods.' },
-    { to: '/dashboard/recurring', icon: <Repeat className="h-6 w-6" />, title: 'Recurring', description: 'Manage recurring transactions and subscriptions.' },
-    { to: '/dashboard/lend-borrow', icon: <Handshake className="h-6 w-6" />, title: 'Lend & Borrow', description: 'Track money you lend or borrow from others.' },
-    { to: '/dashboard/friends', icon: <UserPlus className="h-6 w-6" />, title: 'Friends', description: 'Connect with friends and share transactions.' },
-    { to: '/dashboard/money-requests', icon: <HandCoins className="h-6 w-6" />, title: 'Money Requests', description: 'Request and send money to friends.' },
-    { to: '/dashboard/split-bills', icon: <Receipt className="h-6 w-6" />, title: 'Split Bills', description: 'Split expenses equally with friends.' }
+    { to: '/dashboard/accounts', icon: <Landmark className="h-6 w-6" />, title: 'Accounts', description: 'Monitor your account balances.' },
+    { to: '/dashboard/incomes', icon: <ArrowDownLeft className="h-6 w-6" />, title: 'Incomes', description: 'Track your incoming money.' },
+    { to: '/dashboard/expenses', icon: <ArrowUpRight className="h-6 w-6" />, title: 'Expenses', description: 'Monitor your spending habits.' },
+    { to: '/dashboard/daily-wallet', icon: <Wallet className="h-6 w-6" />, title: 'Daily Wallet', description: 'Manage your daily budget.' },
+    { to: '/dashboard/lend-borrow', icon: <Handshake className="h-6 w-6" />, title: 'Lend & Borrow', description: 'Track money you owe or are owed.' },
+    { to: '/dashboard/friends', icon: <UserPlus className="h-6 w-6" />, title: 'Friends', description: 'Connect and split bills with others.' },
+    { to: '/dashboard/money-requests', icon: <ArrowRightLeft className="h-6 w-6" />, title: 'Money Requests', description: 'Send or receive money requests.' },
+    { to: '/dashboard/split-bills', icon: <ReceiptText className="h-6 w-6" />, title: 'Split Bills', description: 'Split expenses equally with friends.' },
+    { to: '/dashboard/loan-calculator', icon: <Calculator className="h-6 w-6" />, title: 'Loan Calculator', description: 'Calculate loan EMIs and interest.' },
+    { to: '/dashboard/savings-investment', icon: <TrendingUp className="h-6 w-6" />, title: 'Savings & Investment', description: 'Plan your financial future.' },
+    { to: '/dashboard/recurring', icon: <Repeat className="h-6 w-6" />, title: 'Recurring', description: 'Manage your recurring transactions.' },
+    { to: '/dashboard/comparison', icon: <BarChart2 className="h-6 w-6" />, title: 'Comparison', description: 'Compare your finances over time.' }
   ];
 
   const actualIncome = financials?.totalIncome || 0;
@@ -540,7 +539,7 @@ const Dashboard = () => {
               Update Monthly Budget for {currentMonth}
             </h3>
             <p className="text-sm text-muted-foreground">
-              Current budget: NPR {budgetedExpenses.toLocaleString()}
+              Current budget: रु  {budgetedExpenses.toLocaleString()}
             </p>
           </div>
           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -600,7 +599,7 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-indigo-700 dark:text-indigo-300 mb-4">
-              NPR {accountBalance.toLocaleString()}
+              रु  {accountBalance.toLocaleString()}
             </div>
             {recentTransactions.length > 0 && (
               <div className="space-y-2">
@@ -616,7 +615,7 @@ const Dashboard = () => {
                       <span className="text-xs truncate max-w-[120px]">{txn.description || txn.category}</span>
                     </div>
                     <span className={`font-semibold text-xs ${txn.transaction_type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                      {txn.transaction_type === 'credit' ? '+' : '-'}NPR {txn.amount.toLocaleString()}
+                      {txn.transaction_type === 'credit' ? '+' : '-'}रु  {txn.amount.toLocaleString()}
                     </span>
                   </div>
                 ))}
@@ -641,7 +640,7 @@ const Dashboard = () => {
               </svg>
             </div>
           </div>
-          <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3">NPR {actualIncome.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3">रु  {actualIncome.toLocaleString()}</p>
           <div className="w-full bg-blue-200 dark:bg-blue-900/40 rounded-full h-2">
             <div className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full" style={{ width: '100%' }}></div>
           </div>
@@ -660,7 +659,7 @@ const Dashboard = () => {
               </svg>
             </div>
           </div>
-          <p className="text-2xl font-bold text-purple-700 dark:text-purple-300 mb-1">NPR {budgetedExpenses.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-purple-700 dark:text-purple-300 mb-1">रु  {budgetedExpenses.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground mb-2">
             {budgetedExpenses > 0 ? `Under budget (${budgetUtilization}%)` : 'No budget set'}
           </p>
@@ -682,7 +681,7 @@ const Dashboard = () => {
               </svg>
             </div>
           </div>
-          <p className="text-2xl font-bold text-red-700 dark:text-red-300 mb-1">NPR {actualExpenses.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-red-700 dark:text-red-300 mb-1">रु  {actualExpenses.toLocaleString()}</p>
           <p className="text-xs text-muted-foreground mb-2">
             {budgetedExpenses > 0 ? `${budgetUtilization}% of budget` : 'No budget set'}
           </p>
@@ -712,7 +711,7 @@ const Dashboard = () => {
               </svg>
             </div>
           </div>
-          <p className="text-2xl font-bold text-green-700 dark:text-green-300 mb-3">NPR {netSavings.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-green-700 dark:text-green-300 mb-3">रु  {netSavings.toLocaleString()}</p>
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Savings rate</span>
             <span className="font-semibold text-green-600 dark:text-green-400">{savingsRate}%</span>

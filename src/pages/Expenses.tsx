@@ -33,7 +33,7 @@ import {
   Trash2,
   Star,
   Repeat,
-  DollarSign,
+  Coins,
   Settings,
 } from 'lucide-react';
 import {
@@ -109,7 +109,7 @@ export default function Expenses() {
       .select('*, category:categories(name), subcategory:subcategories(name)')
       .eq('user_id', profile.id)
       .order('expense_date', { ascending: false });
-    
+
     if (data) {
       const formattedData = data.map(d => ({ ...d, date: d.expense_date }));
       // Sort: favorites first, then by date
@@ -125,33 +125,33 @@ export default function Expenses() {
 
   const fetchSubcategories = async () => {
     if (!profile) return;
-    
+
     // First get all expense category IDs for this user
     const { data: expenseCategories } = await supabase
       .from('categories')
       .select('id')
       .eq('user_id', profile.id)
       .eq('type', 'expense');
-    
+
     if (!expenseCategories || expenseCategories.length === 0) {
       setSubcategories([]);
       return;
     }
-    
+
     const categoryIds = expenseCategories.map(cat => cat.id);
-    
+
     const { data, error } = await supabase
       .from('subcategories')
       .select('id, name, parent_category_id, is_favorite, parent_category:categories!parent_category_id(name)')
       .in('parent_category_id', categoryIds)
       .order('is_favorite', { ascending: false })
       .order('name', { ascending: true });
-    
+
     if (error) {
       console.error('Error fetching subcategories:', error);
       return;
     }
-    
+
     if (data) {
       const formattedSubcategories = data.map((sub: any) => ({
         id: sub.id,
@@ -166,7 +166,7 @@ export default function Expenses() {
 
   const toggleFavorite = async (id: string, currentStatus: boolean) => {
     if (!profile) return;
-    
+
     const { error } = await supabase
       .from('expenses')
       .update({ is_favorite: !currentStatus })
@@ -184,13 +184,13 @@ export default function Expenses() {
   const toggleCategoryFavorite = async (categoryId: string, currentStatus: boolean, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     if (!profile) return;
-    
+
     // Add animation class to the card
     const cardElement = (e.currentTarget as HTMLElement).closest('.category-card');
     if (cardElement) {
       cardElement.classList.add('favoriting-animation');
     }
-    
+
     const { error } = await supabase
       .from('categories')
       .update({ is_favorite: !currentStatus })
@@ -204,7 +204,7 @@ export default function Expenses() {
       }
     } else {
       showSuccess(currentStatus ? '⭐ Removed from favorites' : '⭐ Added to favorites!');
-      
+
       // Remove animation after a brief delay, then refresh
       setTimeout(() => {
         if (cardElement) {
@@ -218,7 +218,7 @@ export default function Expenses() {
   const toggleSubcategoryFavorite = async (subcategoryId: string, currentStatus: boolean, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!profile) return;
-    
+
     const { error } = await supabase
       .from('subcategories')
       .update({ is_favorite: !currentStatus })
@@ -448,12 +448,12 @@ export default function Expenses() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
-        <Button 
+        <Button
           onClick={() => { setSelectedQuickCategory(null); setIsAddDialogOpen(true); }}
           className="flex items-center gap-2"
         >
           <PlusCircle className="h-4 w-4" />
-          Add Custom Expense (NPR)
+          Add Custom Expense (रु )
         </Button>
       </div>
 
@@ -465,9 +465,8 @@ export default function Expenses() {
             {subcategories.map((sub) => (
               <Card
                 key={sub.id}
-                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${
-                  sub.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
-                }`}
+                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${sub.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
+                  }`}
                 onClick={() => {
                   setSelectedQuickCategory(sub.parent_category_id);
                   setIsAddDialogOpen(true);
@@ -480,12 +479,11 @@ export default function Expenses() {
                   className="absolute top-1 left-1 h-7 w-7 z-10 transition-all hover:scale-110"
                   onClick={(e) => toggleSubcategoryFavorite(sub.id, sub.is_favorite, e)}
                 >
-                  <Star 
-                    className={`h-4 w-4 transition-all duration-200 ${
-                      sub.is_favorite 
-                        ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg' 
-                        : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
-                    }`} 
+                  <Star
+                    className={`h-4 w-4 transition-all duration-200 ${sub.is_favorite
+                      ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg'
+                      : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
+                      }`}
                   />
                 </Button>
                 <AlertDialog>
@@ -539,9 +537,8 @@ export default function Expenses() {
             {quickExpenses.map((qe) => (
               <Card
                 key={qe.categoryId}
-                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${
-                  qe.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
-                }`}
+                className={`category-card relative cursor-pointer hover:shadow-lg hover:border-purple-300 dark:hover:border-purple-700 transition-all duration-300 flex flex-col items-center justify-center text-center p-4 ${qe.is_favorite ? 'ring-2 ring-yellow-400 dark:ring-yellow-500 shadow-yellow-200 dark:shadow-yellow-900/50' : ''
+                  }`}
                 onClick={() => handleQuickExpenseClick(qe.categoryId)}
                 style={{ transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }}
               >
@@ -551,12 +548,11 @@ export default function Expenses() {
                   className="absolute top-1 left-1 h-7 w-7 z-10 transition-all hover:scale-110"
                   onClick={(e) => toggleCategoryFavorite(qe.categoryId, qe.is_favorite, e)}
                 >
-                  <Star 
-                    className={`h-4 w-4 transition-all duration-200 ${
-                      qe.is_favorite 
-                        ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg' 
-                        : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
-                    }`} 
+                  <Star
+                    className={`h-4 w-4 transition-all duration-200 ${qe.is_favorite
+                      ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg'
+                      : 'text-muted-foreground hover:text-yellow-400 hover:scale-110'
+                      }`}
                   />
                 </Button>
                 <Button
@@ -641,7 +637,7 @@ export default function Expenses() {
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'recurring')} className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="all" className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4" />
+            <Coins className="h-4 w-4" />
             All Expenses ({expenses.length})
           </TabsTrigger>
           <TabsTrigger value="recurring" className="flex items-center gap-2">
@@ -670,8 +666,8 @@ export default function Expenses() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : (
-            <TransactionsDataTable 
-              data={expenses.filter(e => e.is_recurring)} 
+            <TransactionsDataTable
+              data={expenses.filter(e => e.is_recurring)}
               onToggleFavorite={toggleFavorite}
             />
           )}

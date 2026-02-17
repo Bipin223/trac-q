@@ -40,7 +40,7 @@ import { format } from "date-fns";
 import { showSuccess, showError } from "@/utils/toast";
 
 const formSchema = z.object({
-  amount: z.coerce.number().positive({ message: "Amount must be a positive number in NPR." }),
+  amount: z.coerce.number().positive({ message: "Amount must be a positive number in रु " }),
   description: z.string().optional(),
   date: z.date(),
   categoryId: z.string({ required_error: "Please select or create a category." }),
@@ -118,7 +118,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
       setSubcategories([]);
       return;
     }
-    
+
     try {
       const { data, error } = await supabase
         .from("subcategories")
@@ -126,7 +126,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
         .eq("user_id", user.id)
         .eq("parent_category_id", categoryId)
         .order("name", { ascending: true });
-      
+
       if (error) throw error;
       setSubcategories(data || []);
     } catch (error) {
@@ -177,14 +177,14 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
       if (error) {
         showError(`Failed to add ${type}.`);
       } else {
-        const subcategoryText = values.subcategoryId 
-          ? ` (${subcategories.find(s => s.id === values.subcategoryId)?.name})` 
+        const subcategoryText = values.subcategoryId
+          ? ` (${subcategories.find(s => s.id === values.subcategoryId)?.name})`
           : '';
-        showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of NPR ${values.amount}${subcategoryText} added successfully.`);
+        showSuccess(`${type.charAt(0).toUpperCase() + type.slice(1)} of रु  ${values.amount}${subcategoryText} added successfully.`);
         onSuccess();
-        form.reset({ 
-          date: new Date(), 
-          description: "", 
+        form.reset({
+          date: new Date(),
+          description: "",
           categoryId: defaultCategoryId || "",
           subcategoryId: "",
           is_recurring: false,
@@ -344,7 +344,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                 </FormItem>
               )}
             />
-            
+
             {/* Subcategory Field - Only show if category is selected and has subcategories */}
             {form.watch("categoryId") && subcategories.length > 0 && (
               <FormField
@@ -440,7 +440,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                 </FormItem>
               )}
             />
-            
+
             {form.watch("is_recurring") && (
               <div className="space-y-4 rounded-md border p-4 bg-muted/50">
                 <FormField
@@ -467,7 +467,7 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                     </FormItem>
                   )}
                 />
-                
+
                 {form.watch("recurring_frequency") === "custom" && (
                   <FormField
                     control={form.control}
@@ -503,10 +503,10 @@ export function AddTransactionDialog({ type, open, onOpenChange, onSuccess, defa
                 )}
               </div>
             )}
-            
+
             <DialogFooter>
               <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : `Save ${type === 'income' ? 'Income' : 'Expense'} (NPR)`}
+                {loading ? "Saving..." : `Save ${type === 'income' ? 'Income' : 'Expense'} (रु )`}
               </Button>
             </DialogFooter>
           </form>

@@ -101,7 +101,7 @@ export function PaymentDialog({
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-muted-foreground">Amount:</span>
                                 <span className="text-2xl font-bold text-primary">
-                                    NPR {amount.toLocaleString()}
+                                    रु  {amount.toLocaleString()}
                                 </span>
                             </div>
                             <div className="flex justify-between items-start">
@@ -115,13 +115,13 @@ export function PaymentDialog({
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-muted-foreground">Current Balance:</span>
                                 <span className="font-semibold">
-                                    NPR {account?.balance.toLocaleString() || '0'}
+                                    रु  {account?.balance.toLocaleString() || '0'}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-sm text-muted-foreground">After Payment:</span>
                                 <span className={`font-semibold ${hasSufficientBalance ? 'text-green-600' : 'text-red-600'}`}>
-                                    NPR {((account?.balance || 0) - amount).toLocaleString()}
+                                    रु  {((account?.balance || 0) - amount).toLocaleString()}
                                 </span>
                             </div>
                         </div>
@@ -165,7 +165,7 @@ export function PaymentDialog({
                                 Processing...
                             </>
                         ) : (
-                            `Pay NPR ${amount.toLocaleString()}`
+                            `Pay रु  ${amount.toLocaleString()}`
                         )}
                     </Button>
                 </DialogFooter>

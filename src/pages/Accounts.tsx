@@ -124,7 +124,7 @@ export default function Accounts() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-4xl font-bold text-purple-700 dark:text-purple-300">
-            NPR {account?.balance.toLocaleString() || '0'}
+            रु  {account?.balance.toLocaleString() || '0'}
           </div>
           <div className="flex gap-3">
             <Button
@@ -187,10 +187,10 @@ export default function Accounts() {
                   <div className="text-right">
                     <p className={`text-lg font-bold ${getTransactionColor(transaction)}`}>
                       {transaction.transaction_type === 'credit' ? '+' : '-'}
-                      NPR {transaction.amount.toLocaleString()}
+                      रु  {transaction.amount.toLocaleString()}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Balance: NPR {transaction.balance_after.toLocaleString()}
+                      Balance: रु  {transaction.balance_after.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -211,7 +211,7 @@ export default function Accounts() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="add-amount">Amount (NPR)</Label>
+              <Label htmlFor="add-amount">Amount (रु )</Label>
               <Input
                 id="add-amount"
                 type="number"
@@ -244,7 +244,7 @@ export default function Accounts() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="withdraw-amount">Amount (NPR)</Label>
+              <Label htmlFor="withdraw-amount">Amount (रु )</Label>
               <Input
                 id="withdraw-amount"
                 type="number"
@@ -255,7 +255,7 @@ export default function Accounts() {
                 max={account?.balance || 0}
               />
               <p className="text-sm text-muted-foreground">
-                Available balance: NPR {account?.balance.toLocaleString() || '0'}
+                Available balance: रु  {account?.balance.toLocaleString() || '0'}
               </p>
             </div>
           </div>

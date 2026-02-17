@@ -8,12 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { showSuccess, showError } from '@/utils/toast';
 import { MoneyRequestDialog } from '@/components/MoneyRequestDialog';
-import { 
-  Users, 
-  UserPlus, 
-  QrCode, 
-  Check, 
-  X, 
+import {
+  Users,
+  UserPlus,
+  QrCode,
+  Check,
+  X,
   UserMinus,
   Copy,
   Clock,
@@ -21,7 +21,6 @@ import {
   Hash,
   Camera,
   Upload,
-  DollarSign,
   HandCoins
 } from 'lucide-react';
 import {
@@ -53,6 +52,7 @@ interface Friend {
     first_name: string;
     last_name: string;
     email: string;
+    username?: string;
   };
 }
 
@@ -65,6 +65,7 @@ interface FriendRequest {
     first_name: string;
     last_name: string;
     email: string;
+    username?: string;
   };
 }
 
@@ -151,13 +152,13 @@ export default function Friends() {
 
   const fetchUserFriendCode = async () => {
     if (!profile) return;
-    
+
     const { data, error } = await supabase
       .from('profiles')
       .select('friend_code')
       .eq('id', profile.id)
       .single();
-    
+
     if (!error && data) {
       setUserFriendCode(data.friend_code || '');
     }
@@ -166,9 +167,9 @@ export default function Friends() {
   const fetchFriends = async () => {
     if (!profile) return;
     setLoading(true);
-    
+
     console.log('🔍 Fetching friends for user:', profile.id);
-    
+
     // First, get the friends list
     const { data: friendsData, error: friendsError } = await supabase
       .from('friends')
@@ -193,7 +194,7 @@ export default function Friends() {
 
     // Get all friend IDs
     const friendIds = friendsData.map(f => f.friend_id);
-    
+
     // Fetch profiles for all friends
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
@@ -211,9 +212,9 @@ export default function Friends() {
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
     const combinedFriends = friendsData.map(friend => ({
       ...friend,
-      friend_profile: profilesMap.get(friend.friend_id) || { 
-        first_name: '', 
-        last_name: '', 
+      friend_profile: profilesMap.get(friend.friend_id) || {
+        first_name: '',
+        last_name: '',
         email: 'Unknown',
         friend_code: ''
       }
@@ -251,7 +252,7 @@ export default function Friends() {
 
     // Get all requester IDs
     const requesterIds = requestsData.map(r => r.requested_by);
-    
+
     // Fetch profiles for all requesters
     const { data: profilesData, error: profilesError } = await supabase
       .from('profiles')
@@ -268,9 +269,9 @@ export default function Friends() {
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
     const combinedRequests = requestsData.map(request => ({
       ...request,
-      requester_profile: profilesMap.get(request.requested_by) || { 
-        first_name: '', 
-        last_name: '', 
+      requester_profile: profilesMap.get(request.requested_by) || {
+        first_name: '',
+        last_name: '',
         email: 'Unknown',
         friend_code: ''
       }
@@ -380,7 +381,7 @@ export default function Friends() {
 
   const acceptFriendRequest = async (requestId: string) => {
     console.log('✅ Accepting friend request:', requestId);
-    
+
     const { data, error } = await supabase
       .from('friends')
       .update({ status: 'accepted', updated_at: new Date().toISOString() })
@@ -443,7 +444,7 @@ export default function Friends() {
 
     // Normalize the input (add #TRAC- if missing, convert to uppercase)
     let normalizedCode = friendCodeInput.trim().toUpperCase();
-    
+
     // Handle various input formats
     if (!normalizedCode.startsWith('#')) {
       // If input is just alphanumeric, add #TRAC-
@@ -488,8 +489,8 @@ export default function Friends() {
       return;
     }
 
-    const targetUserName = targetUser.first_name && targetUser.last_name 
-      ? `${targetUser.first_name} ${targetUser.last_name}` 
+    const targetUserName = targetUser.first_name && targetUser.last_name
+      ? `${targetUser.first_name} ${targetUser.last_name}`
       : targetUser.email;
     console.log('✅ Found target user:', targetUserName);
 
@@ -540,7 +541,7 @@ export default function Friends() {
     if (insertError) {
       console.error('❌ Failed to send friend request:', insertError);
       showError(`Failed to send friend request: ${insertError.message}`);
-      
+
       // Provide helpful error messages
       if (insertError.message.includes('policies')) {
         showError('Permission error. Please run the FRIENDS_SYSTEM_FIX.sql script in Supabase.');
@@ -623,8 +624,8 @@ export default function Friends() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-3">
-            <Button 
-              onClick={generateMyQrCode} 
+            <Button
+              onClick={generateMyQrCode}
               disabled={!userFriendCode}
               className="w-full"
               variant="default"
@@ -632,7 +633,7 @@ export default function Friends() {
               <QrCode className="h-4 w-4 mr-2" />
               Generate QR
             </Button>
-            <Button 
+            <Button
               onClick={() => setShowScanDialog(true)}
               className="w-full"
               variant="outline"
@@ -703,72 +704,73 @@ export default function Friends() {
               {friends.map((friend) => {
                 const friendUsername = friend.friend_profile.username || friend.friend_profile.email;
                 return (
-                <Card key={friend.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{friendUsername}</CardTitle>
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <Mail className="h-3 w-3" />
-                          {friend.friend_profile.email}
-                        </CardDescription>
+                  <Card key={friend.id}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-lg">{friendUsername}</CardTitle>
+                          <CardDescription className="flex items-center gap-1 mt-1">
+                            <Mail className="h-3 w-3" />
+                            {friend.friend_profile.email}
+                          </CardDescription>
+                        </div>
+                        <Badge variant="secondary">Friend</Badge>
                       </div>
-                      <Badge variant="secondary">Friend</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedFriendForRequest(friend.friend_id);
-                          setMoneyRequestType('request_money');
-                          setShowMoneyRequestDialog(true);
-                        }}
-                      >
-                        <HandCoins className="h-4 w-4 mr-2" />
-                        Request Money
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedFriendForRequest(friend.friend_id);
-                          setMoneyRequestType('send_money');
-                          setShowMoneyRequestDialog(true);
-                        }}
-                      >
-                        <DollarSign className="h-4 w-4 mr-2" />
-                        Send Money
-                      </Button>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" className="w-full">
-                          <UserMinus className="h-4 w-4 mr-2" />
-                          Remove Friend
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedFriendForRequest(friend.friend_id);
+                            setMoneyRequestType('request_money');
+                            setShowMoneyRequestDialog(true);
+                          }}
+                        >
+                          <HandCoins className="h-4 w-4 mr-2" />
+                          Request Money
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove Friend?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to remove {friendUsername} from your friends? 
-                            You can always add them back later.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => removeFriend(friend.id)}>
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </CardContent>
-                </Card>
-              )})}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedFriendForRequest(friend.friend_id);
+                            setMoneyRequestType('send_money');
+                            setShowMoneyRequestDialog(true);
+                          }}
+                        >
+                          <span className="mr-1 text-primary font-bold">रु </span>
+                          Send Money
+                        </Button>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm" className="w-full">
+                            <UserMinus className="h-4 w-4 mr-2" />
+                            Remove Friend
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove Friend?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to remove {friendUsername} from your friends?
+                              You can always add them back later.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => removeFriend(friend.id)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
         </TabsContent>
@@ -786,40 +788,41 @@ export default function Friends() {
               {friendRequests.map((request) => {
                 const requesterUsername = request.requester_profile.username || request.requester_profile.email;
                 return (
-                <Card key={request.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{requesterUsername}</CardTitle>
-                        <CardDescription className="flex items-center gap-1 mt-1">
-                          <Mail className="h-3 w-3" />
-                          {request.requester_profile.email}
-                        </CardDescription>
+                  <Card key={request.id}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <CardTitle className="text-lg">{requesterUsername}</CardTitle>
+                          <CardDescription className="flex items-center gap-1 mt-1">
+                            <Mail className="h-3 w-3" />
+                            {request.requester_profile.email}
+                          </CardDescription>
+                        </div>
+                        <Badge variant="outline">Pending</Badge>
                       </div>
-                      <Badge variant="outline">Pending</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex gap-2">
-                    <Button 
-                      onClick={() => acceptFriendRequest(request.id)} 
-                      size="sm" 
-                      className="flex-1"
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      Accept
-                    </Button>
-                    <Button 
-                      onClick={() => rejectFriendRequest(request.id)} 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Decline
-                    </Button>
-                  </CardContent>
-                </Card>
-              )})}
+                    </CardHeader>
+                    <CardContent className="flex gap-2">
+                      <Button
+                        onClick={() => acceptFriendRequest(request.id)}
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Accept
+                      </Button>
+                      <Button
+                        onClick={() => rejectFriendRequest(request.id)}
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Decline
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
         </TabsContent>
@@ -837,9 +840,9 @@ export default function Friends() {
           <div className="flex flex-col items-center justify-center py-6">
             {qrCodeUrl && (
               <div className="bg-white p-4 rounded-lg">
-                <img 
-                  src={qrCodeUrl} 
-                  alt="Friend Code QR" 
+                <img
+                  src={qrCodeUrl}
+                  alt="Friend Code QR"
                   className="w-full max-w-sm"
                 />
               </div>
@@ -870,8 +873,8 @@ export default function Friends() {
                   <Camera className="h-4 w-4 mr-2" />
                   Start Camera
                 </Button>
-                <Button 
-                  onClick={() => fileInputRef.current?.click()} 
+                <Button
+                  onClick={() => fileInputRef.current?.click()}
                   variant="outline"
                   className="flex-1"
                 >
@@ -902,8 +905,8 @@ export default function Friends() {
                   </Button>
                 </div>
               )}
-              <div 
-                id="qr-reader" 
+              <div
+                id="qr-reader"
                 className="w-full rounded-lg overflow-hidden bg-black"
               />
               <div id="qr-reader-file" className="hidden" />

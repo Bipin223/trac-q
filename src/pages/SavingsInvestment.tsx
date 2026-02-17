@@ -25,22 +25,22 @@ export default function SavingsInvestment() {
   const [targetAmount, setTargetAmount] = useState<string>('');
   const [currentSavings, setCurrentSavings] = useState<string>('');
   const [monthlyContribution, setMonthlyContribution] = useState<string>('');
-  
+
   // Dialog state
   const [showSavingsInfo, setShowSavingsInfo] = useState(false);
   const [isSavingsInfoDialogOpen, setIsSavingsInfoDialogOpen] = useState(false);
-  
+
   // Compound Interest Calculator
   const [principal, setPrincipal] = useState<string>('');
   const [annualRate, setAnnualRate] = useState<string>('');
   const [timePeriod, setTimePeriod] = useState<string>('');
   const [compoundFrequency, setCompoundFrequency] = useState<string>('12');
   const [monthlyDeposit, setMonthlyDeposit] = useState<string>('');
-  
+
   // Emergency Fund Calculator
   const [monthlyExpenses, setMonthlyExpenses] = useState<string>('');
   const [emergencyMonths, setEmergencyMonths] = useState<string>('6');
-  
+
   // Savings Goal Calculations
   const target = parseFloat(targetAmount) || 0;
   const current = parseFloat(currentSavings) || 0;
@@ -50,31 +50,31 @@ export default function SavingsInvestment() {
   const monthsToGoal = monthly > 0 ? Math.ceil(remaining / monthly) : 0;
   const yearsToGoal = Math.floor(monthsToGoal / 12);
   const remainingMonths = monthsToGoal % 12;
-  
+
   // Compound Interest Calculations
   const p = parseFloat(principal) || 0;
   const r = (parseFloat(annualRate) || 0) / 100;
   const t = parseFloat(timePeriod) || 0;
   const n = parseFloat(compoundFrequency) || 12;
   const monthlyDep = parseFloat(monthlyDeposit) || 0;
-  
+
   // Compound interest formula: A = P(1 + r/n)^(nt)
   const compoundAmount = p * Math.pow((1 + r / n), n * t);
-  
+
   // Future value of monthly deposits: FV = PMT × [((1 + r/n)^(nt) - 1) / (r/n)]
   const futureValueOfDeposits = monthlyDep > 0 && r > 0
     ? monthlyDep * ((Math.pow(1 + r / n, n * t) - 1) / (r / n))
     : monthlyDep * n * t; // Simple addition if no interest
-  
+
   const totalFutureValue = compoundAmount + futureValueOfDeposits;
   const totalDeposited = p + (monthlyDep * n * t);
   const totalInterestEarned = totalFutureValue - totalDeposited;
-  
+
   // Emergency Fund Calculations
   const expenses = parseFloat(monthlyExpenses) || 0;
   const months = parseFloat(emergencyMonths) || 6;
   const emergencyFundTarget = expenses * months;
-  
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -83,7 +83,7 @@ export default function SavingsInvestment() {
           <p className="text-muted-foreground">Track savings goals and estimate investment returns</p>
         </div>
       </div>
-      
+
       <Alert className="bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
         <Info className="h-4 w-4 text-green-600 dark:text-green-400" />
         <AlertTitle className="text-green-700 dark:text-green-300 flex items-center justify-between">
@@ -141,9 +141,9 @@ export default function SavingsInvestment() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Compound Interest Formula</h3>
                     <div className="bg-muted p-4 rounded-lg space-y-3">
@@ -158,9 +158,9 @@ export default function SavingsInvestment() {
                           <li>t = Time in years</li>
                         </ul>
                       </div>
-                      
+
                       <Separator />
-                      
+
                       <div>
                         <p className="font-semibold text-sm">With Regular Monthly Deposits:</p>
                         <p className="font-mono text-sm mt-1">FV = PMT × [((1 + r/n)^(nt) - 1) / (r/n)]</p>
@@ -174,9 +174,9 @@ export default function SavingsInvestment() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Example Calculation</h3>
                     <div className="bg-muted p-3 rounded-lg space-y-2 text-sm">
@@ -192,9 +192,9 @@ export default function SavingsInvestment() {
                       <p className="text-xs text-muted-foreground">Interest earned: रु 28,454.48</p>
                     </div>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Emergency Fund Guidelines</h3>
                     <div className="space-y-2">
@@ -212,7 +212,7 @@ export default function SavingsInvestment() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-xs text-muted-foreground">
                     <p><strong>Note:</strong> Interest rates vary by bank and are subject to Nepal Rastra Bank regulations. Rates shown are approximate as of 2024. Check with your bank for current rates.</p>
                   </div>
@@ -266,9 +266,9 @@ export default function SavingsInvestment() {
                 onChange={(e) => setGoalName(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="target-amount">Target Amount (NPR)</Label>
+              <Label htmlFor="target-amount">Target Amount (रु )</Label>
               <Input
                 id="target-amount"
                 type="number"
@@ -278,9 +278,9 @@ export default function SavingsInvestment() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="current-savings">Current Savings (NPR)</Label>
+              <Label htmlFor="current-savings">Current Savings (रु )</Label>
               <Input
                 id="current-savings"
                 type="number"
@@ -290,9 +290,9 @@ export default function SavingsInvestment() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="monthly-contribution">Monthly Contribution (NPR)</Label>
+              <Label htmlFor="monthly-contribution">Monthly Contribution (रु )</Label>
               <Input
                 id="monthly-contribution"
                 type="number"
@@ -302,16 +302,16 @@ export default function SavingsInvestment() {
                 min="0"
               />
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-4">
               {goalName && (
                 <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                   <h3 className="font-semibold text-purple-700 dark:text-purple-300">{goalName}</h3>
                 </div>
               )}
-              
+
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-sm font-medium">Progress</span>
@@ -321,27 +321,27 @@ export default function SavingsInvestment() {
                 </div>
                 <Progress value={Math.min(progressPercent, 100)} className="h-3" />
                 <div className="flex justify-between items-center mt-2 text-sm">
-                  <span className="text-muted-foreground">NPR {current.toLocaleString()}</span>
-                  <span className="font-semibold">NPR {target.toLocaleString()}</span>
+                  <span className="text-muted-foreground">रु  {current.toLocaleString()}</span>
+                  <span className="font-semibold">रु  {target.toLocaleString()}</span>
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">Remaining</p>
                   <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                    NPR {remaining.toLocaleString()}
+                    रु  {remaining.toLocaleString()}
                   </p>
                 </div>
-                
+
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">Monthly</p>
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    NPR {monthly.toLocaleString()}
+                    रु  {monthly.toLocaleString()}
                   </p>
                 </div>
               </div>
-              
+
               {monthsToGoal > 0 && (
                 <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">Time to Goal</p>
@@ -356,7 +356,7 @@ export default function SavingsInvestment() {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Compound Interest Calculator */}
         <Card>
           <CardHeader>
@@ -368,7 +368,7 @@ export default function SavingsInvestment() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="principal">Initial Investment (NPR)</Label>
+              <Label htmlFor="principal">Initial Investment (रु )</Label>
               <Input
                 id="principal"
                 type="number"
@@ -378,7 +378,7 @@ export default function SavingsInvestment() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="annual-rate">Annual Interest Rate (%)</Label>
               <Input
@@ -391,7 +391,7 @@ export default function SavingsInvestment() {
                 step="0.1"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="time-period">Time Period (Years)</Label>
               <Input
@@ -403,7 +403,7 @@ export default function SavingsInvestment() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="compound-frequency">Compound Frequency</Label>
               <Select value={compoundFrequency} onValueChange={setCompoundFrequency}>
@@ -419,9 +419,9 @@ export default function SavingsInvestment() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="monthly-deposit">Monthly Deposit (NPR)</Label>
+              <Label htmlFor="monthly-deposit">Monthly Deposit (रु )</Label>
               <Input
                 id="monthly-deposit"
                 type="number"
@@ -432,34 +432,34 @@ export default function SavingsInvestment() {
               />
               <p className="text-xs text-muted-foreground">Additional amount invested each month</p>
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                 <span className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Deposited</span>
                 <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                  NPR {totalDeposited.toLocaleString()}
+                  रु  {totalDeposited.toLocaleString()}
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                 <span className="text-sm font-medium text-green-600 dark:text-green-400">Interest Earned</span>
                 <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                  NPR {totalInterestEarned.toLocaleString()}
+                  रु  {totalInterestEarned.toLocaleString()}
                 </span>
               </div>
-              
+
               <div className="flex justify-between items-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 <div>
                   <span className="text-sm font-medium text-purple-600 dark:text-purple-400 block">Future Value</span>
                   <span className="text-xs text-muted-foreground">After {t} years</span>
                 </div>
                 <span className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  NPR {totalFutureValue.toLocaleString()}
+                  रु  {totalFutureValue.toLocaleString()}
                 </span>
               </div>
-              
+
               {totalInterestEarned > 0 && (
                 <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
@@ -468,8 +468,8 @@ export default function SavingsInvestment() {
                       {((totalInterestEarned / totalDeposited) * 100).toFixed(2)}%
                     </Badge>
                   </div>
-                  <Progress 
-                    value={Math.min(((totalInterestEarned / totalDeposited) * 100), 100)} 
+                  <Progress
+                    value={Math.min(((totalInterestEarned / totalDeposited) * 100), 100)}
                     className="h-2"
                   />
                 </div>
@@ -477,7 +477,7 @@ export default function SavingsInvestment() {
             </div>
           </CardContent>
         </Card>
-        
+
         {/* Emergency Fund Calculator */}
         <Card>
           <CardHeader>
@@ -489,7 +489,7 @@ export default function SavingsInvestment() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="monthly-expenses">Monthly Expenses (NPR)</Label>
+              <Label htmlFor="monthly-expenses">Monthly Expenses (रु )</Label>
               <Input
                 id="monthly-expenses"
                 type="number"
@@ -499,7 +499,7 @@ export default function SavingsInvestment() {
                 min="0"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="emergency-months">Months of Coverage</Label>
               <Select value={emergencyMonths} onValueChange={setEmergencyMonths}>
@@ -517,9 +517,9 @@ export default function SavingsInvestment() {
                 Financial experts recommend 3-6 months of expenses
               </p>
             </div>
-            
+
             <Separator />
-            
+
             <div className="space-y-4">
               <div className="p-4 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 rounded-lg border-2 border-red-200 dark:border-red-800">
                 <div className="flex items-center gap-2 mb-2">
@@ -529,21 +529,21 @@ export default function SavingsInvestment() {
                   </span>
                 </div>
                 <p className="text-3xl font-bold text-red-600 dark:text-red-400">
-                  NPR {emergencyFundTarget.toLocaleString()}
+                  रु  {emergencyFundTarget.toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground mt-2">
-                  {months} months × NPR {expenses.toLocaleString()}
+                  {months} months × रु  {expenses.toLocaleString()}
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">Per Month</p>
                   <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    NPR {expenses.toLocaleString()}
+                    रु  {expenses.toLocaleString()}
                   </p>
                 </div>
-                
+
                 <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">Coverage</p>
                   <p className="text-lg font-bold text-purple-600 dark:text-purple-400">

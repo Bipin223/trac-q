@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { DollarSign, TrendingDown, TrendingUp, Wallet, Target, Save, RefreshCw } from "lucide-react";
+import { DollarSign, TrendingDown, Wallet, Target, Save, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -18,25 +18,23 @@ interface MonthlySummaryProps {
   currentYear: number;
   currentMonthNum: number;
   profile: any; // Profile from context
-  categoryIdForBudget: string | null;  // null for overall budget
   onBudgetUpdate: (newExpenses: number) => Promise<void>; // Async for refetch
 }
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(amount);
+  return "रु  " + amount.toLocaleString('en-NP', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 const formatPercentage = (value: number) => Math.round(value) + '%';
 
-export const MonthlySummary = ({ 
-  totalIncome, 
-  totalExpenses, 
-  budgetedExpenses = 0, 
+export const MonthlySummary = ({
+  totalIncome,
+  totalExpenses,
+  budgetedExpenses = 0,
   month,
   currentYear,
   currentMonthNum,
   profile,
-  categoryIdForBudget = null,  // Default null for overall
   onBudgetUpdate
 }: MonthlySummaryProps) => {
   const netSavings = totalIncome - totalExpenses;
@@ -73,7 +71,7 @@ export const MonthlySummary = ({
 
     try {
       console.log('MonthlySummary: Saving overall budget', expenses, 'for user', profile.id, 'year', currentYear, 'month', currentMonthNum);
-      
+
       // Delete any existing overall budget for this month (ensures single row)
       const { error: deleteError } = await supabase
         .from('budgets')
@@ -136,7 +134,7 @@ export const MonthlySummary = ({
     setRefreshing(true);
     try {
       console.log('MonthlySummary: Manual refresh triggered');
-      
+
       const { data: budgetData, error } = await supabase
         .from('budgets')
         .select('budgeted_amount')
@@ -250,7 +248,7 @@ export const MonthlySummary = ({
   return (
     <div className="space-y-4">
       {renderSummaryTiles()}
-      
+
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="text-xl font-bold">{formTitle}</CardTitle>
@@ -258,7 +256,7 @@ export const MonthlySummary = ({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Overall Budget (NPR)</Label>
+            <Label className="text-sm font-medium">Overall Budget (रु )</Label>
             <Input
               type="number"
               value={tempExpenses}

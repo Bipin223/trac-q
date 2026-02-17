@@ -125,22 +125,22 @@ export default function Comparison() {
 
   const fetchAvailableYears = async () => {
     if (!profile) return;
-    
+
     try {
       const { data: incomes } = await supabase
         .from('incomes')
         .select('income_date')
         .eq('user_id', profile.id);
-      
+
       const { data: expenses } = await supabase
         .from('expenses')
         .select('expense_date')
         .eq('user_id', profile.id);
-      
+
       const years = new Set<number>();
       incomes?.forEach(i => years.add(new Date(i.income_date).getFullYear()));
       expenses?.forEach(e => years.add(new Date(e.expense_date).getFullYear()));
-      
+
       const sortedYears = Array.from(years).sort((a, b) => b - a);
       setAvailableYears(sortedYears.length > 0 ? sortedYears : [new Date().getFullYear()]);
     } catch (error) {
@@ -205,7 +205,7 @@ export default function Comparison() {
 
     // Generate all periods for the year
     const allPeriods = generatePeriodsForYear(year, period);
-    
+
     return allPeriods.map(periodKey => {
       const data = dataMap.get(periodKey) || { income: 0, expense: 0 };
       return {
@@ -220,7 +220,7 @@ export default function Comparison() {
   const getPeriodKey = (date: Date, period: PeriodType): string => {
     const month = date.toLocaleString('default', { month: 'short' });
     const year = date.getFullYear();
-    
+
     switch (period) {
       case 'daily':
         return `${date.getDate()} ${month}`;
@@ -241,11 +241,11 @@ export default function Comparison() {
     if (period === 'yearly') {
       return [year.toString()];
     }
-    
+
     if (period === 'monthly') {
       return ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     }
-    
+
     if (period === 'weekly') {
       const weeks: string[] = [];
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -256,7 +256,7 @@ export default function Comparison() {
       });
       return weeks;
     }
-    
+
     // For daily, limit to current month
     const daysInMonth = new Date(year, new Date().getMonth() + 1, 0).getDate();
     const month = new Date().toLocaleString('default', { month: 'short' });
@@ -274,10 +274,10 @@ export default function Comparison() {
       for (let i = 0; i < years.length; i++) {
         const year = years[i];
         const month = months[i];
-        
+
         let startDate: Date;
         let endDate: Date;
-        
+
         if (month !== null) {
           // Month-specific comparison
           startDate = new Date(year, month, 1);
@@ -357,7 +357,7 @@ export default function Comparison() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR', maximumFractionDigits: 0 }).format(amount);
+    return "रु  " + amount.toLocaleString('en-NP', { maximumFractionDigits: 0 });
   };
 
   const calculatePercentageChange = (current: number, previous: number): number => {
@@ -367,20 +367,18 @@ export default function Comparison() {
 
   const year1Data = yearComparisons.find(y => y.year === selectedYear1);
   const year2Data = yearComparisons.find(y => y.year === selectedYear2);
-  
+
   const incomeChange = year1Data && year2Data ? calculatePercentageChange(year1Data.totalIncome, year2Data.totalIncome) : 0;
   const expenseChange = year1Data && year2Data ? calculatePercentageChange(year1Data.totalExpense, year2Data.totalExpense) : 0;
 
   const totalIncome = financialData.reduce((sum, d) => sum + d.income, 0);
   const totalExpense = financialData.reduce((sum, d) => sum + d.expense, 0);
-  const avgIncome = financialData.length > 0 ? totalIncome / financialData.length : 0;
-  const avgExpense = financialData.length > 0 ? totalExpense / financialData.length : 0;
 
   const nepalComparisonIncome = ((totalIncome / 12) / NEPAL_AVERAGE_DATA.monthlyIncome * 100) - 100;
   const nepalComparisonExpense = ((totalExpense / 12) / NEPAL_AVERAGE_DATA.monthlyExpense * 100) - 100;
 
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  
+
   const getComparisonLabel = (year: number, month: number | null) => {
     if (month !== null) {
       return `${monthNames[month]} ${year}`;
@@ -458,9 +456,9 @@ export default function Comparison() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">Nepal Average Data (2024)</h3>
                     <Table>
@@ -473,11 +471,11 @@ export default function Comparison() {
                       <TableBody>
                         <TableRow>
                           <TableCell>Monthly Income</TableCell>
-                          <TableCell>NPR 45,000</TableCell>
+                          <TableCell>रु  45,000</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell>Monthly Expense</TableCell>
-                          <TableCell>NPR 35,000</TableCell>
+                          <TableCell>रु  35,000</TableCell>
                         </TableRow>
                         <TableRow>
                           <TableCell>Savings Rate</TableCell>
@@ -486,9 +484,9 @@ export default function Comparison() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div>
                     <h3 className="font-semibold text-lg mb-2">How to Use Insights</h3>
                     <div className="space-y-2">
@@ -510,7 +508,7 @@ export default function Comparison() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="text-xs text-muted-foreground">
                     <p><strong>Note:</strong> Nepal average data is based on 2024 economic surveys and may vary by region and demographic. Use as general guidance only.</p>
                   </div>
@@ -597,8 +595,8 @@ export default function Comparison() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Primary Month (Optional)</label>
-              <Select 
-                value={selectedMonth1 !== null ? selectedMonth1.toString() : "all"} 
+              <Select
+                value={selectedMonth1 !== null ? selectedMonth1.toString() : "all"}
                 onValueChange={(value) => setSelectedMonth1(value === "all" ? null : parseInt(value))}
               >
                 <SelectTrigger>
@@ -615,8 +613,8 @@ export default function Comparison() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Compare With Month (Optional)</label>
-              <Select 
-                value={selectedMonth2 !== null ? selectedMonth2.toString() : "all"} 
+              <Select
+                value={selectedMonth2 !== null ? selectedMonth2.toString() : "all"}
                 onValueChange={(value) => setSelectedMonth2(value === "all" ? null : parseInt(value))}
               >
                 <SelectTrigger>
@@ -784,7 +782,7 @@ export default function Comparison() {
                           fill="#8884d8"
                           dataKey="amount"
                         >
-                          {categoryBreakdown.map((entry, index) => (
+                          {categoryBreakdown.map((_, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
                         </Pie>
@@ -822,7 +820,7 @@ export default function Comparison() {
                 <CardContent className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <h3 className="font-semibold">Your Monthly Average (₹{selectedYear1})</h3>
+                      <h3 className="font-semibold">Your Monthly Average (रु  {selectedYear1})</h3>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between p-3 border rounded-lg">
                           <span className="text-sm">Income</span>
