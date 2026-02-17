@@ -40,14 +40,14 @@ import { format } from 'date-fns';
 
 interface PendingTransaction {
   id: string;
-  sender_id: string;
-  receiver_id: string;
+  from_user_id: string;
+  to_user_id: string;
   amount: number;
   description: string;
   transaction_type: string;
   status: string;
-  sender_accepted: boolean;
-  receiver_accepted: boolean;
+  from_user_accepted: boolean;
+  to_user_accepted: boolean;
   initiated_by: string;
   transaction_date: string;
   sender_profile: { first_name: string; last_name: string; email: string };
@@ -91,7 +91,7 @@ export default function PendingTransactions() {
             event: '*',
             schema: 'public',
             table: 'pending_transactions',
-            filter: `sender_id=eq.${profile.id},receiver_id=eq.${profile.id}`,
+            filter: `from_user_id=eq.${profile.id}`,
           },
           () => {
             fetchPendingTransactions();
@@ -103,7 +103,7 @@ export default function PendingTransactions() {
             event: '*',
             schema: 'public',
             table: 'pending_transactions',
-            filter: `receiver_id=eq.${profile.id}`,
+            filter: `to_user_id=eq.${profile.id}`,
           },
           () => {
             fetchPendingTransactions();
@@ -158,8 +158,8 @@ export default function PendingTransactions() {
       const { data: transactionsData, error: txError } = await supabase
         .from('pending_transactions')
         .select('*')
-        .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
-        .in('status', ['pending_receiver', 'pending_sender'])
+        .or(`from_user_id.eq.${profile.id},to_user_id.eq.${profile.id}`)
+        .in('status', ['pending', 'pending_receiver', 'pending_sender'])
         .order('created_at', { ascending: false });
 
       if (txError) throw txError;
@@ -167,8 +167,8 @@ export default function PendingTransactions() {
       if (transactionsData && transactionsData.length > 0) {
         const userIds = new Set<string>();
         transactionsData.forEach(t => {
-          userIds.add(t.sender_id);
-          userIds.add(t.receiver_id);
+          userIds.add(t.from_user_id);
+          userIds.add(t.to_user_id);
         });
 
         const { data: profilesData, error: profilesError } = await supabase
@@ -181,13 +181,13 @@ export default function PendingTransactions() {
         const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
         const enrichedTransactions = transactionsData.map(t => ({
           ...t,
-          sender_profile: profilesMap.get(t.sender_id) || { first_name: '', last_name: '', email: 'Unknown' },
-          receiver_profile: profilesMap.get(t.receiver_id) || { first_name: '', last_name: '', email: 'Unknown' }
+          sender_profile: profilesMap.get(t.from_user_id) || { first_name: '', last_name: 'Unknown', email: '' },
+          receiver_profile: profilesMap.get(t.to_user_id) || { first_name: '', last_name: 'Unknown', email: '' }
         }));
 
         setPendingTransactions(enrichedTransactions);
-        setSentTransactions(enrichedTransactions.filter(t => t.sender_id === profile.id));
-        setReceivedTransactions(enrichedTransactions.filter(t => t.receiver_id === profile.id));
+        setSentTransactions(enrichedTransactions.filter(t => t.from_user_id === profile.id));
+        setReceivedTransactions(enrichedTransactions.filter(t => t.to_user_id === profile.id));
       } else {
         setPendingTransactions([]);
         setSentTransactions([]);
@@ -210,16 +210,16 @@ export default function PendingTransactions() {
     const { error } = await supabase
       .from('pending_transactions')
       .insert({
-        sender_id: profile.id,
-        receiver_id: selectedFriend,
+        from_user_id: profile.id,
+        to_user_id: selectedFriend,
         amount: parseFloat(amount),
         description,
         transaction_type: transactionType,
         transaction_date: transactionDate,
         initiated_by: profile.id,
-        status: 'pending_receiver',
-        sender_accepted: true,
-        receiver_accepted: false,
+        status: 'pending',
+        from_user_accepted: true,
+        to_user_accepted: false,
       });
 
     if (error) {
@@ -309,8 +309,8 @@ export default function PendingTransactions() {
 
   const TransactionCard = ({ transaction, isSender }: { transaction: PendingTransaction; isSender: boolean }) => {
     const otherParty = isSender ? transaction.receiver_profile : transaction.sender_profile;
-    const myAcceptance = isSender ? transaction.sender_accepted : transaction.receiver_accepted;
-    const theirAcceptance = isSender ? transaction.receiver_accepted : transaction.sender_accepted;
+    const myAcceptance = isSender ? transaction.from_user_accepted : transaction.to_user_accepted;
+    const theirAcceptance = isSender ? transaction.to_user_accepted : transaction.from_user_accepted;
 
     return (
       <Card>
